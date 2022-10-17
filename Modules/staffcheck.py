@@ -132,34 +132,35 @@ class StaffCheck:
 
     def EditGoodToCheck(self):
         
-        self.settingswindow = Toplevel()
+        self.goodwindow = Toplevel()
 
-        explanation_label = tk.Label(self.settingswindow, text="Discord ID = userID\nGamertag = xboxGT")
+        explanation_label = tk.Label(self.goodwindow, text="Discord ID = userID\nGamertag = xboxGT")
         explanation_label.grid(rowspan=2, column=1, row=1, sticky=(W))
 
-        good_to_check_label = tk.Label(self.settingswindow, text="Good to check message:")
+        good_to_check_label = tk.Label(self.goodwindow, text="Good to check message:")
         good_to_check_label.grid(column=1, row=3, sticky=W)
 
         self.good_to_check_message = StringVar(value=self.config['STAFFCHECK']['goodtocheckmessage'])
-        self.good_to_check_entry = tk.Entry(self.settingswindow, width=60, textvariable=self.good_to_check_message)
+        self.good_to_check_entry = tk.Entry(self.goodwindow, width=60, textvariable=self.good_to_check_message)
         self.good_to_check_entry.grid(column=1, row=4, sticky=(E, W))
 
         _BuildExampleMessage(self, 1)
         _TestCheckMessages(self)
 
-        save_button = tk.Button(self.settingswindow, text="Save Changes!", command=self.SaveChangesGood)
+        save_button = tk.Button(self.goodwindow, text="Save Changes!", command=self.SaveChangesGood)
         save_button.grid(column=1, row=6, sticky=W)
 
-        reset_button = tk.Button(self.settingswindow, text="Reset To Default!", command=self.ResetToDefaultGood)
+        reset_button = tk.Button(self.goodwindow, text="Reset To Default!", command=self.ResetToDefaultGood)
         reset_button.grid(column=1, row=6, sticky=E)
 
-        for child in self.settingswindow.winfo_children():
+        for child in self.goodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
         
-        root.eval(f'tk::PlaceWindow {str(self.settingswindow)} center')
+        root.eval(f'tk::PlaceWindow {str(self.goodwindow)} center')
 
     def SaveChangesGood(self):
         with open('settings.ini', 'w') as configfile:
+            self.example_label.destroy()
             self.config['STAFFCHECK']['goodtocheckmessage'] = self.good_to_check_message.get()
             self.config.write(configfile)
             _BuildExampleMessage(self, 1)
@@ -167,6 +168,7 @@ class StaffCheck:
 
     def ResetToDefaultGood(self):
         with open('settings.ini', 'w') as configfile:
+            self.example_label.destroy()
             self.config['STAFFCHECK']['goodtocheckmessage'] = "userID Good to check -- GT: xboxGT"
             self.config.write(configfile)
             self.good_to_check_message.set("userID Good to check -- GT: xboxGT")
@@ -174,43 +176,48 @@ class StaffCheck:
             _TestCheckMessages(self)
 
     def EditNotGoodToCheck(self):
-        self.settingswindow = Toplevel()
+        self.notgoodwindow = Toplevel()
 
-        explanation_label = tk.Label(self.settingswindow, text="Discord ID = userID\nGamertag = xboxGT\nreason = Reason")
+        explanation_label = tk.Label(self.notgoodwindow, text="Discord ID = userID\nGamertag = xboxGT\nreason = Reason")
         explanation_label.grid(rowspan=3, column=1, row=1, sticky=(W))
 
-        not_good_to_check_label = tk.Label(self.settingswindow, text="Not Good to check message:")
+        not_good_to_check_label = tk.Label(self.notgoodwindow, text="Not Good to check message:")
         not_good_to_check_label.grid(column=1, row=4, sticky=W)
         
         self.not_good_to_check_message = StringVar(value=self.config['STAFFCHECK']['notgoodtocheckmessage'])
-        self.not_good_to_check_entry = tk.Entry(self.settingswindow, width=60, textvariable=self.not_good_to_check_message)
+        self.not_good_to_check_entry = tk.Entry(self.notgoodwindow, width=60, textvariable=self.not_good_to_check_message)
         self.not_good_to_check_entry.grid(column=1, row=5, sticky=(E, W))
 
         _BuildExampleMessage(self, 0)
+        _TestCheckMessages(self)
 
-        save_button = tk.Button(self.settingswindow, text="Save Changes!", command=self.SaveChangesNotGood)
+        save_button = tk.Button(self.notgoodwindow, text="Save Changes!", command=self.SaveChangesNotGood)
         save_button.grid(column=1, row=7, sticky=W)
 
-        reset_button = tk.Button(self.settingswindow, text="Reset To Default!", command=self.ResetToDefaultNotGood)
+        reset_button = tk.Button(self.notgoodwindow, text="Reset To Default!", command=self.ResetToDefaultNotGood)
         reset_button.grid(column=1, row=7, sticky=E)
 
-        for child in self.settingswindow.winfo_children():
+        for child in self.notgoodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
         
-        root.eval(f'tk::PlaceWindow {str(self.settingswindow)} center')
+        root.eval(f'tk::PlaceWindow {str(self.notgoodwindow)} center')
 
     def SaveChangesNotGood(self):
         with open('settings.ini', 'w') as configfile:
+            self.example_label1.destroy()
             self.config['STAFFCHECK']['notgoodtocheckmessage'] = self.not_good_to_check_message.get()
             self.config.write(configfile)
             _BuildExampleMessage(self, 0)
+            _TestCheckMessages(self)
 
     def ResetToDefaultNotGood(self):
         with open('settings.ini', 'w') as configfile:
+            self.example_label1.destroy()
             self.config['STAFFCHECK']['notgoodtocheckmessage'] = "userID **Not** Good to check -- GT: xboxGT -- Reason"
             self.config.write(configfile)
             self.not_good_to_check_message.set("userID **Not** Good to check -- GT: xboxGT -- Reason")
             _BuildExampleMessage(self, 0)
+            _TestCheckMessages(self)
 
     def ShowHelp(self):
         print("test")
