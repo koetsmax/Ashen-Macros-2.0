@@ -3,7 +3,7 @@ import win32gui
 def windowEnumerationHandler(hwnd, top_windows):
     top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
 
-def activate_window(x):
+def _ActivateWindow(x):
     print(x)
     top_windows = []
     win32gui.EnumWindows(windowEnumerationHandler, top_windows)

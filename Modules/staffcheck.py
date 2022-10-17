@@ -8,22 +8,23 @@ from submodules.InviteTracker import _InviteTracker
 from submodules.SOTOfficial import _SOTOfficial
 from submodules.CheckMessage import _CheckMessage
 from submodules.BuildExampleMessage import _BuildExampleMessage, _TestCheckMessages
+from submodules.functions.UpdateStatus import _UpdateStatus
 
 class StaffCheck:
 
     def __init__(self, root):
+        self.root = root
         self.config = configparser.ConfigParser()
         #parse staffcheck config
         self.config.read('settings.ini')
         self.good_to_check_message = self.config['STAFFCHECK']['goodtocheckmessage']
         self.not_good_to_check_message = self.config['STAFFCHECK']['notgoodtocheckmessage']
-        print(self.good_to_check_message, self.not_good_to_check_message)
 
-        root.title("StaffCheck")
-        root.option_add('*tearOff', FALSE)
+        self.root.title("StaffCheck")
+        self.root.option_add('*tearOff', FALSE)
 
-        menubar = Menu(root)
-        root['menu'] = menubar
+        menubar = Menu(self.root)
+        self.root['menu'] = menubar
 
         self.menu_customize = Menu(menubar)
         self.menu_help = Menu(menubar)
@@ -35,10 +36,10 @@ class StaffCheck:
         self.menu_customize.add_command(label='Not good to check message', command=self.EditNotGoodToCheck)
         self.menu_help.add_command(label='Help', command=self.ShowHelp)
 
-        self.mainframe = tk.Frame(root, padding="3 3 12 12")
+        self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
 
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=1, sticky=E)
         self.userID = StringVar()
@@ -80,7 +81,7 @@ class StaffCheck:
             child.grid_configure(padx=5, pady=5)
 
         userID_entry.focus()
-        root.bind("<Return>", self.startcheck)
+        self.root.bind("<Return>", self.startcheck)
 
     def startcheck(self, *args):
         try:
@@ -92,7 +93,7 @@ class StaffCheck:
             lengths = [17,18,19]
             if type(int(self.userID.get())) == int and len(self.userID.get()) in lengths:
                 if self.xboxGT.get() != "":
-                    self.startbutton.state(['disabled'])
+                    # self.startbutton.state(['disabled'])
                     try:
                         self.save_button.state(['disabled'])
                     except:
@@ -103,30 +104,29 @@ class StaffCheck:
                         pass
                     self.menu_customize.entryconfigure('Good to check message', state=DISABLED)
                     self.menu_customize.entryconfigure('Not good to check message', state=DISABLED)
-                    self.status.config(text="Status: Received ID and Gamertag")
-                    self.progressbar.config(value=10)
+                    _UpdateStatus(self, "Status: Received ID and Gamertag", 5)
                     #Determine method
-                    self.status.config(text="Status: Determining method")
+                    _UpdateStatus(self, "Status: Determining Method", 5)
                     if self.method.get() == "All Commands":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _AllCommands(self)
                     elif self.method.get() == "Elemental Commands":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _ElementalCommands(self)
                     elif self.method.get() == "Ashen Commands":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _AshenCommands(self)
                     elif self.method.get() == "Invite Tracker":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _InviteTracker(self)
                     elif self.method.get() == "SOT Official":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _SOTOfficial(self)
                     elif self.method.get() == "Check Message":
-                        self.status.config(text=f"Status: Method determined: {self.method.get()}")
+                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _CheckMessage(self)
                     else:
-                        self.status.config(text="Unable to determine method. Please try again")
+                        _UpdateStatus(self, f"Status: Unable to determine method. Please try again", 0)
                         self.startbutton.state(['!disabled'])
                         self.progressbar.config(value=0)
 
@@ -166,7 +166,7 @@ class StaffCheck:
         for child in self.goodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
         
-        root.eval(f'tk::PlaceWindow {str(self.goodwindow)} center')
+        self.root.eval(f'tk::PlaceWindow {str(self.goodwindow)} center')
 
     def SaveChangesGood(self):
         with open('settings.ini', 'w') as configfile:
@@ -210,7 +210,7 @@ class StaffCheck:
         for child in self.notgoodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
         
-        root.eval(f'tk::PlaceWindow {str(self.notgoodwindow)} center')
+        self.root.eval(f'tk::PlaceWindow {str(self.notgoodwindow)} center')
 
     def SaveChangesNotGood(self):
         with open('settings.ini', 'w') as configfile:
