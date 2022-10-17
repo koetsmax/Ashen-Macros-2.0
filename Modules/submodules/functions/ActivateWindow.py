@@ -1,9 +1,11 @@
 import win32gui
+from submodules.functions.UpdateStatus import _UpdateStatus
 
 def windowEnumerationHandler(hwnd, top_windows):
     top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
 
-def _ActivateWindow(x):
+def _ActivateWindow(self, x):
+    _UpdateStatus(self, f"Status: Attempting to activate discord", "")
     print(x)
     top_windows = []
     win32gui.EnumWindows(windowEnumerationHandler, top_windows)

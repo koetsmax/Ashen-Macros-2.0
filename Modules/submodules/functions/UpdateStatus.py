@@ -3,6 +3,11 @@ from tkinter import ttk as tk
 
 def _UpdateStatus(self, status, v):
     print(status)
-    self.status.config(text=status)
-    self.progressbar.config(value=v)
+    if status != "":
+        self.log['state'] = 'normal'
+        self.log.insert('end', f"{status}\n", ('highlightline'))
+        self.log.see("end")
+        self.log['state'] = 'disabled'
+    if v != "":
+        self.progressbar.config(value=v)
     Tk.update(self.root)

@@ -1,7 +1,11 @@
 import keyboard
 from submodules.functions.ActivateWindow import _ActivateWindow
+from submodules.functions.UpdateStatus import _UpdateStatus
 
-def _ClearTypingBar():
-    _ActivateWindow("discord")
+def _ClearTypingBar(self):
+    _ActivateWindow(self, "discord")
+    _UpdateStatus(self, f"Status: Attempting to clear typing bar", "")
+    keyboard.press_and_release('esc')
+    keyboard.press_and_release('esc')
     keyboard.press_and_release("ctrl+a")
     keyboard.press_and_release("backspace")

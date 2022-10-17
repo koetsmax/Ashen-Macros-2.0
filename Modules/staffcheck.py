@@ -69,8 +69,17 @@ class StaffCheck:
         
         self.progressbar = tk.Progressbar(self.mainframe, orient=HORIZONTAL, length=200, mode='determinate')
         self.progressbar.grid(column=1, columnspan=2, row=9, sticky=(W, E))
-        self.status = tk.Label(self.mainframe, text="Status: Waiting for user input")
-        self.status.grid(column=1, columnspan=2, row=10, sticky=E)
+        
+        self.log = Text(self.mainframe, state='disabled', width=20, height=3, wrap='word')
+        self.log.grid(column=1, columnspan=2, row=10, sticky=(E, W))
+        self.log.tag_configure('highlightline', font=('TkTextFont:', 10))
+
+        self.continuebutton = tk.Button(self.mainframe, text="Continue")
+        self.continuebutton.grid(column=1, row=5, sticky=(W, E))
+        self.continuebutton.state(['disabled'])
+
+        self.killbutton = tk.Button(self.mainframe, text="Kill Program", command=self.kill)
+        self.killbutton.grid(column=1, row=6, sticky=(W, E))
 
         self.startbutton = tk.Button(self.mainframe, text="Start check!", command=self.startcheck)
         self.startbutton.grid(columnspan=2, column=2, row=6, sticky=(E, W))
@@ -228,6 +237,9 @@ class StaffCheck:
             self.not_good_to_check_message.set("userID **Not** Good to check -- GT: xboxGT -- Reason")
             _BuildExampleMessage(self, 0)
             _TestCheckMessages(self)
+
+    def kill(self):
+        root.destroy()
 
     def ShowHelp(self):
         print("test")
