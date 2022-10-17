@@ -25,15 +25,15 @@ class StaffCheck:
         menubar = Menu(root)
         root['menu'] = menubar
 
-        menu_customize = Menu(menubar)
-        menu_help = Menu(menubar)
+        self.menu_customize = Menu(menubar)
+        self.menu_help = Menu(menubar)
 
-        menubar.add_cascade(menu=menu_customize, label='Customize')
-        menubar.add_cascade(menu=menu_help, label='Help')
+        menubar.add_cascade(menu=self.menu_customize, label='Customize')
+        menubar.add_cascade(menu=self.menu_help, label='Help')
 
-        menu_customize.add_command(label='Good to check message', command=self.EditGoodToCheck)
-        menu_customize.add_command(label='Not good to check message', command=self.EditNotGoodToCheck)
-        menu_help.add_command(label='Help', command=self.ShowHelp)
+        self.menu_customize.add_command(label='Good to check message', command=self.EditGoodToCheck)
+        self.menu_customize.add_command(label='Not good to check message', command=self.EditNotGoodToCheck)
+        self.menu_help.add_command(label='Help', command=self.ShowHelp)
 
         self.mainframe = tk.Frame(root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
@@ -93,6 +93,16 @@ class StaffCheck:
             if type(int(self.userID.get())) == int and len(self.userID.get()) in lengths:
                 if self.xboxGT.get() != "":
                     self.startbutton.state(['disabled'])
+                    try:
+                        self.save_button.state(['disabled'])
+                    except:
+                        pass
+                    try:
+                        self.reset_button.state(['disabled'])
+                    except:
+                        pass
+                    self.menu_customize.entryconfigure('Good to check message', state=DISABLED)
+                    self.menu_customize.entryconfigure('Not good to check message', state=DISABLED)
                     self.status.config(text="Status: Received ID and Gamertag")
                     self.progressbar.config(value=10)
                     #Determine method
@@ -147,11 +157,11 @@ class StaffCheck:
         _BuildExampleMessage(self, 1)
         _TestCheckMessages(self)
 
-        save_button = tk.Button(self.goodwindow, text="Save Changes!", command=self.SaveChangesGood)
-        save_button.grid(column=1, row=6, sticky=W)
+        self.save_button = tk.Button(self.goodwindow, text="Save Changes!", command=self.SaveChangesGood)
+        self.save_button.grid(column=1, row=6, sticky=W)
 
-        reset_button = tk.Button(self.goodwindow, text="Reset To Default!", command=self.ResetToDefaultGood)
-        reset_button.grid(column=1, row=6, sticky=E)
+        self.reset_button = tk.Button(self.goodwindow, text="Reset To Default!", command=self.ResetToDefaultGood)
+        self.reset_button.grid(column=1, row=6, sticky=E)
 
         for child in self.goodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -191,11 +201,11 @@ class StaffCheck:
         _BuildExampleMessage(self, 0)
         _TestCheckMessages(self)
 
-        save_button = tk.Button(self.notgoodwindow, text="Save Changes!", command=self.SaveChangesNotGood)
-        save_button.grid(column=1, row=7, sticky=W)
+        self.save_button = tk.Button(self.notgoodwindow, text="Save Changes!", command=self.SaveChangesNotGood)
+        self.save_button.grid(column=1, row=7, sticky=W)
 
-        reset_button = tk.Button(self.notgoodwindow, text="Reset To Default!", command=self.ResetToDefaultNotGood)
-        reset_button.grid(column=1, row=7, sticky=E)
+        self.reset_button = tk.Button(self.notgoodwindow, text="Reset To Default!", command=self.ResetToDefaultNotGood)
+        self.reset_button.grid(column=1, row=7, sticky=E)
 
         for child in self.notgoodwindow.winfo_children():
             child.grid_configure(padx=5, pady=5)

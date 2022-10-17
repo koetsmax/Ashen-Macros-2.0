@@ -1,7 +1,3 @@
-make functions for
+execute command function
 
-switch channel
-clear typing bar
-execute command
-
-one for hotkeys with multiple keys like ctrl+k
+re-enable buttons when staffcheck is over
