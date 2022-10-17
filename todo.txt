@@ -1,0 +1,7 @@
+make functions for
+
+switch channel
+clear typing bar
+execute command
+
+one for hotkeys with multiple keys like ctrl+k
