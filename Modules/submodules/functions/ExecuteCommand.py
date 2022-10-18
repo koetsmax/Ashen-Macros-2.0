@@ -3,7 +3,7 @@ import keyboard
 from submodules.functions.UpdateStatus import _UpdateStatus
 
 def _ExecuteCommand(self, command, subcommands):
-    _UpdateStatus(self, f"Status: Executing command: {command} with parameters: {subcommands}", 30)
+    _UpdateStatus(self, f"Status: Executing command: {command} with parameters: {subcommands}", "")
     keyboard.write(command)
     time.sleep(1.6)
     _UpdateStatus(self, "Status: sleeping for 1.6 seconds so Discord can catch up", "")
@@ -14,5 +14,4 @@ def _ExecuteCommand(self, command, subcommands):
         keyboard.press_and_release('tab')
     time.sleep(0.25)
     # keyboard.press_and_release('enter')
-    _UpdateStatus(self, f"Status: Executed command: {command}", 30)
-
+    _UpdateStatus(self, f"Status: Executed command: {command}", "")

@@ -261,8 +261,6 @@ class StaffCheck:
             self.menu_customize.entryconfigure('Good to check message', state=NORMAL)
             self.menu_customize.entryconfigure('Not good to check message', state=NORMAL)
 
-    
-
     def ShowHelp(self):
         print("test")
         pass

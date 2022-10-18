@@ -15,5 +15,3 @@ def _AshenCommands(self):
     self.startbutton.state(['!disabled'])
     _UpdateStatus(self, "Press Continue to well... continue... Duhh", "")
     self.startbutton.config(text="Continue", command=self.continuetonext)
-
-

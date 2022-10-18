@@ -1,4 +1,20 @@
 import keyboard
+from submodules.functions.ClearTypingBar import _ClearTypingBar
+from submodules.functions.SwitchChannel import _SwitchChannel
+from submodules.functions.UpdateStatus import _UpdateStatus
 
 def _InviteTracker(self):
-    print(self.method.get())
+    self.currentstate = "InviteTracker"
+    _SwitchChannel(self, "#invite-tracker")
+    _ClearTypingBar(self)
+    _UpdateStatus(self, "Status: Searching through the invite tracker", 40)
+    keyboard.press_and_release('ctrl+f')
+    keyboard.press_and_release("ctrl+a")
+    keyboard.press_and_release("backspace")
+    keyboard.write(f'in:#invite-tracker {self.userID.get()}')
+    keyboard.press_and_release('enter')
+    _UpdateStatus(self, "Status: Done searching through the invite tracker", 45)
+
+    self.startbutton.config(text="Continue", command=self.continuetonext)
+    self.startbutton.state(['!disabled'])
+    _UpdateStatus(self, "Press Continue to... You get it.", "")

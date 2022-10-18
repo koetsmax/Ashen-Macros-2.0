@@ -5,7 +5,7 @@ def _UpdateStatus(self, status, v):
     print(status)
     if status != "":
         self.log['state'] = 'normal'
-        self.log.insert('end', f"{status}\n", ('highlightline'))
+        self.log.insert('end', f"\n{status}", ('highlightline'))
         self.log.see("end")
         self.log['state'] = 'disabled'
     if v != "":
