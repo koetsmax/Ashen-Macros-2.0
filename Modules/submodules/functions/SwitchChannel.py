@@ -11,5 +11,5 @@ def _SwitchChannel(self, channel):
     keyboard.write(channel)
     time.sleep(0.6)
     keyboard.press_and_release('enter')
-    _UpdateStatus(self, f"Status: sleeping for 2 seconds", "")
+    _UpdateStatus(self, "Status: sleeping for 2 seconds so Discord can catch up", "")
     time.sleep(2)

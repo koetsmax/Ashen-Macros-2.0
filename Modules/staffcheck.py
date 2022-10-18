@@ -74,9 +74,9 @@ class StaffCheck:
         self.log.grid(column=1, columnspan=2, row=10, sticky=(E, W))
         self.log.tag_configure('highlightline', font=('TkTextFont:', 10))
 
-        self.continuebutton = tk.Button(self.mainframe, text="Continue")
-        self.continuebutton.grid(column=1, row=5, sticky=(W, E))
-        self.continuebutton.state(['disabled'])
+        self.functionbutton = tk.Button(self.mainframe, text="Cool Button")
+        self.functionbutton.grid(column=1, row=5, sticky=(W, E))
+        self.functionbutton.state(['disabled'])
 
         self.killbutton = tk.Button(self.mainframe, text="Kill Program", command=self.kill)
         self.killbutton.grid(column=1, row=6, sticky=(W, E))
@@ -102,7 +102,7 @@ class StaffCheck:
             lengths = [17,18,19]
             if type(int(self.userID.get())) == int and len(self.userID.get()) in lengths:
                 if self.xboxGT.get() != "":
-                    # self.startbutton.state(['disabled'])
+                    self.startbutton.state(['disabled'])
                     try:
                         self.save_button.state(['disabled'])
                     except:
@@ -240,6 +240,28 @@ class StaffCheck:
 
     def kill(self):
         root.destroy()
+
+    def continuetonext(self):
+        print(self.currentstate)
+        self.functionbutton.config(text="Cool Button", command=None)
+        self.killbutton.config(text="Kill Program", command=self.kill)
+        self.startbutton.config(text="Start Check!", command=self.continuetonext)
+        if self.method.get() != "All Commands":
+            _UpdateStatus(self, "Check Completed!!!", 100)
+            self.functionbutton.state(['disabled'])
+            self.startbutton.state(['!disabled'])
+            try:
+                self.save_button.state(['!disabled'])
+            except:
+                pass
+            try:
+                self.reset_button.state(['!disabled'])
+            except:
+                pass
+            self.menu_customize.entryconfigure('Good to check message', state=NORMAL)
+            self.menu_customize.entryconfigure('Not good to check message', state=NORMAL)
+
+    
 
     def ShowHelp(self):
         print("test")
