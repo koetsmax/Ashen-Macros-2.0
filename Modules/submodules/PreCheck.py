@@ -1,5 +1,5 @@
 import keyboard
 
 
-def _AllCommands(self):
+def _PreCheck(self):
     print(self.method.get())

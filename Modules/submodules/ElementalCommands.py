@@ -2,6 +2,7 @@ from submodules.functions.ClearTypingBar import _ClearTypingBar
 from submodules.functions.SwitchChannel import _SwitchChannel
 from submodules.functions.ExecuteCommand import _ExecuteCommand
 from submodules.functions.UpdateStatus import _UpdateStatus
+from submodules.functions.ContinueToNext import _ContinueToNext
 
 def _ElementalCommands(self):
     self.currentstate = "ElementalCommands"
@@ -16,7 +17,7 @@ def _ElementalCommands(self):
     self.notespage = 2
     self.functionbutton.config(text="Add GT to Notes", command=lambda:AddNote(self))
     self.killbutton.config(text=f"Check notes page {self.notespage}", command=lambda:CheckNotesPage(self))
-    self.startbutton.config(text="Continue", command=self.continuetonext)
+    self.startbutton.config(text="Continue", command=lambda: _ContinueToNext(self))
     self.startbutton.state(['!disabled'])
     self.functionbutton.state(['!disabled'])
     _UpdateStatus(self, "Press ONE of the buttons to do what you want to do", "")

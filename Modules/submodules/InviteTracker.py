@@ -2,6 +2,7 @@ import keyboard
 from submodules.functions.ClearTypingBar import _ClearTypingBar
 from submodules.functions.SwitchChannel import _SwitchChannel
 from submodules.functions.UpdateStatus import _UpdateStatus
+from submodules.functions.ContinueToNext import _ContinueToNext
 
 def _InviteTracker(self):
     self.currentstate = "InviteTracker"
@@ -15,6 +16,6 @@ def _InviteTracker(self):
     keyboard.press_and_release('enter')
     _UpdateStatus(self, "Status: Done searching through the invite tracker", 45)
 
-    self.startbutton.config(text="Continue", command=self.continuetonext)
+    self.startbutton.config(text="Continue", command=lambda: _ContinueToNext(self))
     self.startbutton.state(['!disabled'])
     _UpdateStatus(self, "Press Continue to... You get it.", "")

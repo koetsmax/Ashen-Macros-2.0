@@ -1,3 +1,8 @@
-execute command function
+allcommands
+precheck
+disable other inputs when staffcheck is active
 
-re-enable buttons when staffcheck is over
+stress test execute command
+add enter to execute command
+checkmessage
+fix progress bar percentage

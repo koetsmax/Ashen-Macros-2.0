@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk as tk
 import configparser
-from submodules.AllCommands import _AllCommands
+from submodules.PreCheck import _PreCheck
 from submodules.AshenCommands import _AshenCommands
 from submodules.ElementalCommands import _ElementalCommands
 from submodules.InviteTracker import _InviteTracker
@@ -118,7 +118,7 @@ class StaffCheck:
                     _UpdateStatus(self, "Status: Determining Method", 5)
                     if self.method.get() == "All Commands":
                         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _AllCommands(self)
+                        _ElementalCommands(self)
                     elif self.method.get() == "Elemental Commands":
                         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
                         _ElementalCommands(self)
@@ -240,27 +240,6 @@ class StaffCheck:
 
     def kill(self):
         root.destroy()
-
-    def continuetonext(self):
-        print(self.currentstate)
-        self.functionbutton.config(text="Cool Button", command=None)
-        self.killbutton.config(text="Kill Program", command=self.kill)
-        self.startbutton.config(text="Start Check!", command=self.startcheck)
-        if self.method.get() != "All Commands":
-            _UpdateStatus(self, "Check Completed!!!", 100)
-            self.functionbutton.state(['disabled'])
-            self.startbutton.state(['!disabled'])
-            self.log.see("end")
-            try:
-                self.save_button.state(['!disabled'])
-            except:
-                pass
-            try:
-                self.reset_button.state(['!disabled'])
-            except:
-                pass
-            self.menu_customize.entryconfigure('Good to check message', state=NORMAL)
-            self.menu_customize.entryconfigure('Not good to check message', state=NORMAL)
 
     def ShowHelp(self):
         print("test")
