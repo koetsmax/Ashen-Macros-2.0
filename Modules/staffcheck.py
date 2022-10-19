@@ -2,8 +2,8 @@ from tkinter import *
 from tkinter import ttk as tk
 import configparser
 from submodules.PreCheck import _PreCheck
-from submodules.AshenCommands import _AshenCommands
 from submodules.ElementalCommands import _ElementalCommands
+from submodules.AshenCommands import _AshenCommands
 from submodules.InviteTracker import _InviteTracker
 from submodules.SOTOfficial import _SOTOfficial
 from submodules.CheckMessage import _CheckMessage
@@ -43,29 +43,29 @@ class StaffCheck:
 
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=1, sticky=E)
         self.userID = StringVar()
-        userID_entry = tk.Entry(self.mainframe, width=19, textvariable=self.userID)
-        userID_entry.grid(column=2, row=1, sticky=(W, E))
+        self.userID_entry = tk.Entry(self.mainframe, width=19, textvariable=self.userID)
+        self.userID_entry.grid(column=2, row=1, sticky=(W, E))
         
         tk.Label(self.mainframe, text="GamerTag:").grid(column=1, row=2, sticky=E)
         self.xboxGT = StringVar()
-        xboxGT_entry = tk.Entry(self.mainframe, textvariable=self.xboxGT)
-        xboxGT_entry.grid(column=2, row=2, sticky=(W, E))
+        self.xboxGT_entry = tk.Entry(self.mainframe, textvariable=self.xboxGT)
+        self.xboxGT_entry.grid(column=2, row=2, sticky=(W, E))
         
         tk.Label(self.mainframe, text="Channel:").grid(column=1, row=3, sticky=E)
         self.channel = StringVar(value="#on-duty-commands")
-        channel_comboBox = tk.Combobox(self.mainframe, textvariable=self.channel)
-        channel_comboBox.grid(column=2, row=3, sticky=(W, E))
-        channel_comboBox['values'] = ('#staff-commands', '#on-duty-commands', '#captains-commands', '#admin-commands')
+        self.channel_comboBox = tk.Combobox(self.mainframe, textvariable=self.channel)
+        self.channel_comboBox.grid(column=2, row=3, sticky=(W, E))
+        self.channel_comboBox['values'] = ('#staff-commands', '#on-duty-commands', '#captains-commands', '#admin-commands')
 
         tk.Label(self.mainframe, text="Method:").grid(column=1, row=4, sticky=E)
         self.method = StringVar(value="All Commands")
-        method_comboBox = tk.Combobox(self.mainframe, textvariable=self.method)
-        method_comboBox.grid(column=2, row=4, sticky=(W, E))
-        method_comboBox['values'] = ('All Commands', 'Elemental Commands', 'Ashen Commands', 'Invite Tracker', 'SOT Official', 'Check Message')
+        self.method_comboBox = tk.Combobox(self.mainframe, textvariable=self.method)
+        self.method_comboBox.grid(column=2, row=4, sticky=(W, E))
+        self.method_comboBox['values'] = ('All Commands', 'Elemental Commands', 'Ashen Commands', 'Invite Tracker', 'SOT Official', 'Check Message')
         
         self.check = BooleanVar(value=False)
-        check = tk.Checkbutton(self.mainframe, variable=self.check, text="Check ID/GT in on-duty-chat", onvalue=1, offvalue=0)
-        check.grid(column=2, row=5, sticky=(W, E))
+        self.checkbutton = tk.Checkbutton(self.mainframe, variable=self.check, text="Check ID/GT in on-duty-chat", onvalue=1, offvalue=0)
+        self.checkbutton.grid(column=2, row=5, sticky=(W, E))
         
         self.progressbar = tk.Progressbar(self.mainframe, orient=HORIZONTAL, length=200, mode='determinate')
         self.progressbar.grid(column=1, columnspan=2, row=9, sticky=(W, E))
@@ -89,7 +89,7 @@ class StaffCheck:
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-        userID_entry.focus()
+        self.userID_entry.focus()
         self.root.bind("<Return>", self.startcheck)
 
     def startcheck(self, *args):
@@ -113,6 +113,12 @@ class StaffCheck:
                         pass
                     self.menu_customize.entryconfigure('Good to check message', state=DISABLED)
                     self.menu_customize.entryconfigure('Not good to check message', state=DISABLED)
+                    self.userID_entry.config(state=[('disabled')])
+                    self.xboxGT_entry.config(state=[('disabled')])
+                    self.channel_comboBox.config(state=[('disabled')])
+                    self.method_comboBox.config(state=[('disabled')])
+                    self.checkbutton.config(state=[('disabled')])
+
                     _UpdateStatus(self, "Status: Received ID and Gamertag", 5)
                     #Determine method
                     _UpdateStatus(self, "Status: Determining Method", 5)

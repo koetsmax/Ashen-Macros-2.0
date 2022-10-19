@@ -13,7 +13,7 @@ def _BuildExampleMessage(self, good):
         self.errorlabel1.destroy()
     except:
         pass
-
+    
     if not "userID" in goodtocheckmessage or not "xboxGT" in goodtocheckmessage:
         self.startbutton.state(['disabled'])
         self.errorlabel = tk.Label(self.mainframe, text="Error! Bad Good to Check message!", foreground="Red")

@@ -1,8 +1,10 @@
-allcommands
 precheck
 disable other inputs when staffcheck is active
 
-stress test execute command
-add enter to execute command
-checkmessage
+add enter to execute command and checkmessage
+stress test _ExecuteCommand
 fix progress bar percentage
+instead of kill program stop check
+
+make launcher
+make autoupdater << must have
