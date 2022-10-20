@@ -8,7 +8,7 @@ from tkinter import ttk as tk
 
 def _CheckMessage(self):
     self.currentstate = "CheckMessage"
-    _UpdateStatus(self, "", 60)
+    _UpdateStatus(self, "", 93.75)
     _SwitchChannel(self, "#on-duty-chat")
 
     self.functionbutton.config(text="Don't Post Message", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))
@@ -27,7 +27,7 @@ def GoodToCheck(self):
         Built_Good_To_Check_Message = Built_Good_To_Check_Message.replace("userID", f"<@{self.userID.get()}>")
         Built_Good_To_Check_Message = Built_Good_To_Check_Message.replace("xboxGT", f"{self.xboxGT.get()}")
         keyboard.write(Built_Good_To_Check_Message)
-        _UpdateStatus(self, "Posted Good to Check Message!", 65)
+        _UpdateStatus(self, "Posted Good to Check Message!", 100)
         submodules.functions.ContinueToNext._ContinueToNext(self)
 
 def NotGoodToCheck(self):
@@ -51,5 +51,5 @@ def BuildNotGoodToCheck(self):
     Built_Not_Good_To_Check_Message = Built_Not_Good_To_Check_Message.replace("Reason", f"{self.reason.get()}")
     _ClearTypingBar(self)
     keyboard.write(Built_Not_Good_To_Check_Message)
-    _UpdateStatus(self, "Posted Not Good to Check Message!", 65)
+    _UpdateStatus(self, "Posted Not Good to Check Message!", 100)
     submodules.functions.ContinueToNext._ContinueToNext(self)

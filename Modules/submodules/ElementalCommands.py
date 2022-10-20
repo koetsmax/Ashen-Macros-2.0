@@ -6,13 +6,13 @@ import submodules.functions.ContinueToNext
 
 def _ElementalCommands(self):
     self.currentstate = "ElementalCommands"
-    _UpdateStatus(self, "", 20)
+    _UpdateStatus(self, "", 43.75)
     _SwitchChannel(self, self.channel.get())
     _ClearTypingBar(self)
     loghistory = ['/loghistory report ', self.userID.get()]
     print(loghistory[0], loghistory[1:])
     _ExecuteCommand(self, loghistory[0], loghistory[1:])
-    _UpdateStatus(self, "", 25)
+    _UpdateStatus(self, "", 50)
 
     self.notespage = 2
     self.functionbutton.config(text="Add GT to Notes", command=lambda:AddNote(self))

@@ -36,9 +36,9 @@ def _StartCheck(self, *args):
                     self.checkbutton.config(state=[('disabled')])
 
                     self.currentstate = "BeepBoop"
-                    _UpdateStatus(self, "Status: Received ID and Gamertag", 5)
+                    _UpdateStatus(self, "Status: Received ID and Gamertag", 6.25)
 
-                    _UpdateStatus(self, "Status: Determining if precheck is enabled", 10)
+                    _UpdateStatus(self, "Status: Determining if precheck is enabled", 12.5)
                     if "selected" in self.checkbutton.state():
                         submodules.PreCheck._PreCheck(self)
                     else:
@@ -101,7 +101,7 @@ def _ContinueToNext(self):
             _ContinueToNext(self)
 
 def _DetermineMethod(self):
-    _UpdateStatus(self, "Status: Determining Method", 15)
+    _UpdateStatus(self, "Status: Determining Method", 31.25)
 
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
@@ -109,22 +109,22 @@ def _DetermineMethod(self):
         self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
         for child in self.mainframe.winfo_children():
                 child.grid_configure(padx=5, pady=5)
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.ElementalCommands._ElementalCommands(self)
     elif self.method.get() == "Elemental Commands":
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.ElementalCommands._ElementalCommands(self)
     elif self.method.get() == "Ashen Commands":
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.AshenCommands._AshenCommands(self)
     elif self.method.get() == "Invite Tracker":
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.InviteTracker._InviteTracker(self)
     elif self.method.get() == "SOT Official":
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.SOTOfficial._SOTOfficial(self)
     elif self.method.get() == "Check Message":
-        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
         submodules.CheckMessage._CheckMessage(self)
     else:
         _UpdateStatus(self, f"Status: Unable to determine method. Please try again", 0)

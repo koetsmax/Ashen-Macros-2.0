@@ -8,13 +8,13 @@ def _SOTOfficial(self):
     self.currentstate = "SOTOfficial"
     _SwitchChannel(self, "#official-swag")
     _ClearTypingBar(self)
-    _UpdateStatus(self, "Status: Searching through Sea of Thieves official", 50)
+    _UpdateStatus(self, "Status: Searching through Sea of Thieves official", 81.25)
     keyboard.press_and_release('ctrl+f')
     keyboard.press_and_release("ctrl+a")
     keyboard.press_and_release("backspace")
     keyboard.write(f'from: {self.userID.get()}')
     keyboard.press_and_release('enter')
-    _UpdateStatus(self, "Status: Done searching through Sea of Thieves official", 55)
+    _UpdateStatus(self, "Status: Done searching through Sea of Thieves official", 87.5)
 
     self.functionbutton.config(text="Narrow Search Results", command=lambda: NarrowResults(self))
     self.startbutton.config(text="Continue", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))

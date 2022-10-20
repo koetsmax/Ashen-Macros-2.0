@@ -19,7 +19,7 @@ def _PreCheck(self):
     keyboard.press_and_release("backspace")
     keyboard.write(f'in:#on-duty-chat {self.userID.get()}')
     keyboard.press_and_release('enter')
-    _UpdateStatus(self, "Status: Done searching through on duty chat", 15)
+    _UpdateStatus(self, "Status: Done searching through on duty chat", 18.75)
 
     self.startbutton.config(text="Continue", command=lambda: SearchGamerTag(self))
     self.startbutton.state(['!disabled'])
@@ -34,7 +34,7 @@ def SearchGamerTag(self):
     keyboard.press_and_release("backspace")
     keyboard.write(f'in:#on-duty-chat {self.xboxGT.get()}')
     keyboard.press_and_release('enter')
-    _UpdateStatus(self, "Status: Done searching through on duty chat", 20)
+    _UpdateStatus(self, "Status: Done searching through on duty chat", 25)
     self.startbutton.config(text="Continue", command=lambda: submodules.functions.ContinueToNext._DetermineMethod(self))
     self.startbutton.state(['!disabled'])
     _UpdateStatus(self, "Press Continue to well... continue... Duhh", "")
