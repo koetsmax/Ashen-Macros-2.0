@@ -17,18 +17,4 @@ def _AshenCommands(self):
     _UpdateStatus(self, "", 35)
     self.startbutton.state(['!disabled'])
     self.startbutton.config(text="Continue", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))
-    if self.method.get() == "All Commands":
-        self.functionbutton.config(text="Not good to check reason", command=lambda: NotGoodToCheckReason(self))
-        self.functionbutton.state(['!disabled'])
-        _UpdateStatus(self, "Press ONE of the buttons to do what you want to do", "")
-    else:
-        _UpdateStatus(self, "Press Continue to... You get it", "")
-
-def NotGoodToCheckReason(self):
-    self.functionbutton.state(['disabled'])
-    self.reason = StringVar(value="Reason")
-    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
-    for child in self.mainframe.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-    self.startbutton.config(text="Confirm Reason", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))
+    _UpdateStatus(self, "Press Continue to... You get it", "")

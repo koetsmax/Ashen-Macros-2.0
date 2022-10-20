@@ -36,10 +36,10 @@ def NotGoodToCheck(self):
     try:
         self.reason.get()
     except:
-        self.reason = StringVar(value="Reason")
-    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
-    for child in self.mainframe.winfo_children():
+        self.reason = StringVar(value="Reason for Not Good To Check")
+        self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
+        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
     self.startbutton.config(text="Confirm Reason", command=lambda: BuildNotGoodToCheck(self))
     self.startbutton.state(['!disabled'])

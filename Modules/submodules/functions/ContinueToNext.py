@@ -103,7 +103,15 @@ def _ContinueToNext(self):
 def _DetermineMethod(self):
     _UpdateStatus(self, "Status: Determining Method", 15)
 
-    if self.method.get() == "All Commands" or self.method.get() == "Elemental Commands":
+    if self.method.get() == "All Commands":
+        self.reason = StringVar(value="Reason for Not Good To Check")
+        self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
+        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        for child in self.mainframe.winfo_children():
+                child.grid_configure(padx=5, pady=5)
+        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
+        submodules.ElementalCommands._ElementalCommands(self)
+    elif self.method.get() == "Elemental Commands":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
         submodules.ElementalCommands._ElementalCommands(self)
     elif self.method.get() == "Ashen Commands":
