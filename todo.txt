@@ -1,10 +1,11 @@
 precheck
-disable other inputs when staffcheck is active
+always have reasonbox there during active staffcheck if staffcheck is all commands
+remove old reason logic
 
 add enter to execute command and checkmessage
 stress test _ExecuteCommand
 fix progress bar percentage
-instead of kill program stop check
 
-make launcher
+
+make launcher << must have
 make autoupdater << must have

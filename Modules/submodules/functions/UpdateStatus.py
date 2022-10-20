@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk as tk
 
-def _UpdateStatus(self, status, v):
+def _UpdateStatus(self, status, v): 
     print(status)
     if status != "":
         self.log['state'] = 'normal'

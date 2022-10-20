@@ -1,14 +1,8 @@
 from tkinter import *
 from tkinter import ttk as tk
 import configparser
-from submodules.PreCheck import _PreCheck
-from submodules.ElementalCommands import _ElementalCommands
-from submodules.AshenCommands import _AshenCommands
-from submodules.InviteTracker import _InviteTracker
-from submodules.SOTOfficial import _SOTOfficial
-from submodules.CheckMessage import _CheckMessage
+from submodules.functions.ContinueToNext import _StartCheck
 from submodules.BuildExampleMessage import _BuildExampleMessage, _TestCheckMessages
-from submodules.functions.UpdateStatus import _UpdateStatus
 
 class StaffCheck:
 
@@ -81,7 +75,7 @@ class StaffCheck:
         self.killbutton = tk.Button(self.mainframe, text="Kill Program", command=self.kill)
         self.killbutton.grid(column=1, row=6, sticky=(W, E))
 
-        self.startbutton = tk.Button(self.mainframe, text="Start check!", command=self.startcheck)
+        self.startbutton = tk.Button(self.mainframe, text="Start check!", command=lambda: _StartCheck(self))
         self.startbutton.grid(columnspan=2, column=2, row=6, sticky=(E, W))
 
         _TestCheckMessages(self)
@@ -90,70 +84,6 @@ class StaffCheck:
             child.grid_configure(padx=5, pady=5)
 
         self.userID_entry.focus()
-        self.root.bind("<Return>", self.startcheck)
-
-    def startcheck(self, *args):
-        try:
-            self.errorlabel.destroy()
-        except:
-            pass
-        
-        try:
-            lengths = [17,18,19]
-            if type(int(self.userID.get())) == int and len(self.userID.get()) in lengths:
-                if self.xboxGT.get() != "":
-                    self.startbutton.state(['disabled'])
-                    try:
-                        self.save_button.state(['disabled'])
-                    except:
-                        pass
-                    try:
-                        self.reset_button.state(['disabled'])
-                    except:
-                        pass
-                    self.menu_customize.entryconfigure('Good to check message', state=DISABLED)
-                    self.menu_customize.entryconfigure('Not good to check message', state=DISABLED)
-                    self.userID_entry.config(state=[('disabled')])
-                    self.xboxGT_entry.config(state=[('disabled')])
-                    self.channel_comboBox.config(state=[('disabled')])
-                    self.method_comboBox.config(state=[('disabled')])
-                    self.checkbutton.config(state=[('disabled')])
-
-                    _UpdateStatus(self, "Status: Received ID and Gamertag", 5)
-                    #Determine method
-                    _UpdateStatus(self, "Status: Determining Method", 5)
-                    if self.method.get() == "All Commands":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _ElementalCommands(self)
-                    elif self.method.get() == "Elemental Commands":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _ElementalCommands(self)
-                    elif self.method.get() == "Ashen Commands":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _AshenCommands(self)
-                    elif self.method.get() == "Invite Tracker":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _InviteTracker(self)
-                    elif self.method.get() == "SOT Official":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _SOTOfficial(self)
-                    elif self.method.get() == "Check Message":
-                        _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 15)
-                        _CheckMessage(self)
-                    else:
-                        _UpdateStatus(self, f"Status: Unable to determine method. Please try again", 0)
-                        self.startbutton.state(['!disabled'])
-                        self.progressbar.config(value=0)
-
-                else:
-                    self.errorlabel = tk.Label(self.mainframe, text="Error! Gamertag must not be empty", foreground="Red")
-                    self.errorlabel.grid(columnspan=2, column=1, row=7, sticky=E)
-            else:
-                self.errorlabel = tk.Label(self.mainframe, text=f"Error! {len(self.userID.get())} is an incorrect length for userID!", foreground="Red")
-                self.errorlabel.grid(columnspan=2, column=1, row=7, sticky=E)
-        except Exception as e:
-            self.errorlabel = tk.Label(self.mainframe, text=f"Error! UserID is not a number!\n{e}", foreground="Red")
-            self.errorlabel.grid(columnspan=2, rowspan=2, column=1, row=7, sticky=E)
 
     def EditGoodToCheck(self):
         
