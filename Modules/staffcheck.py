@@ -9,11 +9,19 @@ class StaffCheck:
     def __init__(self, root):
         self.root = root
         self.config = configparser.ConfigParser()
-        #parse staffcheck config
-        self.config.read('settings.ini')
-        self.good_to_check_message = self.config['STAFFCHECK']['goodtocheckmessage']
-        self.not_good_to_check_message = self.config['STAFFCHECK']['notgoodtocheckmessage']
-
+        try:
+            #parse staffcheck config
+            self.config.read('settings.ini')
+            self.good_to_check_message = self.config['STAFFCHECK']['goodtocheckmessage']
+            self.not_good_to_check_message = self.config['STAFFCHECK']['notgoodtocheckmessage']
+        except:
+            self.config['STAFFCHECK'] = {'goodtocheckmessage': 'userID Good to check -- GT: xboxGT',
+                                        'notgoodtocheckmessage': 'userID **Not** Good to check -- GT: xboxGT -- Reason'}
+            with open('settings.ini', 'w') as configfile:
+                self.config.write(configfile)
+            self.config.read('settings.ini')
+            self.good_to_check_message = self.config['STAFFCHECK']['goodtocheckmessage']
+            self.not_good_to_check_message = self.config['STAFFCHECK']['notgoodtocheckmessage']
         self.root.title("StaffCheck")
         self.root.option_add('*tearOff', FALSE)
 
