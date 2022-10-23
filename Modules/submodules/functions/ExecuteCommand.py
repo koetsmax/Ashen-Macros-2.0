@@ -13,5 +13,5 @@ def _ExecuteCommand(self, command, subcommands):
         time.sleep(0.25)
         keyboard.press_and_release('tab')
     time.sleep(0.25)
-    # keyboard.press_and_release('enter')
+    keyboard.press_and_release('enter')
     _UpdateStatus(self, f"Status: Executed command: {command}", "")
