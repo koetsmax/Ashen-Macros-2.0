@@ -8,7 +8,7 @@ from modules.submodules.functions.ExecuteCommand import _ExecuteCommand
 def _AfterCheckMessage(self):
     self.reason_entry.state(['disabled'])
     self.functionbutton.config(text="Neither of these apply", command=lambda:Continue(self))
-    self.killbutton.config(text="Needs to unprivate Xbox", command=lambda:UnprivateXbox(self))
+    self.killbutton.config(text="Send DM to unprivate Xbox", command=lambda:UnprivateXbox(self))
     self.startbutton.config(text="Needs to join the AWR", command=lambda:JoinAWR(self))
     self.killbutton.state(['!disabled'])
 

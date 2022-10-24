@@ -13,7 +13,7 @@ def _CheckMessage(self):
     _SwitchChannel(self, "#on-duty-chat")
 
     self.functionbutton.config(text="Don't Post Message", command=lambda: modules.submodules.functions.ContinueToNext._ContinueToNext(self))
-    self.killbutton.config(text="Not Good to Check", command=lambda:NotGoodToCheck(self))
+    self.killbutton.config(text="Not Good to Check", command=lambda:_NotGoodToCheck(self))
     self.startbutton.config(text="Good to Check", command=lambda:GoodToCheck(self))
     self.startbutton.state(['!disabled'])
     self.functionbutton.state(['!disabled'])
@@ -32,7 +32,10 @@ def GoodToCheck(self):
         _UpdateStatus(self, "Posted Good to Check Message!", 100)
         modules.submodules.functions.ContinueToNext._ContinueToNext(self)
 
-def NotGoodToCheck(self):
+def _NotGoodToCheck(self):
+    self.currentstate = "CheckMessage"
+    self.functionbutton.config(text="Don't Post Message", command=lambda: modules.submodules.functions.ContinueToNext._ContinueToNext(self))
+    _SwitchChannel(self, "#on-duty-chat")
     self.killbutton.state(['disabled'])
     self.startbutton.state(['disabled'])
     try:
