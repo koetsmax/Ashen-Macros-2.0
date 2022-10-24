@@ -1,7 +1,7 @@
 import time
 import keyboard
-from submodules.functions.ClearTypingBar import _ClearTypingBar
-from submodules.functions.UpdateStatus import _UpdateStatus
+from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 
 def _SwitchChannel(self, channel):
     _ClearTypingBar(self)

@@ -1,8 +1,8 @@
 import keyboard
-from submodules.functions.ClearTypingBar import _ClearTypingBar
-from submodules.functions.SwitchChannel import _SwitchChannel
-from submodules.functions.UpdateStatus import _UpdateStatus
-import submodules.functions.ContinueToNext
+from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
+from modules.submodules.functions.SwitchChannel import _SwitchChannel
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
+import modules.submodules.functions.ContinueToNext
 from tkinter import *
 from tkinter import ttk as tk
 
@@ -11,7 +11,7 @@ def _CheckMessage(self):
     _UpdateStatus(self, "", 93.75)
     _SwitchChannel(self, "#on-duty-chat")
 
-    self.functionbutton.config(text="Don't Post Message", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))
+    self.functionbutton.config(text="Don't Post Message", command=lambda: modules.submodules.functions.ContinueToNext._ContinueToNext(self))
     self.killbutton.config(text="Not Good to Check", command=lambda:NotGoodToCheck(self))
     self.startbutton.config(text="Good to Check", command=lambda:GoodToCheck(self))
     self.startbutton.state(['!disabled'])
@@ -29,7 +29,7 @@ def GoodToCheck(self):
         keyboard.write(Built_Good_To_Check_Message)
         keyboard.press_and_release('enter')
         _UpdateStatus(self, "Posted Good to Check Message!", 100)
-        submodules.functions.ContinueToNext._ContinueToNext(self)
+        modules.submodules.functions.ContinueToNext._ContinueToNext(self)
 
 def NotGoodToCheck(self):
     self.killbutton.state(['disabled'])
@@ -54,4 +54,4 @@ def BuildNotGoodToCheck(self):
     keyboard.write(Built_Not_Good_To_Check_Message)
     keyboard.press_and_release('enter')
     _UpdateStatus(self, "Posted Not Good to Check Message!", 100)
-    submodules.functions.ContinueToNext._ContinueToNext(self)
+    modules.submodules.functions.ContinueToNext._ContinueToNext(self)

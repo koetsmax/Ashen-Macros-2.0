@@ -1,13 +1,13 @@
 import keyboard
-from submodules.functions.ClearTypingBar import _ClearTypingBar
-from submodules.functions.SwitchChannel import _SwitchChannel
-from submodules.functions.UpdateStatus import _UpdateStatus
-import submodules.functions.ContinueToNext
-import submodules.ElementalCommands
-import submodules.AshenCommands
-import submodules.InviteTracker
-import submodules.SOTOfficial
-import submodules.CheckMessage
+from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
+from modules.submodules.functions.SwitchChannel import _SwitchChannel
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
+import modules.submodules.functions.ContinueToNext
+import modules.submodules.ElementalCommands
+import modules.submodules.AshenCommands
+import modules.submodules.InviteTracker
+import modules.submodules.SOTOfficial
+import modules.submodules.CheckMessage
 
 def _PreCheck(self):
     self.currentstate = "PreCheck"
@@ -35,6 +35,6 @@ def SearchGamerTag(self):
     keyboard.write(f'in:#on-duty-chat {self.xboxGT.get()}')
     keyboard.press_and_release('enter')
     _UpdateStatus(self, "Status: Done searching through on duty chat", 25)
-    self.startbutton.config(text="Continue", command=lambda: submodules.functions.ContinueToNext._DetermineMethod(self))
+    self.startbutton.config(text="Continue", command=lambda: modules.submodules.functions.ContinueToNext._DetermineMethod(self))
     self.startbutton.state(['!disabled'])
     _UpdateStatus(self, "Press Continue to well... continue... Duhh", "")

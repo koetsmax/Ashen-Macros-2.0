@@ -1,10 +1,10 @@
-import submodules.PreCheck
-import submodules.ElementalCommands
-import submodules.AshenCommands
-import submodules.InviteTracker
-import submodules.SOTOfficial
-import submodules.CheckMessage
-from submodules.functions.UpdateStatus import _UpdateStatus
+import modules.submodules.PreCheck
+import modules.submodules.ElementalCommands
+import modules.submodules.AshenCommands
+import modules.submodules.InviteTracker
+import modules.submodules.SOTOfficial
+import modules.submodules.CheckMessage
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 from tkinter import *
 from tkinter import ttk as tk
 
@@ -40,7 +40,7 @@ def _StartCheck(self, *args):
 
                     _UpdateStatus(self, "Status: Determining if precheck is enabled", 12.5)
                     if "selected" in self.checkbutton.state():
-                        submodules.PreCheck._PreCheck(self)
+                        modules.submodules.PreCheck._PreCheck(self)
                     else:
                         _DetermineMethod(self)
                 else:
@@ -87,15 +87,15 @@ def _ContinueToNext(self):
         self.checkbutton.config(state=[('!disabled')])
     elif self.method.get() == "All Commands":
         if self.currentstate == "PreCheck":
-            submodules.ElementalCommands._ElementalCommands(self)
+            modules.submodules.ElementalCommands._ElementalCommands(self)
         elif self.currentstate == "ElementalCommands":
-            submodules.AshenCommands._AshenCommands(self)
+            modules.submodules.AshenCommands._AshenCommands(self)
         elif self.currentstate == "AshenCommands":
-            submodules.InviteTracker._InviteTracker(self)
+            modules.submodules.InviteTracker._InviteTracker(self)
         elif self.currentstate == "InviteTracker":
-            submodules.SOTOfficial._SOTOfficial(self)
+            modules.submodules.SOTOfficial._SOTOfficial(self)
         elif self.currentstate == "SOTOfficial":
-            submodules.CheckMessage._CheckMessage(self)
+            modules.submodules.CheckMessage._CheckMessage(self)
         elif self.currentstate == "CheckMessage":
             self.currentstate = "Done"
             _ContinueToNext(self)
@@ -110,22 +110,22 @@ def _DetermineMethod(self):
         for child in self.mainframe.winfo_children():
                 child.grid_configure(padx=5, pady=5)
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.ElementalCommands._ElementalCommands(self)
+        modules.submodules.ElementalCommands._ElementalCommands(self)
     elif self.method.get() == "Elemental Commands":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.ElementalCommands._ElementalCommands(self)
+        modules.submodules.ElementalCommands._ElementalCommands(self)
     elif self.method.get() == "Ashen Commands":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.AshenCommands._AshenCommands(self)
+        modules.submodules.AshenCommands._AshenCommands(self)
     elif self.method.get() == "Invite Tracker":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.InviteTracker._InviteTracker(self)
+        modules.submodules.InviteTracker._InviteTracker(self)
     elif self.method.get() == "SOT Official":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.SOTOfficial._SOTOfficial(self)
+        modules.submodules.SOTOfficial._SOTOfficial(self)
     elif self.method.get() == "Check Message":
         _UpdateStatus(self, f"Status: Method determined: {self.method.get()}", 37.5)
-        submodules.CheckMessage._CheckMessage(self)
+        modules.submodules.CheckMessage._CheckMessage(self)
     else:
         _UpdateStatus(self, f"Status: Unable to determine method. Please try again", 0)
         self.startbutton.state(['!disabled'])

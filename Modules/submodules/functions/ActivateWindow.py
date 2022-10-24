@@ -1,5 +1,5 @@
 import win32gui
-from submodules.functions.UpdateStatus import _UpdateStatus
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 
 def windowEnumerationHandler(hwnd, top_windows):
     top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))

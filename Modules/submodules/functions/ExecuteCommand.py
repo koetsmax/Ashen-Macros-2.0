@@ -1,6 +1,6 @@
 import time
 import keyboard
-from submodules.functions.UpdateStatus import _UpdateStatus
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 
 def _ExecuteCommand(self, command, subcommands):
     _UpdateStatus(self, f"Status: Executing command: {command} with parameters: {subcommands}", "")

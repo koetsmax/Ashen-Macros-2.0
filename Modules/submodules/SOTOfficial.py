@@ -1,8 +1,8 @@
 import keyboard
-from submodules.functions.ClearTypingBar import _ClearTypingBar
-from submodules.functions.SwitchChannel import _SwitchChannel
-from submodules.functions.UpdateStatus import _UpdateStatus
-import submodules.functions.ContinueToNext
+from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
+from modules.submodules.functions.SwitchChannel import _SwitchChannel
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
+import modules.submodules.functions.ContinueToNext
 
 def _SOTOfficial(self):
     self.currentstate = "SOTOfficial"
@@ -17,7 +17,7 @@ def _SOTOfficial(self):
     _UpdateStatus(self, "Status: Done searching through Sea of Thieves official", 87.5)
 
     self.functionbutton.config(text="Narrow Search Results", command=lambda: NarrowResults(self))
-    self.startbutton.config(text="Continue", command=lambda: submodules.functions.ContinueToNext._ContinueToNext(self))
+    self.startbutton.config(text="Continue", command=lambda: modules.submodules.functions.ContinueToNext._ContinueToNext(self))
     self.startbutton.state(['!disabled'])
     self.functionbutton.state(['!disabled'])
     _UpdateStatus(self, "Press ONE of the buttons to do what you want to do", "")

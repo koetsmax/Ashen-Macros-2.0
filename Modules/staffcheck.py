@@ -1,8 +1,8 @@
 from tkinter import *
 from tkinter import ttk as tk
 import configparser
-from submodules.functions.ContinueToNext import _StartCheck
-from submodules.BuildExampleMessage import _BuildExampleMessage, _TestCheckMessages
+from modules.submodules.functions.ContinueToNext import _StartCheck
+from modules.submodules.BuildExampleMessage import _BuildExampleMessage, _TestCheckMessages
 
 class StaffCheck:
 

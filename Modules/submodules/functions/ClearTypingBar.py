@@ -1,6 +1,6 @@
 import keyboard
-from submodules.functions.ActivateWindow import _ActivateWindow
-from submodules.functions.UpdateStatus import _UpdateStatus
+from modules.submodules.functions.ActivateWindow import _ActivateWindow
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 
 def _ClearTypingBar(self):
     _ActivateWindow(self, "discord")
