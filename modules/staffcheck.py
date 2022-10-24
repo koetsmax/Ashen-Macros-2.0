@@ -57,7 +57,7 @@ class StaffCheck:
         self.channel = StringVar(value="#on-duty-commands")
         self.channel_comboBox = tk.Combobox(self.mainframe, textvariable=self.channel)
         self.channel_comboBox.grid(column=2, row=3, sticky=(W, E))
-        self.channel_comboBox['values'] = ('#staff-commands', '#on-duty-commands', '#captains-commands', '#admin-commands')
+        self.channel_comboBox['values'] = ('#staff-commands', '#on-duty-commands', '#captain-commands', '#admin-commands')
 
         tk.Label(self.mainframe, text="Method:").grid(column=1, row=4, sticky=E)
         self.method = StringVar(value="All Commands")

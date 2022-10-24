@@ -4,6 +4,7 @@ import modules.submodules.functions.ContinueToNext
 from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
 from modules.submodules.functions.SwitchChannel import _SwitchChannel
 from modules.submodules.functions.ExecuteCommand import _ExecuteCommand
+from modules.submodules.functions.UpdateStatus import _UpdateStatus
 
 def _AfterCheckMessage(self):
     self.reason_entry.state(['disabled'])
@@ -33,10 +34,11 @@ def UnprivateXbox(self):
     keyboard.press_and_release('shift+enter')
     keyboard.write("Allow **everybody** to see the above settings and click **Submit**.")
     keyboard.press_and_release('enter')
-    time.sleep(2.2)
+    time.sleep(3)
+    _UpdateStatus(self, "Sent DM to unprivate!", "")
     _SwitchChannel(self, "#on-duty-chat")
     _ClearTypingBar(self)
-    keyboard.write(f"<@{self.userID.get()}> has been sent a message to unprivate their xbox - Good to remove <t:{round(time.time() + 600)}:R>")
+    keyboard.write(f"<@{self.userID.get()}> has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join with<t:{round(time.time() + 600)}:R>")
     keyboard.press_and_release('enter')
     Continue(self)
 
@@ -45,7 +47,7 @@ def JoinAWR(self):
     _SwitchChannel(self, "#on-duty-chat")
     joinawr = ['/joinawr ', f'{self.userID.get()}']
     _ExecuteCommand(self, joinawr[0], joinawr[1:])
-    keyboard.write(f"<@{self.userID.get()}> has been requested to join the <#702904587027480607> - Good to remove <t:{round(time.time() + 600)}:R>")
+    keyboard.write(f"<@{self.userID.get()}> has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join with<t:{round(time.time() + 600)}:R>")
     keyboard.press_and_release('enter')
     Continue(self)
 
