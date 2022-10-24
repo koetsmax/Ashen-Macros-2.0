@@ -2,6 +2,7 @@ import keyboard
 from modules.submodules.functions.ClearTypingBar import _ClearTypingBar
 from modules.submodules.functions.SwitchChannel import _SwitchChannel
 from modules.submodules.functions.UpdateStatus import _UpdateStatus
+from modules.submodules.AfterCheckMessage import _AfterCheckMessage
 import modules.submodules.functions.ContinueToNext
 from tkinter import *
 from tkinter import ttk as tk
@@ -54,4 +55,4 @@ def BuildNotGoodToCheck(self):
     keyboard.write(Built_Not_Good_To_Check_Message)
     keyboard.press_and_release('enter')
     _UpdateStatus(self, "Posted Not Good to Check Message!", 100)
-    modules.submodules.functions.ContinueToNext._ContinueToNext(self)
+    _AfterCheckMessage(self)

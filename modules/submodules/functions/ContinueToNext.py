@@ -26,6 +26,10 @@ def _StartCheck(self, *args):
                         self.reset_button.state(['disabled'])
                     except:
                         pass
+                    try:
+                        self.reason = ""
+                    except Exception as e:
+                        print(e)
                     self.killbutton.state(['!disabled'])
                     self.menu_customize.entryconfigure('Good to check message', state=DISABLED)
                     self.menu_customize.entryconfigure('Not good to check message', state=DISABLED)
