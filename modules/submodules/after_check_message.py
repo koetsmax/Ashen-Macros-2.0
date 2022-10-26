@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 import time
 import keyboard
 import modules.submodules.start_check

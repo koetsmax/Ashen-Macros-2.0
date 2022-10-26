@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 """
 Module that updates the log and progressbar
 """

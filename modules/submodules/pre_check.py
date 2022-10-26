@@ -1,12 +1,10 @@
+# pylint: disable=E0401, E0402
 import keyboard
 
-try:
-    from .start_check import determine_method
-    from .functions.clear_typing_bar import clear_typing_bar
-    from .functions.switch_channel import switch_channel
-    from .functions.update_status import UpdateStatus
-except ImportError:
-    pass
+from .start_check import determine_method
+from .functions.clear_typing_bar import clear_typing_bar
+from .functions.switch_channel import switch_channel
+from .functions.update_status import UpdateStatus
 
 
 def pre_check(self):

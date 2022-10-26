@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402, I1101
 """
 Function that tries to activate the discord window
 """

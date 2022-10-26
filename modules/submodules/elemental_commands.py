@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel

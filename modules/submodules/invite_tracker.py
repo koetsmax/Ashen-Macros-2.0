@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 import keyboard
 from .functions.update_status import UpdateStatus
 from .functions.clear_typing_bar import clear_typing_bar

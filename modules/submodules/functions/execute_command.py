@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 """
 This function tries to execute a discord slash command
 """

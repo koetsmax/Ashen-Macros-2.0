@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 from tkinter import *
 from tkinter import ttk as tk
 from .functions.update_status import UpdateStatus

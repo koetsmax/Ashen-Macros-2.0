@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 """
 This module attempts to switch between discord channels
 """

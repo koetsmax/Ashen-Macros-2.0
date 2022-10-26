@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 """
 This function attempts to clear the message bar in discord
 and get rid of any other prompts that might be open
