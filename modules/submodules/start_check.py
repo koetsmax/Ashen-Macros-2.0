@@ -2,8 +2,6 @@
 from tkinter import *
 from tkinter import ttk as tk
 from .functions.update_status import UpdateStatus
-
-
 import modules.submodules.pre_check
 import modules.submodules.elemental_commands
 import modules.submodules.ashen_commands

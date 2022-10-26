@@ -1,3 +1,4 @@
+# pylint: disable=E0401, E0402
 from tkinter import *
 from tkinter import ttk as tk
 from .check_message import not_good_to_check

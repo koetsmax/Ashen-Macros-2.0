@@ -2,7 +2,6 @@
 """
 Module that updates the log and progressbar
 """
-
 from tkinter import Tk
 
 
