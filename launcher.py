@@ -54,7 +54,7 @@ class Launcher:
         print(request.status_code)
         request_dictionary = request.json()
         github_version = request_dictionary["name"]
-        versionfile = open("version1", "r", encoding="UTF-8")
+        versionfile = open("version", "r", encoding="UTF-8")
         print(versionfile.read())
         print(request_dictionary["name"])
 
