@@ -47,12 +47,16 @@ class Launcher:
 
     def check_for_updates(self):
         print("https://www.datacamp.com/tutorial/making-http-requests-in-python")
-        print("https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest")
-        r = requests.get(
+        request = requests.get(
             "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest"
         )
-        print(r.text)
-        # get tag name
+        print(request.text)
+        print(request.status_code)
+        request_dictionary = request.json()
+        github_version = request_dictionary["name"]
+        versionfile = open("version1", "r", encoding="UTF-8")
+        print(versionfile.read())
+        print(request_dictionary["name"])
 
 
 root = Tk()
