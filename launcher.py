@@ -1,8 +1,10 @@
-# pylint: disable=E0401, E0402, W0621, W0401, W0614
+# pylint: disable=E0401, E0402, W0621, W0401, W0614, C0209
+import os
 from tkinter import *
 from tkinter import ttk as tk
 import runpy
 import requests
+from packaging import version
 
 
 class Launcher:
@@ -37,6 +39,7 @@ class Launcher:
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
+        print(os.getcwd())
 
     def start_staffcheck(self):
         root.destroy()
@@ -46,17 +49,50 @@ class Launcher:
         root.destroy()
 
     def check_for_updates(self):
-        print("https://www.datacamp.com/tutorial/making-http-requests-in-python")
         request = requests.get(
-            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest"
+            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
+            timeout=15,
         )
-        print(request.text)
-        print(request.status_code)
-        request_dictionary = request.json()
-        github_version = request_dictionary["name"]
-        versionfile = open("version", "r", encoding="UTF-8")
-        print(versionfile.read())
-        print(request_dictionary["name"])
+        if request.status_code != 200:
+            print(request.status_code)
+            print("Something went wrong :p")
+        else:
+            request_dictionary = request.json()
+            with open("version", "r", encoding="UTF-8") as versionfile:
+                local_version = versionfile.read()
+            online_version = request_dictionary["name"]
+            if version.parse(local_version) < version.parse(online_version):
+                print("There is an update available")
+                updatewindow = Toplevel(root)
+                root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
+                tk.Label(
+                    updatewindow,
+                    text="There is an update available.\nWould you like to download it?",
+                ).grid(column=1, row=1, sticky=E)
+                yes_button = tk.Button(
+                    updatewindow, text="Yes", command=self.commence_update
+                )
+                yes_button.grid(column=1, row=2, sticky=W)
+                also_yes_button = tk.Button(
+                    updatewindow, text="For sure", command=self.commence_update
+                )
+                also_yes_button.grid(column=1, row=2, sticky=E)
+                for child in updatewindow.winfo_children():
+                    child.grid_configure(padx=5, pady=5)
+            elif version.parse(local_version) == version.parse(online_version):
+                print("You are currently on the most up-to-date version")
+            elif version.parse(local_version) > version.parse(online_version):
+                print("You are currently on the dev version")
+
+    def commence_update(self):
+        path = os.getcwd()
+
+        with open("config.yml", "w", encoding="UTF-8") as updaterfile:
+            updaterfile.write(
+                "{\n  appDir: %s,\n  appExecName: rotten.py,\n  appIdentifier: shrink.py,\n  appRepo: https://github.com/koetsmax/Ashen-Macros-2.0,\n  backupOn: false,\n  createLaunchScriptOn: false,\n}"
+                % (path)
+            )
+        print(os.getcwd())
 
 
 root = Tk()

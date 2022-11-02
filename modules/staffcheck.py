@@ -1,4 +1,4 @@
-# pylint: disable=E0401, E0402
+# pylint: disable=E0401, E0402, W0621
 from tkinter import *
 from tkinter import ttk as tk
 import configparser

@@ -1,6 +1,6 @@
 # pylint: disable=E0401, E0402
 import keyboard
-from .start_check import determine_method
+import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.update_status import UpdateStatus
@@ -65,7 +65,9 @@ def search_gamertag(self):
     )
     self.start_button.config(
         text="Continue",
-        command=lambda: determine_method(self),
+        command=lambda: modules.submodules.start_check.determine_method.determine_method(
+            self
+        ),
     )
     self.start_button.state(["!disabled"])
     UpdateStatus(
