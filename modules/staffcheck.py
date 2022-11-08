@@ -63,6 +63,9 @@ class StaffCheck:
         self.menu_customize.add_command(
             label="Join AWR message", command=self.edit_join_awr
         )
+        self.menu_customize.add_command(
+            "Unprivate Xbox message", command=self.edit_unprivate_xbox
+        )
         self.menu_help.add_command(label="Help", command=self.show_help)
 
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
@@ -170,10 +173,10 @@ class StaffCheck:
         )
         self.good_to_check_entry.grid(column=1, row=4, sticky=(E, W))
 
-        build_example_message(self, 1)
+        build_example_message(self, 0)
 
         self.save_button = tk.Button(
-            self.good_window, text="Save Changes!", command=self.SaveChangesGood
+            self.good_window, text="Save Changes!", command=self.save_changes
         )
         self.save_button.grid(column=1, row=6, sticky=W)
 
@@ -187,15 +190,6 @@ class StaffCheck:
 
         self.root.eval(f"tk::PlaceWindow {str(self.good_window)} center")
 
-    def SaveChangesGood(self):
-        with open("settings.ini", "w", encoding="UTF-8") as configfile:
-            self.example_label.destroy()
-            self.config["STAFFCHECK"][
-                "goodtocheckmessage"
-            ] = self.good_to_check_message.get()
-            self.config.write(configfile)
-            build_example_message(self, 1)
-
     def ResetToDefaultGood(self):
         with open("settings.ini", "w", encoding="UTF-8") as configfile:
             self.example_label.destroy()
@@ -204,7 +198,7 @@ class StaffCheck:
             ] = "userID Good to check -- GT: xboxGT"
             self.config.write(configfile)
             self.good_to_check_message.set("userID Good to check -- GT: xboxGT")
-            build_example_message(self, 1)
+            build_example_message(self, 0)
 
     def EditNotGoodToCheck(self):
         self.not_good_window = Toplevel()
@@ -225,10 +219,10 @@ class StaffCheck:
         )
         self.not_good_to_check_entry.grid(column=1, row=5, sticky=(E, W))
 
-        build_example_message(self, 0)
+        build_example_message(self, 1)
 
         self.save_button = tk.Button(
-            self.not_good_window, text="Save Changes!", command=self.SaveChangesNotGood
+            self.not_good_window, text="Save Changes!", command=self.save_changes
         )
         self.save_button.grid(column=1, row=7, sticky=W)
 
@@ -244,15 +238,6 @@ class StaffCheck:
 
         self.root.eval(f"tk::PlaceWindow {str(self.not_good_window)} center")
 
-    def SaveChangesNotGood(self):
-        with open("settings.ini", "w", encoding="UTF-8") as configfile:
-            self.example_label1.destroy()
-            self.config["STAFFCHECK"][
-                "notgoodtocheckmessage"
-            ] = self.not_good_to_check_message.get()
-            self.config.write(configfile)
-            build_example_message(self, 0)
-
     def ResetToDefaultNotGood(self):
         with open("settings.ini", "w", encoding="UTF-8") as configfile:
             self.example_label1.destroy()
@@ -263,7 +248,7 @@ class StaffCheck:
             self.not_good_to_check_message.set(
                 "userID **Not** Good to check -- GT: xboxGT -- Reason"
             )
-            build_example_message(self, 0)
+            build_example_message(self, 1)
 
     def edit_join_awr(self):
         self.join_awr_window = Toplevel()
@@ -284,12 +269,10 @@ class StaffCheck:
         )
         self.edit_join_awr_entry.grid(column=1, row=4, sticky=(E, W))
 
-        build_example_message(self, 3)
+        build_example_message(self, 2)
 
         self.save_button = tk.Button(
-            self.join_awr_window,
-            text="Save Changes!",
-            command=self.SaveChangesJoinAwr,
+            self.join_awr_window, text="Save Changes!", command=self.save_changes
         )
         self.save_button.grid(column=1, row=6, sticky=W)
 
@@ -305,13 +288,6 @@ class StaffCheck:
 
         self.root.eval(f"tk::PlaceWindow {str(self.join_awr_window)} center")
 
-    def SaveChangesJoinAwr(self):
-        with open("settings.ini", "w", encoding="UTF-8") as configfile:
-            self.example_label2.destroy()
-            self.config["STAFFCHECK"]["join_awr_message"] = self.join_awr_message.get()
-            self.config.write(configfile)
-            build_example_message(self, 3)
-
     def ResetToDefaultJoinAwr(self):
         with open("settings.ini", "w", encoding="UTF-8") as configfile:
             self.example_label2.destroy()
@@ -322,7 +298,36 @@ class StaffCheck:
             self.join_awr_message.set(
                 "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join withTime"
             )
-            build_example_message(self, 3)
+            build_example_message(self, 2)
+
+    def save_changes(self):
+        with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            try:
+                self.example_label.destroy()
+                self.config["STAFFCHECK"][
+                    "goodtocheckmessage"
+                ] = self.good_to_check_message.get()
+                build_example_message(self, 0)
+            except AttributeError:
+                pass
+            try:
+                self.example_label1.destroy()
+                self.config["STAFFCHECK"][
+                    "notgoodtocheckmessage"
+                ] = self.not_good_to_check_message.get()
+                build_example_message(self, 1)
+            except AttributeError:
+                pass
+            try:
+                self.example_label2.destroy()
+                self.config["STAFFCHECK"][
+                    "join_awr_message"
+                ] = self.join_awr_message.get()
+                build_example_message(self, 2)
+            except AttributeError:
+                pass
+            self.config.write(configfile)
+            build_example_message(self, 99)
 
     def kill(self):
         self.root.destroy()

@@ -37,6 +37,9 @@ def start_check(self):
                     "Not good to check message", state=DISABLED
                 )
                 self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
+                self.menu_customize.entryconfigure(
+                    "Unprivate Xbox message", state=DISABLED
+                )
                 self.user_id_entry.config(state=[("disabled")])
                 self.xbox_gt_entry.config(state=[("disabled")])
                 self.channel_combo_box.config(state=[("disabled")])
@@ -112,6 +115,7 @@ def continue_to_next(self):
         self.menu_customize.entryconfigure("Good to check message", state=NORMAL)
         self.menu_customize.entryconfigure("Not good to check message", state=NORMAL)
         self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
+        self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
         self.user_id_entry.config(state=[("!disabled")])
         self.xbox_gt_entry.config(state=[("!disabled")])
         self.channel_combo_box.config(state=[("!disabled")])

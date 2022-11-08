@@ -52,13 +52,13 @@ def build_example_message(self, message):
         )
         self.error_label2.grid(columnspan=2, column=1, row=7, sticky=E)
 
-    if message == 1:
+    if message == 0:
         good_example_string = good_to_check_message
         good_example_string = good_example_string.replace("userID", "@Max")
         good_example_string = good_example_string.replace("xboxGT", "M A X10815")
         self.example_label = tk.Label(self.good_window, text=good_example_string)
         self.example_label.grid(column=1, row=5, padx=5, pady=5)
-    elif message == 0:
+    elif message == 1:
         not_good_example_string = not_good_to_check_message
         not_good_example_string = not_good_example_string.replace("userID", "@Max")
         not_good_example_string = not_good_example_string.replace(
@@ -71,7 +71,7 @@ def build_example_message(self, message):
             self.not_good_window, text=not_good_example_string
         )
         self.example_label1.grid(column=1, row=6, padx=5, pady=5)
-    elif message == 3:
+    elif message == 2:
         join_awr_example_string = join_awr_message
         join_awr_example_string = join_awr_example_string.replace("userID", "@Max")
         join_awr_example_string = join_awr_example_string.replace(
