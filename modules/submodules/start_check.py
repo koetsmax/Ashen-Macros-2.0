@@ -1,23 +1,24 @@
 # pylint: disable=E0401, E0402
 from tkinter import *
 from tkinter import ttk as tk
-from .functions.update_status import UpdateStatus
 import modules.submodules.pre_check
 import modules.submodules.elemental_commands
 import modules.submodules.ashen_commands
 import modules.submodules.invite_tracker
 import modules.submodules.sot_official
 import modules.submodules.check_message
+from .functions.update_status import UpdateStatus
 
 
 def start_check(self):
+    print(isinstance(self.user_id.get(), str))
     try:
         self.error_label.destroy()
     except AttributeError:
         pass
     try:
         lengths = [17, 18, 19]
-        if type(int(self.user_id.get())) == int and len(self.user_id.get()) in lengths:
+        if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
             if self.xbox_gt.get() != "":
                 self.start_button.state(["disabled"])
                 try:
