@@ -64,8 +64,13 @@ def join_awr(self):
     switch_channel(self, "#on-duty-chat")
     joinawr = ["/joinawr ", f"{self.user_id.get()}"]
     execute_command(self, joinawr[0], joinawr[1:])
-    keyboard.write(
-        f"<@{self.user_id.get()}> has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join with<t:{round(time.time() + 600)}:R>"
+    built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
+    built_join_awr_message = built_join_awr_message.replace(
+        "userID", f"<@{self.user_id.get()}>"
     )
+    built_join_awr_message = built_join_awr_message.replace(
+        "Time", f"<t:{round(time.time() + 600)}:R>"
+    )
+    keyboard.write(built_join_awr_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)

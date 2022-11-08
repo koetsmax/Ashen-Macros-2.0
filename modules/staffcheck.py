@@ -61,7 +61,7 @@ class StaffCheck:
             label="Not good to check message", command=self.EditNotGoodToCheck
         )
         self.menu_customize.add_command(
-            label="join AWR message", command=self.edit_join_awr
+            label="Join AWR message", command=self.edit_join_awr
         )
         self.menu_help.add_command(label="Help", command=self.show_help)
 

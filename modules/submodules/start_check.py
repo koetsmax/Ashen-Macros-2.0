@@ -11,7 +11,6 @@ from .functions.update_status import UpdateStatus
 
 
 def start_check(self):
-    print(isinstance(self.user_id.get(), str))
     try:
         self.error_label.destroy()
     except AttributeError:
@@ -23,11 +22,11 @@ def start_check(self):
                 self.start_button.state(["disabled"])
                 try:
                     self.save_button.state(["disabled"])
-                except AttributeError:
+                except (AttributeError, TclError):
                     pass
                 try:
                     self.reset_button.state(["disabled"])
-                except AttributeError:
+                except (AttributeError, TclError):
                     pass
                 self.reason = ""
                 self.kill_button.state(["!disabled"])
@@ -37,6 +36,7 @@ def start_check(self):
                 self.menu_customize.entryconfigure(
                     "Not good to check message", state=DISABLED
                 )
+                self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
                 self.user_id_entry.config(state=[("disabled")])
                 self.xbox_gt_entry.config(state=[("disabled")])
                 self.channel_combo_box.config(state=[("disabled")])
@@ -99,11 +99,11 @@ def continue_to_next(self):
         self.log.see("end")
         try:
             self.save_button.state(["!disabled"])
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.reset_button.state(["!disabled"])
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.reason_entry.destroy()
@@ -111,6 +111,7 @@ def continue_to_next(self):
             pass
         self.menu_customize.entryconfigure("Good to check message", state=NORMAL)
         self.menu_customize.entryconfigure("Not good to check message", state=NORMAL)
+        self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
         self.user_id_entry.config(state=[("!disabled")])
         self.xbox_gt_entry.config(state=[("!disabled")])
         self.channel_combo_box.config(state=[("!disabled")])
