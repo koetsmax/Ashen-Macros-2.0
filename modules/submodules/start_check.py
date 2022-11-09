@@ -1,13 +1,13 @@
 # pylint: disable=E0401, E0402
 from tkinter import *
 from tkinter import ttk as tk
-from .functions.update_status import UpdateStatus
 import modules.submodules.pre_check
 import modules.submodules.elemental_commands
 import modules.submodules.ashen_commands
 import modules.submodules.invite_tracker
 import modules.submodules.sot_official
 import modules.submodules.check_message
+from .functions.update_status import UpdateStatus
 
 
 def start_check(self):
@@ -17,16 +17,16 @@ def start_check(self):
         pass
     try:
         lengths = [17, 18, 19]
-        if type(int(self.user_id.get())) == int and len(self.user_id.get()) in lengths:
+        if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
             if self.xbox_gt.get() != "":
                 self.start_button.state(["disabled"])
                 try:
                     self.save_button.state(["disabled"])
-                except AttributeError:
+                except (AttributeError, TclError):
                     pass
                 try:
                     self.reset_button.state(["disabled"])
-                except AttributeError:
+                except (AttributeError, TclError):
                     pass
                 self.reason = ""
                 self.kill_button.state(["!disabled"])
@@ -35,6 +35,10 @@ def start_check(self):
                 )
                 self.menu_customize.entryconfigure(
                     "Not good to check message", state=DISABLED
+                )
+                self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
+                self.menu_customize.entryconfigure(
+                    "Unprivate Xbox message", state=DISABLED
                 )
                 self.user_id_entry.config(state=[("disabled")])
                 self.xbox_gt_entry.config(state=[("disabled")])
@@ -98,11 +102,11 @@ def continue_to_next(self):
         self.log.see("end")
         try:
             self.save_button.state(["!disabled"])
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.reset_button.state(["!disabled"])
-        except AttributeError:
+        except (AttributeError, TclError):
             pass
         try:
             self.reason_entry.destroy()
@@ -110,6 +114,8 @@ def continue_to_next(self):
             pass
         self.menu_customize.entryconfigure("Good to check message", state=NORMAL)
         self.menu_customize.entryconfigure("Not good to check message", state=NORMAL)
+        self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
+        self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
         self.user_id_entry.config(state=[("!disabled")])
         self.xbox_gt_entry.config(state=[("!disabled")])
         self.channel_combo_box.config(state=[("!disabled")])
