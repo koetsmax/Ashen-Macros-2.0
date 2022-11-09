@@ -3,9 +3,9 @@ from tkinter import *
 from tkinter import ttk as tk
 
 
-def build_example_message(self, message):
-    good_to_check_message = self.config["STAFFCHECK"]["goodtocheckmessage"]
-    not_good_to_check_message = self.config["STAFFCHECK"]["notgoodtocheckmessage"]
+def build_example_message(self, id_):
+    good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
+    not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
     self.start_button.state(["!disabled"])
     try:
@@ -52,13 +52,13 @@ def build_example_message(self, message):
         )
         self.error_label2.grid(columnspan=2, column=1, row=7, sticky=E)
 
-    if message == 0:
+    if id_ == 0:
         good_example_string = good_to_check_message
         good_example_string = good_example_string.replace("userID", "@Max")
         good_example_string = good_example_string.replace("xboxGT", "M A X10815")
-        self.example_label = tk.Label(self.good_window, text=good_example_string)
+        self.example_label = tk.Label(self.customize_window, text=good_example_string)
         self.example_label.grid(column=1, row=5, padx=5, pady=5)
-    elif message == 1:
+    elif id_ == 1:
         not_good_example_string = not_good_to_check_message
         not_good_example_string = not_good_example_string.replace("userID", "@Max")
         not_good_example_string = not_good_example_string.replace(
@@ -67,11 +67,11 @@ def build_example_message(self, message):
         not_good_example_string = not_good_example_string.replace(
             "Reason", "Needs to remove banned friends"
         )
-        self.example_label1 = tk.Label(
-            self.not_good_window, text=not_good_example_string
+        self.example_label = tk.Label(
+            self.customize_window, text=not_good_example_string
         )
-        self.example_label1.grid(column=1, row=6, padx=5, pady=5)
-    elif message == 2:
+        self.example_label.grid(column=1, row=6, padx=5, pady=5)
+    elif id_ == 2:
         join_awr_example_string = join_awr_message
         join_awr_example_string = join_awr_example_string.replace("userID", "@Max")
         join_awr_example_string = join_awr_example_string.replace(
@@ -80,7 +80,7 @@ def build_example_message(self, message):
         join_awr_example_string = join_awr_example_string.replace(
             "Time", "in 10 minutes"
         )
-        self.example_label2 = tk.Label(
-            self.join_awr_window, text=join_awr_example_string
+        self.example_label = tk.Label(
+            self.customize_window, text=join_awr_example_string
         )
-        self.example_label2.grid(column=1, row=5, padx=5, pady=5)
+        self.example_label.grid(column=1, row=5, padx=5, pady=5)
