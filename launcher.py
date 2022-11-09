@@ -89,7 +89,7 @@ class Launcher:
 
         with open("config.yml", "w", encoding="UTF-8") as updaterfile:
             updaterfile.write(
-                "{\n  appDir: %s,\n  appExecName: rotten.py,\n  appIdentifier: shrink.py,\n  appRepo: https://github.com/koetsmax/Ashen-Macros-2.0,\n  backupOn: false,\n  createLaunchScriptOn: false,\n}"
+                "{\n  appDir: %s,\n  appExecName: foo.py,\n  appIdentifier: bar.py,\n  appRepo: https://github.com/koetsmax/Ashen-Macros-2.0,\n  backupOn: false,\n  createLaunchScriptOn: false,\n}"
                 % (path)
             )
         print(os.getcwd())
