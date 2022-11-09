@@ -63,9 +63,9 @@ class StaffCheck:
         self.menu_customize.add_command(
             label="Join AWR message", command=self.edit_join_awr
         )
-        self.menu_customize.add_command(
-            "Unprivate Xbox message", command=self.edit_unprivate_xbox
-        )
+        # self.menu_customize.add_command(
+        #     "Unprivate Xbox message", command=self.edit_unprivate_xbox
+        # )
         self.menu_help.add_command(label="Help", command=self.show_help)
 
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
@@ -154,7 +154,7 @@ class StaffCheck:
         self.user_id_entry.focus()
 
     def EditGoodToCheck(self):
-
+        CustomizeWindow("goodtocheckmessage", "Good to check message", 0)
         self.good_window = Toplevel()
 
         explanation_label = tk.Label(
@@ -334,6 +334,45 @@ class StaffCheck:
 
     def show_help(self):
         print("test")
+
+class CustomizeWindow(StaffCheck):
+    def __init__(self, type_, explanation, number):
+        try:
+            self.customize_window.destroy()
+        except AttributeError:
+            pass
+        self.customize_window = Toplevel()
+        self.customize_window.title("Customize")
+        explanation_label = tk.Label(
+            self.customize_window, text=explanation
+        )
+        explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
+
+        type_label = tk.Label(self.customize_window, text=f"{type_}:")
+        type_label.grid(column=1, row=3, sticky=W)
+
+        self.message = StringVar(value=self.config["STAFFCHECK"][type_])
+        self.message_entry = tk.Entry(
+            self.customize_window, width=75, textvariable=self.message
+        )
+        self.message_entry.grid(column=1, row=4, sticky=(E, W))
+
+        build_example_message(self, number)
+
+        self.save_button = tk.Button(
+            self.customize_window, text="Save Changes!", command=self.save_changes
+        )
+        self.save_button.grid(column=1, row=6, sticky=W)
+
+        self.reset_button = tk.Button(
+            self.customize_window, text="Reset To Default!", command=self.ResetToDefaultGood
+        )
+        self.reset_button.grid(column=1, row=6, sticky=E)
+
+        for child in self.customize_window.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
+        self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
 
 
 root = Tk()
