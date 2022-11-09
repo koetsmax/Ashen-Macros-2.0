@@ -2,3 +2,4 @@ keyboard
 pywin32
 packaging
 pyparsing
+config
