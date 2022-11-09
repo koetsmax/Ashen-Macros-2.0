@@ -31,11 +31,15 @@ class StaffCheck:
                 "not_good_to_check_message"
             ]
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
+            self.unprivate_xbox_message = self.config["STAFFCHECK"][
+                "unprivate_xbox_message"
+            ]
         except KeyError:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
                 "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
                 "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join withTime",
+                "unprivate_xbox_message": "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join withTime",
             }
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
@@ -59,17 +63,17 @@ class StaffCheck:
         menubar.add_cascade(menu=self.menu_help, label="Help")
 
         self.menu_customize.add_command(
-            label="Good to check message", command=self.EditGoodToCheck
+            label="Good to check message", command=self.edit_good_to_check
         )
         self.menu_customize.add_command(
-            label="Not good to check message", command=self.EditNotGoodToCheck
+            label="Not good to check message", command=self.edit_not_good_to_check
         )
         self.menu_customize.add_command(
             label="Join AWR message", command=self.edit_join_awr
         )
-        # self.menu_customize.add_command(
-        #     "Unprivate Xbox message", command=self.edit_unprivate_xbox
-        # )
+        self.menu_customize.add_command(
+            label="Unprivate Xbox message", command=self.edit_unprivate_xbox
+        )
         self.menu_help.add_command(label="Help", command=self.show_help)
 
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
@@ -157,7 +161,7 @@ class StaffCheck:
 
         self.user_id_entry.focus()
 
-    def EditGoodToCheck(self):
+    def edit_good_to_check(self):
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -172,7 +176,7 @@ class StaffCheck:
             self.mainframe,
         )
 
-    def EditNotGoodToCheck(self):
+    def edit_not_good_to_check(self):
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -197,6 +201,21 @@ class StaffCheck:
             "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp",
             2,
             "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join withTime",
+            self.start_button,
+            self.root,
+            self.mainframe,
+        )
+
+    def edit_unprivate_xbox(self):
+        try:
+            self.error_label.destroy()
+        except AttributeError:
+            pass
+        CustomizeWindow(
+            "unprivate_xbox_message",
+            "userID = Discord ID\nTime = automatic hammertime timestamp",
+            3,
+            "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join withTime",
             self.start_button,
             self.root,
             self.mainframe,

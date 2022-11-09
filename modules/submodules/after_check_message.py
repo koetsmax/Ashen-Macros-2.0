@@ -52,9 +52,14 @@ def unprivate_xbox(self):
     UpdateStatus(self.root, self.log, self.progressbar, "Sent DM to unprivate!", "")
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar(self)
-    keyboard.write(
-        f"<@{self.user_id.get()}> has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join with<t:{round(time.time() + 600)}:R>"
+    built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
+    built_unprivate_xbox_message = built_unprivate_xbox_message.replace(
+        "userID", f"<@{self.user_id.get()}>"
     )
+    built_unprivate_xbox_message = built_unprivate_xbox_message.replace(
+        "Time", f"<t:{round(time.time() + 600)}:R>"
+    )
+    keyboard.write(built_unprivate_xbox_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
 

@@ -7,6 +7,7 @@ def build_example_message(self, id_):
     good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
     not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
+    unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
     self.start_button.state(["!disabled"])
     try:
         self.error_label.destroy()
@@ -18,6 +19,10 @@ def build_example_message(self, id_):
         pass
     try:
         self.error_label2.destroy()
+    except AttributeError:
+        pass
+    try:
+        self.error_label3.destroy()
     except AttributeError:
         pass
 
@@ -51,36 +56,41 @@ def build_example_message(self, id_):
             foreground="Red",
         )
         self.error_label2.grid(columnspan=2, column=1, row=7, sticky=E)
+    if not "userID" in unprivate_xbox_message or not "Time" in unprivate_xbox_message:
+        self.start_button.state(["disabled"])
+        self.error_label3 = tk.Label(
+            self.mainframe,
+            text="Error! Bad Unprivate Xbox message!",
+            foreground="Red",
+        )
+        self.error_label3.grid(columnspan=2, column=1, row=7, sticky=E)
 
     if id_ == 0:
         good_example_string = good_to_check_message
         good_example_string = good_example_string.replace("userID", "@Max")
-        good_example_string = good_example_string.replace("xboxGT", "M A X10815")
-        self.example_label = tk.Label(self.customize_window, text=good_example_string)
-        self.example_label.grid(column=1, row=5, padx=5, pady=5)
+        final_string = good_example_string.replace("xboxGT", "M A X10815")
     elif id_ == 1:
         not_good_example_string = not_good_to_check_message
         not_good_example_string = not_good_example_string.replace("userID", "@Max")
         not_good_example_string = not_good_example_string.replace(
             "xboxGT", "M A X10815"
         )
-        not_good_example_string = not_good_example_string.replace(
+        final_string = not_good_example_string.replace(
             "Reason", "Needs to remove banned friends"
         )
-        self.example_label = tk.Label(
-            self.customize_window, text=not_good_example_string
-        )
-        self.example_label.grid(column=1, row=6, padx=5, pady=5)
     elif id_ == 2:
         join_awr_example_string = join_awr_message
         join_awr_example_string = join_awr_example_string.replace("userID", "@Max")
         join_awr_example_string = join_awr_example_string.replace(
             "<#702904587027480607>", "Alliance Waiting Room"
         )
-        join_awr_example_string = join_awr_example_string.replace(
-            "Time", "in 10 minutes"
+        final_string = join_awr_example_string.replace("Time", "in 10 minutes")
+    elif id_ == 3:
+        unprivate_xbox_example_string = unprivate_xbox_message
+        unprivate_xbox_example_string = unprivate_xbox_example_string.replace(
+            "userID", "@Max"
         )
-        self.example_label = tk.Label(
-            self.customize_window, text=join_awr_example_string
-        )
-        self.example_label.grid(column=1, row=5, padx=5, pady=5)
+        final_string = unprivate_xbox_example_string.replace("Time", "in 10 minutes")
+    if id_ != 99:
+        self.example_label = tk.Label(self.customize_window, text=final_string)
+        self.example_label.grid(column=1, row=6, padx=5, pady=5)
