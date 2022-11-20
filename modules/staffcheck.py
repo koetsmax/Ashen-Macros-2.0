@@ -45,8 +45,8 @@ class StaffCheck:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
                 "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
-                "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join withTime",
-                "unprivate_xbox_message": "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join withTime",
+                "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
+                "unprivate_xbox_message": "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join within 10 minutes (Time)",
             }
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
@@ -216,7 +216,7 @@ class StaffCheck:
             "join_awr_message",
             "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp",
             2,
-            "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join withTime",
+            "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
             self.start_button,
             self.root,
             self.mainframe,
@@ -234,7 +234,7 @@ class StaffCheck:
             "unprivate_xbox_message",
             "userID = Discord ID\nTime = automatic hammertime timestamp",
             3,
-            "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join withTime",
+            "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join within 10 minutes (Time)",
             self.start_button,
             self.root,
             self.mainframe,
