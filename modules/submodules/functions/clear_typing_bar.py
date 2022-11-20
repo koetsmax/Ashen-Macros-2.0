@@ -5,7 +5,7 @@ and get rid of any other prompts that might be open
 """
 import keyboard
 from .activate_window import activate_window
-from .update_status import UpdateStatus
+from .update_status import update_status
 
 
 def clear_typing_bar(self):
@@ -14,13 +14,7 @@ def clear_typing_bar(self):
     and get rid of any other prompts that might be open
     """
     activate_window(self, "discord")
-    UpdateStatus(
-        self.root,
-        self.log,
-        self.progressbar,
-        "Status: Attempting to clear typing bar",
-        "",
-    )
+    update_status(self, "Status: Attempting to clear typing bar", "")
     keyboard.press_and_release("esc")
     keyboard.press_and_release("esc")
     keyboard.press_and_release("ctrl+a")

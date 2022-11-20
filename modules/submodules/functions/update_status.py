@@ -5,17 +5,20 @@ Module that updates the log and progressbar
 from tkinter import Tk
 
 
-class UpdateStatus:
+def update_status(self, status, value):
     """
-    Module that updates the log and progressbar
-    """
+    Module that updates the log and progress bar
 
-    def __init__(self, root, log, progressbar, status, value):
-        if status != "":
-            log["state"] = "normal"
-            log.insert("end", f"\n{status}", ("highlightline"))
-            log.see("end")
-            log["state"] = "disabled"
-        if value != "":
-            progressbar.config(value=value)
-        Tk.update(root)
+    Args:
+        self (tkinter.Tk): The tkinter object
+        status (str): The status to update the log with
+        value (int): The value to update the progressbar with
+    """
+    if status != "":
+        self.log["state"] = "normal"
+        self.log.insert("end", f"\n{status}", ("highlightline"))
+        self.log.see("end")
+        self.log["state"] = "disabled"
+    if value != "":
+        self.progressbar.config(value=value)
+    Tk.update(self.root)

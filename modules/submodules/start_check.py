@@ -1,4 +1,7 @@
-# pylint: disable=E0401, E0402
+"""
+This module initiates the staffcheck process and determines which method to use
+"""
+# pylint: disable=E0401, E0402, W0401 W0614
 from tkinter import *
 from tkinter import ttk as tk
 import modules.submodules.pre_check
@@ -7,10 +10,13 @@ import modules.submodules.ashen_commands
 import modules.submodules.invite_tracker
 import modules.submodules.sot_official
 import modules.submodules.check_message
-from .functions.update_status import UpdateStatus
+from .functions.update_status import update_status
 
 
 def start_check(self):
+    """
+    This function validates the user input and sets the currentstate to the appropriate value
+    """
     try:
         self.error_label.destroy()
     except AttributeError:
@@ -47,20 +53,8 @@ def start_check(self):
                 self.check_button.config(state=[("disabled")])
 
                 self.currentstate = "BeepBoop"
-                UpdateStatus(
-                    self.root,
-                    self.log,
-                    self.progressbar,
-                    "Status: Received ID and Gamertag",
-                    6.25,
-                )
-                UpdateStatus(
-                    self.root,
-                    self.log,
-                    self.progressbar,
-                    "Status: Determining if precheck is enabled",
-                    12.5,
-                )
+                update_status(self, "Status: Received ID and Gamertag", 6.25)
+                update_status(self, "Status: Determining if precheck is enabled", 12.5)
                 if "selected" in self.check_button.state():
                     modules.submodules.pre_check.pre_check(self)
                 else:
@@ -89,13 +83,16 @@ def start_check(self):
 
 
 def continue_to_next(self):
+    """
+    This function makes the program continue to the next step
+    """
     self.start_button.state(["disabled"])
     self.function_button.state(["disabled"])
     self.function_button.config(text="Cool Button", command=None)
     self.kill_button.config(text="Kill Program", command=self.kill)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     if self.method.get() != "All Commands" or self.currentstate == "Done":
-        UpdateStatus(self.root, self.log, self.progressbar, "Check Completed!!!", 100)
+        update_status(self, "Check Completed!!!", 100)
         self.function_button.state(["disabled"])
         self.start_button.state(["!disabled"])
         self.kill_button.state(["!disabled"])
@@ -138,9 +135,10 @@ def continue_to_next(self):
 
 
 def determine_method(self):
-    UpdateStatus(
-        self.root, self.log, self.progressbar, "Status: Determining Method", 31.25
-    )
+    """
+    This function determines which method to use
+    """
+    update_status(self, "Status: Determining Method", 31.25)
 
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
@@ -148,66 +146,24 @@ def determine_method(self):
         self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Elemental Commands":
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Ashen Commands":
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.ashen_commands.ashen_commands(self)
     elif self.method.get() == "Invite Tracker":
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.invite_tracker.invite_tracker(self)
     elif self.method.get() == "SOT Official":
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.sot_official.sot_official(self)
     elif self.method.get() == "Check Message":
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            f"Status: Method determined: {self.method.get()}",
-            37.5,
-        )
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.check_message.check_message(self)
     else:
-        UpdateStatus(
-            self.root,
-            self.log,
-            self.progressbar,
-            "Status: Unable to determine method. Please try again",
-            0,
-        )
+        update_status(self, "Status: Unable to determine method. Please try again", 0)
         self.start_button.state(["!disabled"])
         self.progressbar.config(value=0)

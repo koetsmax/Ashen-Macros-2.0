@@ -1,14 +1,20 @@
-# pylint: disable=E0401, E0402
+"""
+This module handles everything after the check message has been sent
+"""
+# pylint: disable=E0401, E0402, C0301
 import time
 import keyboard
 import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-from .functions.update_status import UpdateStatus
+from .functions.update_status import update_status
 
 
 def after_check_message(self):
+    """
+    This function makes changes to the GUI and applies commands to the buttons
+    """
     self.reason_entry.state(["disabled"])
     self.function_button.config(
         text="Neither of these apply",
@@ -24,6 +30,9 @@ def after_check_message(self):
 
 
 def unprivate_xbox(self):
+    """
+    This function sends a DM to the user to unprivate their Xbox
+    """
     switch_channel(self, self.user_id.get())
     clear_typing_bar(self)
     keyboard.write(
@@ -49,7 +58,7 @@ def unprivate_xbox(self):
     )
     keyboard.press_and_release("enter")
     time.sleep(3)
-    UpdateStatus(self.root, self.log, self.progressbar, "Sent DM to unprivate!", "")
+    update_status(self, "Sent DM to unprivate!", "")
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar(self)
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
@@ -65,6 +74,9 @@ def unprivate_xbox(self):
 
 
 def join_awr(self):
+    """
+    This function executes a command to notify the user to join the AWR
+    """
     clear_typing_bar(self)
     switch_channel(self, "#on-duty-chat")
     joinawr = ["/joinawr ", f"{self.user_id.get()}"]

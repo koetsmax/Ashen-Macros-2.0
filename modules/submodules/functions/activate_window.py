@@ -3,7 +3,7 @@
 Function that tries to activate the discord window
 """
 import win32gui
-from .update_status import UpdateStatus
+from .update_status import update_status
 
 
 def window_enumeration_handler(hwnd, top_windows):
@@ -17,13 +17,7 @@ def activate_window(self, window):
     """
     Function that tries to activate the discord window
     """
-    UpdateStatus(
-        self.root,
-        self.log,
-        self.progressbar,
-        "Status: Attempting to get Discord's attention",
-        "",
-    )
+    update_status(self, "Status: Attempting to get Discord's attention", "")
     top_windows = []
     win32gui.EnumWindows(window_enumeration_handler, top_windows)
     for i in top_windows:

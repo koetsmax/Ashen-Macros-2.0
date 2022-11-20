@@ -1,17 +1,23 @@
-# pylint: disable=E0401, E0402
+"""
+This modules handles all of the ashen commands
+"""
+# pylint: disable=E0401, E0402, W0401, W0614
 from tkinter import *
 from tkinter import ttk as tk
+import modules.submodules.start_check
 from .check_message import not_good_to_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-from .functions.update_status import UpdateStatus
-import modules.submodules.start_check
+from .functions.update_status import update_status
 
 
 def ashen_commands(self):
+    """
+    This function makes changes to the GUI and applies commands to the buttons
+    """
     self.currentstate = "AshenCommands"
-    UpdateStatus(self.root, self.log, self.progressbar, "", 56.25)
+    update_status(self, "", 56.25)
     switch_channel(self, self.channel.get())
     clear_typing_bar(self)
     search = [
@@ -20,7 +26,7 @@ def ashen_commands(self):
         f"gamertag: {self.xbox_gt.get()}",
     ]
     execute_command(self, search[0], search[1:])
-    UpdateStatus(self.root, self.log, self.progressbar, "", 62.5)
+    update_status(self, "", 62.5)
     self.start_button.state(["!disabled"])
     self.start_button.config(
         text="Continue",
@@ -35,16 +41,13 @@ def ashen_commands(self):
         text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
     )
     self.kill_button.state(["!disabled"])
-    UpdateStatus(
-        self.root,
-        self.log,
-        self.progressbar,
-        "Press Continue to... You get it",
-        "",
-    )
+    update_status(self, "Press Continue to... You get it", "")
 
 
 def needs_to_remove_friends(self):
+    """
+    This function notes the member as not good to check if they have to remove banned friends
+    """
     self.reason = StringVar(value="Needs to remove banned friends:")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
     self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
@@ -54,6 +57,9 @@ def needs_to_remove_friends(self):
 
 
 def needs_to_unprivate_xbox(self):
+    """
+    This function notes the member as not good to check if they have to unprivate their Xbox
+    """
     self.reason = StringVar(value="Needs to unprivate xbox")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
     self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))

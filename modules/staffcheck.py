@@ -1,4 +1,7 @@
-# pylint: disable=E0401, E0402, W0621
+"""
+This module is the main module of the program, initializing the GUI and the other modules.
+"""
+# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301
 from tkinter import *
 from tkinter import ttk as tk
 import configparser
@@ -7,6 +10,10 @@ from .submodules.build_example_message import build_example_message
 
 
 class StaffCheck:
+    """
+    This class is the main class of the program, initializing the GUI and the other modules.
+    """
+
     def __init__(self, root):
         self.good_window = None
         self.good_to_check_entry = None
@@ -162,6 +169,9 @@ class StaffCheck:
         self.user_id_entry.focus()
 
     def edit_good_to_check(self):
+        """
+        Edit the message that is sent when a user is good to check.
+        """
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -177,6 +187,9 @@ class StaffCheck:
         )
 
     def edit_not_good_to_check(self):
+        """
+        Edit the message that is sent when a user is not good to check.
+        """
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -192,6 +205,9 @@ class StaffCheck:
         )
 
     def edit_join_awr(self):
+        """
+        Edit the message that is sent in on duty chat when a user has been requested to join the AWR.
+        """
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -207,6 +223,9 @@ class StaffCheck:
         )
 
     def edit_unprivate_xbox(self):
+        """
+        Edit the message that is sent in on duty chat when a user has been requested to unprivate their Xbox.
+        """
         try:
             self.error_label.destroy()
         except AttributeError:
@@ -222,13 +241,23 @@ class StaffCheck:
         )
 
     def kill(self):
+        """
+        Kills the program.
+        """
         self.root.destroy()
 
     def show_help(self):
+        """
+        Show the help window.
+        """
         print("test")
 
 
 class CustomizeWindow:
+    """
+    class for the customize window
+    """
+
     def __init__(self, type_, explanation, id_, default, start_button, root, mainframe):
         def save_changes(self):
             with open("settings.ini", "w", encoding="UTF-8") as configfile:

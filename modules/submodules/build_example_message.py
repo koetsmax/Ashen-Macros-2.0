@@ -1,9 +1,19 @@
-# pylint: disable=E0401, E0402
+"""
+This module builds the customizable messages and checks if they are valid.
+"""
+# pylint: disable=E0401, E0402, W0401, W0614
 from tkinter import *
 from tkinter import ttk as tk
 
 
 def build_example_message(self, id_):
+    """
+    This module builds the customizable messages and checks if they are valid.
+
+    Args:
+        self (object): The tkinter object
+        id_ (str): The id of the message to build
+    """
     good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
     not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
