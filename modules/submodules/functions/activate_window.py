@@ -17,7 +17,11 @@ def activate_window(self, window):
     """
     Function that tries to activate the discord window
     """
-    update_status(self, "Status: Attempting to get Discord's attention", "")
+
+    try:
+        update_status(self, "Status: Attempting to get Discord's attention", "")
+    except AttributeError:
+        pass
     top_windows = []
     win32gui.EnumWindows(window_enumeration_handler, top_windows)
     for i in top_windows:

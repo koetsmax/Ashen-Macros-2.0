@@ -14,7 +14,10 @@ def clear_typing_bar(self):
     and get rid of any other prompts that might be open
     """
     activate_window(self, "discord")
-    update_status(self, "Status: Attempting to clear typing bar", "")
+    try:
+        update_status(self, "Status: Attempting to clear typing bar", "")
+    except AttributeError:
+        pass
     keyboard.press_and_release("esc")
     keyboard.press_and_release("esc")
     keyboard.press_and_release("ctrl+a")

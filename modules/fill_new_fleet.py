@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk as tk
 from submodules.functions.execute_command import execute_command
+from submodules.functions.clear_typing_bar import clear_typing_bar
 
 
 class FillNewFleet:
@@ -83,7 +84,6 @@ class FillNewFleet:
             """
             self.count += 1
             for queuepos in ship.split(","):
-
                 member = MemberInQueue(queuepos, fleet, shipnum)
                 # append member to a list
                 members_in_queue.append(member)
@@ -137,13 +137,15 @@ class FillNewFleet:
 
         for to_process in members_in_queue:
             actual_queuepos = to_process.queuepos + current_change
+            actual_queuepos = str(actual_queuepos)
             process = [
                 "/process",
                 actual_queuepos,
                 f"{to_process.fleetnum} {to_process.shipnum}",
             ]
             print(process)
-            # execute_command(self, process[0], process[1:])
+            clear_typing_bar(self)
+            execute_command(self, process[0], process[1:])
             current_change -= 1
 
 
