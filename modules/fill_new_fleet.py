@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk as tk
+from submodules.functions.execute_command import execute_command
 
 
 class FillNewFleet:
@@ -76,7 +77,7 @@ class FillNewFleet:
 
         def add_member(shipnum):
             """
-            Adds a member to the list of members.
+            Adds a member to the list of members_in_queue
 
             :param shipnum: The ship number
             """
@@ -129,7 +130,21 @@ class FillNewFleet:
         for member in members_in_queue:
             print(member.queuepos, member.fleetnum, member.shipnum)
 
-        print("Members to be processed:" + str(len(members_in_queue)))
+        print("Number of members to be processed:" + str(len(members_in_queue)))
+
+        # start processing members onto their respective ships
+        current_change = 0
+
+        for to_process in members_in_queue:
+            actual_queuepos = to_process.queuepos + current_change
+            process = [
+                "/process",
+                actual_queuepos,
+                f"{to_process.fleetnum} {to_process.shipnum}",
+            ]
+            print(process)
+            # execute_command(self, process[0], process[1:])
+            current_change -= 1
 
 
 class MemberInQueue:
