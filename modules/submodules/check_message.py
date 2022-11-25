@@ -42,7 +42,7 @@ def good_to_check(self):
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
     clear_typing_bar(self)
-    built_good_to_check_message = self.config["STAFFCHECK"]["goodtocheckmessage"]
+    built_good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
     built_good_to_check_message = built_good_to_check_message.replace(
         "userID", f"<@{self.user_id.get()}>"
     )
@@ -85,7 +85,9 @@ def build_not_good_to_check(self):
     """
     This function builds the message to send to the on-duty chat if the user is not good to check
     """
-    built_not_good_to_check_message = self.config["STAFFCHECK"]["notgoodtocheckmessage"]
+    built_not_good_to_check_message = self.config["STAFFCHECK"][
+        "not_good_to_check_message"
+    ]
     built_not_good_to_check_message = built_not_good_to_check_message.replace(
         "userID", f"<@{self.user_id.get()}>"
     )
