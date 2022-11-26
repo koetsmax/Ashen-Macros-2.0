@@ -1,4 +1,6 @@
 /.vscode
+settings.ini
+Installforge project.ifp
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

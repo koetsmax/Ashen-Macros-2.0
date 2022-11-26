@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk as tk
-from submodules.functions.execute_command import execute_command
-from submodules.functions.clear_typing_bar import clear_typing_bar
+from modules.submodules.functions.execute_command import execute_command
+from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 
 
 class FillNewFleet:

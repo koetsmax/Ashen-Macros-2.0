@@ -35,6 +35,14 @@ class Launcher:
         )
         self.staffcheck_button.grid(row=1, sticky=(E, W))
 
+        # add fill_new_fleet module to the launcher
+        self.fillfleet_button = tk.Button(
+            self.mainframe,
+            text="Fill new Fleet script",
+            command=self.start_fill_new_fleet,
+        )
+        self.fillfleet_button.grid(row=2, sticky=(E, W))
+
         self.check_for_updates_button = tk.Button(
             self.mainframe,
             text="Check For Updates!!!",
@@ -56,7 +64,16 @@ class Launcher:
         Starts the staffcheck script.
         """
         root.destroy()
-        runpy.run_module("modules.staffcheck", run_name="__main__")
+        # runpy.run_module("modules.staffcheck", run_name="__main__")
+        import modules.staffcheck
+
+    def start_fill_new_fleet(self):
+        """
+        Starts the fill_new_fleet script.
+        """
+        root.destroy()
+        # runpy.run_module("modules.fill_new_fleet", run_name="__main__")
+        import modules.fill_new_fleet
 
     def kill(self):
         """
@@ -110,14 +127,19 @@ class Launcher:
         """
         Commences the update.
         """
-        path = os.getcwd()
+
+        url = "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/0.9.0/testinstaller.exe"
+        # got to url and download the exe
+
+        # run the exe
+        # delete the exe
+        # run the launcher again
         # Create the config file for the updater
-        with open("config.yml", "w", encoding="UTF-8") as updaterfile:
-            updaterfile.write(
-                "{\n  appDir: %s,\n  appExecName: foo.py,\n  appIdentifier: bar.py,\n  appRepo: https://github.com/koetsmax/Ashen-Macros-2.0,\n  backupOn: false,\n  createLaunchScriptOn: false,\n}"
-                % (path)
-            )
-        print(os.getcwd())
+
+        download = requests.get(url, allow_redirects=True)
+
+        open("testinstaller.exe", "wb").write(download.content)
+        os.startfile("testinstaller.exe")
 
 
 root = Tk()
