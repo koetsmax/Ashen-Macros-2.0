@@ -1,7 +1,7 @@
 """
 Creates the launcher window and checks for updates.
 """
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, C0209, C0301
+# pylint: disable=E0401, E0402, W0621, W0401, W0614, C0209, C0301, W0611, W0201, C0415
 import os
 from tkinter import *
 from tkinter import ttk as tk
@@ -37,7 +37,7 @@ class Launcher:
         # add fill_new_fleet module to the launcher
         self.fillfleet_button = tk.Button(
             self.mainframe,
-            text="Fill new Fleet script < this hasn't been tested yet",
+            text="Fill new Fleet script",
             command=self.start_fill_new_fleet,
         )
         self.fillfleet_button.grid(row=2, sticky=(E, W))
@@ -78,6 +78,31 @@ class Launcher:
         """
         root.destroy()
 
+    def update_window(self, text, update_is_available):
+        """
+        Creates the update window.
+        """
+        updatewindow = Toplevel(root)
+        root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
+        tk.Label(updatewindow, text=text).grid(column=1, row=1, sticky=E)
+
+        if update_is_available:
+            yes_button = tk.Button(
+                updatewindow, text="Yes", command=self.commence_update
+            )
+            yes_button.grid(column=1, row=2, sticky=W)
+            also_yes_button = tk.Button(
+                updatewindow, text="For sure", command=self.commence_update
+            )
+            also_yes_button.grid(column=1, row=2, sticky=E)
+        else:
+            yes_button = tk.Button(
+                updatewindow, text="Okay", command=updatewindow.destroy
+            )
+            yes_button.grid(column=1, row=2, sticky=W)
+        for child in updatewindow.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
     def check_for_updates(self):
         """
         Checks for updates.
@@ -98,27 +123,16 @@ class Launcher:
             self.online_version = request_dictionary["name"]
             # Compare the versions
             if version.parse(local_version) < version.parse(self.online_version):
-                print("There is an update available")
-                updatewindow = Toplevel(root)
-                root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
-                tk.Label(
-                    updatewindow,
-                    text="There is an update available.\nWould you like to download it?",
-                ).grid(column=1, row=1, sticky=E)
-                yes_button = tk.Button(
-                    updatewindow, text="Yes", command=self.commence_update
+                self.update_window(
+                    "There is an update available.\nWould you like to download it?",
+                    True,
                 )
-                yes_button.grid(column=1, row=2, sticky=W)
-                also_yes_button = tk.Button(
-                    updatewindow, text="For sure", command=self.commence_update
-                )
-                also_yes_button.grid(column=1, row=2, sticky=E)
-                for child in updatewindow.winfo_children():
-                    child.grid_configure(padx=5, pady=5)
             elif version.parse(local_version) == version.parse(self.online_version):
-                print("You are currently on the most up-to-date version")
+                self.update_window(
+                    "You are currently on the most up-to-date version.", False
+                )
             elif version.parse(local_version) > version.parse(self.online_version):
-                print("You are currently on the dev version")
+                self.update_window("You are currently on the dev version", False)
 
     def commence_update(self):
         """

@@ -1,4 +1,8 @@
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301
+"""
+This module fills a nmew fleet with the specified queue members.
+"""
+
+# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, W0201
 from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.execute_command import execute_command
@@ -53,6 +57,13 @@ class FillNewFleet:
         self.ship_5 = StringVar()
         self.ship_5_entry = tk.Entry(self.mainframe, width=19, textvariable=self.ship_5)
         self.ship_5_entry.grid(column=2, row=6, sticky=(W, E))
+
+        # add a label
+
+        tk.Label(
+            self.mainframe,
+            text="Make sure everyone is staffchecked before\npressing start or you will have a bad time",
+        ).grid(column=1, row=7, columnspan=5, sticky=(W, E))
 
         # Create the buttons
         self.kill_button = tk.Button(
