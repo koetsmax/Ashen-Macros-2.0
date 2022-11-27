@@ -1,6 +1,7 @@
 /.vscode
 settings.ini
 Installforge project.ifp
+Ashen.Macro.Installer.exe
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -5,7 +5,6 @@ Creates the launcher window and checks for updates.
 import os
 from tkinter import *
 from tkinter import ttk as tk
-import runpy
 import requests
 from packaging import version
 
@@ -38,7 +37,7 @@ class Launcher:
         # add fill_new_fleet module to the launcher
         self.fillfleet_button = tk.Button(
             self.mainframe,
-            text="Fill new Fleet script",
+            text="Fill new Fleet script < this hasn't been tested yet",
             command=self.start_fill_new_fleet,
         )
         self.fillfleet_button.grid(row=2, sticky=(E, W))
@@ -64,7 +63,6 @@ class Launcher:
         Starts the staffcheck script.
         """
         root.destroy()
-        # runpy.run_module("modules.staffcheck", run_name="__main__")
         import modules.staffcheck
 
     def start_fill_new_fleet(self):
@@ -72,7 +70,6 @@ class Launcher:
         Starts the fill_new_fleet script.
         """
         root.destroy()
-        # runpy.run_module("modules.fill_new_fleet", run_name="__main__")
         import modules.fill_new_fleet
 
     def kill(self):
@@ -98,9 +95,9 @@ class Launcher:
             request_dictionary = request.json()
             with open("version", "r", encoding="UTF-8") as versionfile:
                 local_version = versionfile.read()
-            online_version = request_dictionary["name"]
+            self.online_version = request_dictionary["name"]
             # Compare the versions
-            if version.parse(local_version) < version.parse(online_version):
+            if version.parse(local_version) < version.parse(self.online_version):
                 print("There is an update available")
                 updatewindow = Toplevel(root)
                 root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
@@ -118,9 +115,9 @@ class Launcher:
                 also_yes_button.grid(column=1, row=2, sticky=E)
                 for child in updatewindow.winfo_children():
                     child.grid_configure(padx=5, pady=5)
-            elif version.parse(local_version) == version.parse(online_version):
+            elif version.parse(local_version) == version.parse(self.online_version):
                 print("You are currently on the most up-to-date version")
-            elif version.parse(local_version) > version.parse(online_version):
+            elif version.parse(local_version) > version.parse(self.online_version):
                 print("You are currently on the dev version")
 
     def commence_update(self):
@@ -128,18 +125,19 @@ class Launcher:
         Commences the update.
         """
 
-        url = "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/0.9.0/testinstaller.exe"
-        # got to url and download the exe
-
+        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"
+        print(url)
+        # go to url and download the exe
+        #
         # run the exe
-        # delete the exe
+        # delete the exe as administrator
         # run the launcher again
         # Create the config file for the updater
 
-        download = requests.get(url, allow_redirects=True)
-
-        open("testinstaller.exe", "wb").write(download.content)
-        os.startfile("testinstaller.exe")
+        download = requests.get(url, allow_redirects=True, timeout=30)
+        open("Ashen.Macro.Installer.exe", "wb").write(download.content)
+        os.startfile("Ashen.Macro.Installer.exe")
+        self.root.destroy()
 
 
 root = Tk()
