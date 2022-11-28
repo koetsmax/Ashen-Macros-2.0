@@ -7,7 +7,7 @@ from tkinter import ttk as tk
 import configparser
 import modules.submodules.start_check
 from .submodules.build_example_message import build_example_message
-import runpy
+import launcher
 
 
 class StaffCheck:
@@ -246,8 +246,7 @@ class StaffCheck:
         Goes back to the launcher.
         """
         self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        launcher.start()
 
     def show_help(self):
         """
@@ -322,7 +321,8 @@ class CustomizeWindow:
         self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
 
 
-root = Tk()
-root.eval("tk::PlaceWindow . center")
-StaffCheck(root)
-root.mainloop()
+def start():
+    root = Tk()
+    root.eval("tk::PlaceWindow . center")
+    StaffCheck(root)
+    root.mainloop()
