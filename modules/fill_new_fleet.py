@@ -7,6 +7,7 @@ from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
+import runpy
 
 
 class FillNewFleet:
@@ -67,7 +68,7 @@ class FillNewFleet:
 
         # Create the buttons
         self.kill_button = tk.Button(
-            self.mainframe, text="Kill Program", command=self.kill
+            self.mainframe, text="Back to launcher", command=self.back
         )
         self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
 
@@ -77,11 +78,13 @@ class FillNewFleet:
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-    def kill(self):
+    def back(self):
         """
-        Kills the program.
+        Goes back to the launcher.
         """
         self.root.destroy()
+        # run the launcher using runpy
+        runpy.run_module("launcher", run_name="__main__")
 
     def start(self):
         """

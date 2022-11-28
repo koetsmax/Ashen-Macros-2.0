@@ -89,7 +89,7 @@ def continue_to_next(self):
     self.start_button.state(["disabled"])
     self.function_button.state(["disabled"])
     self.function_button.config(text="Cool Button", command=None)
-    self.kill_button.config(text="Kill Program", command=self.kill)
+    self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     if self.method.get() != "All Commands" or self.currentstate == "Done":
         update_status(self, "Check Completed!!!", 100)

@@ -7,6 +7,7 @@ from tkinter import *
 from tkinter import ttk as tk
 import requests
 from packaging import version
+import runpy
 
 
 class Launcher:
@@ -63,14 +64,16 @@ class Launcher:
         Starts the staffcheck script.
         """
         root.destroy()
-        import modules.staffcheck
+        # run the staffcheck module using runpy
+        runpy.run_module("modules.staffcheck")
 
     def start_fill_new_fleet(self):
         """
         Starts the fill_new_fleet script.
         """
         root.destroy()
-        import modules.fill_new_fleet
+        # run the fill_new_fleet module using runpy
+        runpy.run_module("modules.fill_new_fleet")
 
     def kill(self):
         """

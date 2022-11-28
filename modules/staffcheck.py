@@ -7,6 +7,7 @@ from tkinter import ttk as tk
 import configparser
 import modules.submodules.start_check
 from .submodules.build_example_message import build_example_message
+import runpy
 
 
 class StaffCheck:
@@ -150,7 +151,7 @@ class StaffCheck:
         self.function_button.state(["disabled"])
 
         self.kill_button = tk.Button(
-            self.mainframe, text="Kill Program", command=self.kill
+            self.mainframe, text="Back to launcher", command=self.back
         )
         self.kill_button.grid(column=1, row=6, sticky=(W, E))
 
@@ -240,11 +241,13 @@ class StaffCheck:
             self.mainframe,
         )
 
-    def kill(self):
+    def back(self):
         """
-        Kills the program.
+        Goes back to the launcher.
         """
         self.root.destroy()
+        # run the launcher using runpy
+        runpy.run_module("launcher", run_name="__main__")
 
     def show_help(self):
         """
