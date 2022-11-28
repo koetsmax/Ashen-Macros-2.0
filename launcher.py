@@ -46,7 +46,7 @@ class Launcher:
         self.check_for_updates_button = tk.Button(
             self.mainframe,
             text="Check For Updates!!!",
-            command=self.check_for_updates,
+            command=lambda: self.check_for_updates(False),
         )
         self.check_for_updates_button.grid(row=79, sticky=(W, E))
 
@@ -57,7 +57,7 @@ class Launcher:
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        print(os.getcwd())
+        self.check_for_updates(True)
 
     def start_staffcheck(self):
         """
@@ -106,7 +106,7 @@ class Launcher:
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-    def check_for_updates(self):
+    def check_for_updates(self, silent):
         """
         Checks for updates.
         """
@@ -131,11 +131,13 @@ class Launcher:
                     True,
                 )
             elif version.parse(local_version) == version.parse(self.online_version):
-                self.update_window(
-                    "You are currently on the most up-to-date version.", False
-                )
+                if not silent:
+                    self.update_window(
+                        "You are currently on the most up-to-date version.", False
+                    )
             elif version.parse(local_version) > version.parse(self.online_version):
-                self.update_window("You are currently on the dev version", False)
+                if not silent:
+                    self.update_window("You are currently on the dev version", False)
 
     def commence_update(self):
         """
