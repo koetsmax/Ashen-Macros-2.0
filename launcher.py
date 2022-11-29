@@ -58,6 +58,15 @@ class Launcher:
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
+
+        # add a small text in the bottom right of the launcher window to show the version
+        with open("version", "r", encoding="UTF-8") as versionfile:
+            local_version = versionfile.read()
+        self.version_label = tk.Label(
+            self.mainframe, text=f"Version: {local_version}", font=("arial", 8)
+        )
+        self.version_label.grid(row=81, sticky=E)
+
         self.check_for_updates(True)
 
     def start_staffcheck(self):
@@ -65,14 +74,14 @@ class Launcher:
         Starts the staffcheck script.
         """
         root.destroy()
-        staffcheck.start()
+        staffcheck.start_script()
 
     def start_fill_new_fleet(self):
         """
         Starts the fill_new_fleet script.
         """
         root.destroy()
-        fill_new_fleet.start()
+        fill_new_fleet.start_script()
 
     def kill(self):
         """
@@ -158,14 +167,8 @@ class Launcher:
         self.root.destroy()
 
 
-def start():
-    root = Tk()
-    root.eval("tk::PlaceWindow . center")
-    Launcher(root)
-    root.mainloop()
-
-
 if __name__ == "__main__":
+    print("main")
     root = Tk()
     root.eval("tk::PlaceWindow . center")
     Launcher(root)

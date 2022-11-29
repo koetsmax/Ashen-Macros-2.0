@@ -7,6 +7,7 @@ from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
+import runpy
 import launcher
 
 
@@ -83,11 +84,12 @@ class FillNewFleet:
         Goes back to the launcher.
         """
         self.root.destroy()
-        launcher.start()
+        # run the launcher using runpy
+        runpy.run_module("launcher", run_name="__main__")
 
     def start(self):
         """
-        Starts the staffcheck script.
+        Starts the fill_new_fleet script.
         """
 
         def add_member(shipnum):
@@ -174,7 +176,7 @@ class MemberInQueue:
         self.shipnum = shipnum
 
 
-def start():
+def start_script():
     root = Tk()
     root.eval("tk::PlaceWindow . center")
     FillNewFleet(root)
