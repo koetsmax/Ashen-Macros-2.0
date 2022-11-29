@@ -9,6 +9,7 @@ import requests
 from packaging import version
 import modules.staffcheck as staffcheck
 import modules.fill_new_fleet as fill_new_fleet
+from pyuac import runAsAdmin, isUserAdmin
 
 
 class Launcher:
@@ -118,6 +119,7 @@ class Launcher:
         """
         Checks for updates.
         """
+
         # Request the latest version from the github api
         request = requests.get(
             "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
@@ -134,10 +136,16 @@ class Launcher:
             self.online_version = request_dictionary["name"]
             # Compare the versions
             if version.parse(local_version) < version.parse(self.online_version):
-                self.update_window(
-                    "There is an update available.\nWould you like to download it?",
-                    True,
-                )
+                if isUserAdmin():
+                    # Code of your program here
+                    self.update_window(
+                        "There is an update available.\nWould you like to download it?",
+                        True,
+                    )
+                else:
+                    # Re-run the program with admin rights
+                    self.root.destroy()
+                    runAsAdmin()
             elif version.parse(local_version) == version.parse(self.online_version):
                 if not silent:
                     self.update_window(
