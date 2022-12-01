@@ -9,6 +9,8 @@ import requests
 from packaging import version
 import modules.staffcheck as staffcheck
 import modules.fill_new_fleet as fill_new_fleet
+import modules.add_to_ban_list as add_to_ban_list
+import modules.hammertime_generator as hammertime_generator
 from pyuac import runAsAdmin, isUserAdmin
 
 
@@ -44,6 +46,20 @@ class Launcher:
             command=self.start_fill_new_fleet,
         )
         self.fillfleet_button.grid(row=2, sticky=(E, W))
+
+        self.fillfleet_button = tk.Button(
+            self.mainframe,
+            text="Add to ban list script",
+            command=self.start_add_to_ban_list,
+        )
+        self.fillfleet_button.grid(row=3, sticky=(E, W))
+
+        self.fillfleet_button = tk.Button(
+            self.mainframe,
+            text="Discord timestamp generator",
+            command=self.start_hammertime_generator,
+        )
+        self.fillfleet_button.grid(row=4, sticky=(E, W))
 
         self.check_for_updates_button = tk.Button(
             self.mainframe,
@@ -83,6 +99,20 @@ class Launcher:
         """
         root.destroy()
         fill_new_fleet.start_script()
+
+    def start_add_to_ban_list(self):
+        """
+        Starts the fill_new_fleet script.
+        """
+        root.destroy()
+        add_to_ban_list.start_script()
+
+    def start_hammertime_generator(self):
+        """
+        Starts the fill_new_fleet script.
+        """
+        root.destroy()
+        hammertime_generator.start_script()
 
     def kill(self):
         """
