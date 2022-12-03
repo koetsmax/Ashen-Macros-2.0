@@ -91,6 +91,7 @@ class AddToBanList:
         webbrowser.open(url, new=2)
         time.sleep(5)
         keyboard.press_and_release("ctrl + down")
+        time.sleep(0.1)
         keyboard.press_and_release("down")
         keyboard.write(self.discord_name.get())
         time.sleep(0.5)
