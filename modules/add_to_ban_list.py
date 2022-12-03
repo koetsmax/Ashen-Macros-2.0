@@ -89,9 +89,9 @@ class AddToBanList:
         url = "https://docs.google.com/spreadsheets/d/1V5Z61CKmJoNZn7L3PWziJdbHRVzYuxaZU4qTOIRHfWg/edit#gid=125271616"
         # open the url in the default browser
         webbrowser.open(url, new=2)
-        time.sleep(10)
+        time.sleep(15)
         keyboard.press_and_release("ctrl + down")
-        time.sleep(1)
+        time.sleep(2)
         keyboard.press_and_release("down")
         keyboard.write(self.discord_name.get())
         time.sleep(0.5)
