@@ -66,7 +66,7 @@ class Warning:
         )
         self.custom_reason_entry.grid(column=2, row=4, sticky=(W, E))
 
-        # create a checkbox
+        # create a checkbox for loghistory
         self.check = BooleanVar(value=False)
         self.check_button = tk.Checkbutton(
             self.mainframe,
@@ -76,6 +76,18 @@ class Warning:
             offvalue=0,
         )
         self.check_button.grid(columnspan=2, column=1, row=5, sticky=W)
+
+        # create a checkbox for a nodm option
+        # create a checkbox
+        self.nodm = BooleanVar(value=False)
+        self.nodm_checkbox = tk.Checkbutton(
+            self.mainframe,
+            variable=self.nodm,
+            text="Add warning as nodm",
+            onvalue=1,
+            offvalue=0,
+        )
+        self.nodm_checkbox.grid(columnspan=2, column=1, row=6, sticky=W)
 
         # Create the buttons
         self.kill_button = tk.Button(
@@ -111,9 +123,12 @@ class Warning:
                 reason = "**Rule #5:** You must give a warning before leaving a ship using `!leave` 10 minutes in advance."
             elif self.reason.get() == "Alt+F4 warning":
                 reason = "**Rule #9:** You must gracefully leave the game, Use `LEAVE GAME` *NOT* ALT+F4 or force killing your game. Failure to do so will lock new crew members out of the ship for 10 minutes."
-
-        add_warn = ["/warn", self.user_id.get(), f"reason: {reason}"]
-        execute_command(self, add_warn[0], add_warn[1:])
+        if self.nodm.get() != 1:
+            add_warn = ["/warn", self.user_id.get(), f"reason: {reason}"]
+            execute_command(self, add_warn[0], add_warn[1:])
+        else:
+            add_warn = ["/warn", self.user_id.get(), f"reason: {reason}", "no_dm: Yes"]
+            execute_command(self, add_warn[0], add_warn[1:])
 
     def stop(self):
         """
