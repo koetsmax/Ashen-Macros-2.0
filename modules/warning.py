@@ -101,6 +101,9 @@ class Warning:
         """
         Adds the warning to the user.
         """
+        if self.check.get() == 1:
+            self.stop_button.state(["disabled"])
+        clear_typing_bar(self)
         if self.custom_reason.get() != "":
             reason = self.custom_reason.get()
         else:
