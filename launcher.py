@@ -11,6 +11,7 @@ import modules.staffcheck as staffcheck
 import modules.fill_new_fleet as fill_new_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
+import modules.warning as warning
 from pyuac import runAsAdmin, isUserAdmin
 
 
@@ -39,27 +40,34 @@ class Launcher:
         )
         self.staffcheck_button.grid(row=1, sticky=(E, W))
 
+        self.add_warning_button = tk.Button(
+            self.mainframe,
+            text="Add warning script",
+            command=self.start_warning,
+        )
+        self.add_warning_button.grid(row=2, sticky=(E, W))
+
         # add fill_new_fleet module to the launcher
         self.fillfleet_button = tk.Button(
             self.mainframe,
             text="Fill new Fleet script",
             command=self.start_fill_new_fleet,
         )
-        self.fillfleet_button.grid(row=2, sticky=(E, W))
+        self.fillfleet_button.grid(row=3, sticky=(E, W))
 
         self.add_to_ban_list_button = tk.Button(
             self.mainframe,
             text="Add to ban list script",
             command=self.start_add_to_ban_list,
         )
-        self.add_to_ban_list_button.grid(row=3, sticky=(E, W))
+        self.add_to_ban_list_button.grid(row=4, sticky=(E, W))
 
         # self.discord_timestamp_generator_button = tk.Button(
         #     self.mainframe,
         #     text="Discord timestamp generator",
         #     command=self.start_hammertime_generator,
         # )
-        # self.discord_timestamp_generator_button.grid(row=4, sticky=(E, W))
+        # self.discord_timestamp_generator_button.grid(row=5, sticky=(E, W))
 
         self.check_for_updates_button = tk.Button(
             self.mainframe,
@@ -113,6 +121,13 @@ class Launcher:
         """
         root.destroy()
         hammertime_generator.start_script()
+
+    def start_warning(self):
+        """
+        Starts the warning script.
+        """
+        root.destroy()
+        warning.start_script()
 
     def kill(self):
         """

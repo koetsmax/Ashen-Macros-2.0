@@ -5,8 +5,6 @@ This module adds the specified member to the ban list.
 # pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, W0201
 from tkinter import *
 from tkinter import ttk as tk
-from modules.submodules.functions.execute_command import execute_command
-from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import runpy
 import webbrowser
 import keyboard

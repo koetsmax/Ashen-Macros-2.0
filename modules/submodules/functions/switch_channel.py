@@ -13,11 +13,19 @@ def switch_channel(self, channel):
     This module attempts to switch between discord channels
     """
     clear_typing_bar(self)
-    update_status(self, f"Status: Attempting to switch channel to {channel}", "")
+    try:
+        update_status(self, f"Status: Attempting to switch channel to {channel}", "")
+    except AttributeError:
+        pass
     keyboard.press_and_release("ctrl+k")
     time.sleep(0.1)
     keyboard.write(channel)
     time.sleep(0.6)
     keyboard.press_and_release("enter")
-    update_status(self, "Status: sleeping for 2 seconds so Discord can catch up", "")
+    try:
+        update_status(
+            self, "Status: sleeping for 2 seconds so Discord can catch up", ""
+        )
+    except AttributeError:
+        pass
     time.sleep(2)
