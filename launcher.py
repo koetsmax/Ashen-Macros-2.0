@@ -47,19 +47,19 @@ class Launcher:
         )
         self.fillfleet_button.grid(row=2, sticky=(E, W))
 
-        self.fillfleet_button = tk.Button(
+        self.add_to_ban_list_button = tk.Button(
             self.mainframe,
             text="Add to ban list script",
             command=self.start_add_to_ban_list,
         )
-        self.fillfleet_button.grid(row=3, sticky=(E, W))
+        self.add_to_ban_list_button.grid(row=3, sticky=(E, W))
 
-        self.fillfleet_button = tk.Button(
-            self.mainframe,
-            text="Discord timestamp generator",
-            command=self.start_hammertime_generator,
-        )
-        self.fillfleet_button.grid(row=4, sticky=(E, W))
+        # self.discord_timestamp_generator_button = tk.Button(
+        #     self.mainframe,
+        #     text="Discord timestamp generator",
+        #     command=self.start_hammertime_generator,
+        # )
+        # self.discord_timestamp_generator_button.grid(row=4, sticky=(E, W))
 
         self.check_for_updates_button = tk.Button(
             self.mainframe,

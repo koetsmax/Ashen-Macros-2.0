@@ -6,8 +6,8 @@ This module adds the specified member to the ban list.
 from tkinter import *
 from tkinter import ttk as tk
 import runpy
-import launcher
 import time
+import launcher
 
 
 class HammertimeGenerator:
