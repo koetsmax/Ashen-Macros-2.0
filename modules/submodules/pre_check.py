@@ -44,9 +44,7 @@ def search_gamertag(self):
     update_status(self, "Status: Done searching through on duty chat", 25)
     self.start_button.config(
         text="Continue",
-        command=lambda: modules.submodules.start_check.determine_method.determine_method(
-            self
-        ),
+        command=lambda: modules.submodules.start_check.determine_method(self),
     )
     self.start_button.state(["!disabled"])
     update_status(self, "Press Continue to well... continue... Duhh", "")
