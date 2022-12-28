@@ -59,6 +59,10 @@ class StaffCheck:
             self.not_good_to_check_message = self.config["STAFFCHECK"][
                 "not_good_to_check_message"
             ]
+            self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
+            self.unprivate_xbox_message = self.config["STAFFCHECK"][
+                "unprivate_xbox_message"
+            ]
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 

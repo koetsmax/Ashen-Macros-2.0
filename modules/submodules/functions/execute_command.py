@@ -30,9 +30,9 @@ def execute_command(self, command, subcommands):
     keyboard.press_and_release("tab")
     for subcommand in subcommands:
         keyboard.write(subcommand)
-        time.sleep(0.35)
+        time.sleep(0.4)
         keyboard.press_and_release("tab")
-    time.sleep(0.35)
+    time.sleep(0.4)
     keyboard.press_and_release("enter")
     try:
         update_status(self, f"Status: Executed command: {command}", "")

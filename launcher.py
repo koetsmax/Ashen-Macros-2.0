@@ -62,12 +62,12 @@ class Launcher:
         )
         self.add_to_ban_list_button.grid(row=4, sticky=(E, W))
 
-        # self.discord_timestamp_generator_button = tk.Button(
-        #     self.mainframe,
-        #     text="Discord timestamp generator",
-        #     command=self.start_hammertime_generator,
-        # )
-        # self.discord_timestamp_generator_button.grid(row=5, sticky=(E, W))
+        self.discord_timestamp_generator_button = tk.Button(
+            self.mainframe,
+            text="Discord timestamp generator",
+            command=self.start_hammertime_generator,
+        )
+        self.discord_timestamp_generator_button.grid(row=5, sticky=(E, W))
 
         self.check_for_updates_button = tk.Button(
             self.mainframe,

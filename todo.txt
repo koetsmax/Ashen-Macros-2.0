@@ -1,1 +1,3 @@
 https://trello.com/b/FbR1QUIm/ashen-macros
+
+reinit config after changes are made
