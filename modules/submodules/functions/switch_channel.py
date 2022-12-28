@@ -18,9 +18,9 @@ def switch_channel(self, channel):
     except AttributeError:
         pass
     keyboard.press_and_release("ctrl+k")
-    time.sleep(0.1)
+    time.sleep(0.18)
     keyboard.write(channel)
-    time.sleep(0.6)
+    time.sleep(0.8)
     keyboard.press_and_release("enter")
     try:
         update_status(

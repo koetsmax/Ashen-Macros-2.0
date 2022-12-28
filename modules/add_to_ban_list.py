@@ -12,6 +12,7 @@ import keyboard
 import time
 import launcher
 import configparser
+from ttkwidgets import tooltips
 
 
 class AddToBanList:
@@ -28,7 +29,7 @@ class AddToBanList:
             self.config.read("settings.ini")
             self.delay = self.config["ADD_TO_BAN_LIST"]["delay"]
         except KeyError:
-            self.config["ADD_TO_BAN_LIST"] = {"delay": 8}
+            self.config["ADD_TO_BAN_LIST"] = {"delay": "15"}
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
@@ -40,7 +41,16 @@ class AddToBanList:
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 
-        # read the INI file
+        # add a menu bar
+
+        menubar = Menu(self.root)
+        self.root["menu"] = menubar
+
+        self.menu_settings = Menu(menubar)
+
+        menubar.add_cascade(menu=self.menu_settings, label="Settings")
+
+        self.menu_settings.add_command(label="Change delay", command=self.change_delay)
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
@@ -161,6 +171,12 @@ class AddToBanList:
         for child in self.obsidian.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
+    def change_delay(self, *args):
+        """
+        Changes the delay between messages.
+        """
+        SettingsWindow("15", self.root, self.mainframe)
+
     def back(self):
         """
         Goes back to the launcher.
@@ -280,6 +296,61 @@ class AddToBanList:
 
             # Return the extracted information as a tuple
         return gamertag, user_id, discord_tag, reason
+
+
+class SettingsWindow:
+    """
+    class for the customize window
+    """
+
+    def __init__(self, default, root, mainframe):
+        def save_changes(self):
+            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                try:
+                    self.config["ADD_TO_BAN_LIST"]["delay"] = self.message_entry.get()
+                except AttributeError:
+                    pass
+                self.config.write(configfile)
+
+        def reset_to_default(self):
+            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                self.config["ADD_TO_BAN_LIST"]["delay"] = default
+                self.config.write(configfile)
+                self.message.set(default)
+
+        self.mainframe = mainframe
+        self.root = root
+        self.config = configparser.ConfigParser()
+        self.config.read("settings.ini")
+        self.customize_window = Toplevel()
+        self.customize_window.title("Settings")
+        explanation_label = tk.Label(self.customize_window, text="Customize the delay:")
+        explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
+
+        self.message = StringVar(value=self.config["ADD_TO_BAN_LIST"]["delay"])
+        self.message_entry = tk.Entry(
+            self.customize_window, width=75, textvariable=self.message
+        )
+        self.message_entry.grid(column=1, row=4, sticky=(E, W))
+
+        self.save_button = tk.Button(
+            self.customize_window,
+            text="Save Changes!",
+            command=lambda: save_changes(self),
+        )
+        self.save_button.grid(column=1, row=7, sticky=W)
+
+        self.reset_button = tk.Button(
+            self.customize_window,
+            text="Reset To Default!",
+            command=lambda: reset_to_default(self),
+        )
+        self.reset_button.grid(column=1, row=7, sticky=E)
+
+        for child in self.customize_window.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
+        self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
 
 
 def start_script():
