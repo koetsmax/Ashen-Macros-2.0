@@ -257,7 +257,7 @@ class AddToBanList:
             parts = ban.split("-")
 
             # Extract the gamertag and Discord tag
-            username = "N/A"
+            gamertag = "N/A"
             discord_tag = "N/A"
             gamertag = (
                 parts[0].split(":")[1].strip()
@@ -325,7 +325,10 @@ class SettingsWindow:
         self.config.read("settings.ini")
         self.customize_window = Toplevel()
         self.customize_window.title("Settings")
-        explanation_label = tk.Label(self.customize_window, text="Customize the delay:")
+        explanation_label = tk.Label(
+            self.customize_window,
+            text="Customize the delay between the program launching after the browser is opened in seconds:",
+        )
         explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
 
         self.message = StringVar(value=self.config["ADD_TO_BAN_LIST"]["delay"])
