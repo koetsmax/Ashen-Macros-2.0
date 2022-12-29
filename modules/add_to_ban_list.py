@@ -81,6 +81,12 @@ class AddToBanList:
         )
         self.ban_entry_entry.grid(column=2, row=1, sticky=(W, E))
 
+        self.explanation_label = tk.Label(
+            self.requiem,
+            text="Allows multiple bans seperated by a comma\nExample: 123456789,987654321",
+        )
+        self.explanation_label.grid(columnspan=6, row=2, sticky=(W, E))
+
         self.start_button = tk.Button(self.requiem, text="Submit", command=self.start)
         self.start_button.grid(row=79, columnspan=5, sticky=(W, E))
 
