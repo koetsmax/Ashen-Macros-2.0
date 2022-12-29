@@ -176,7 +176,7 @@ class AddToBanList:
         for child in self.obsidian.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-    def change_delay(self, *args):
+    def change_delay(self):
         """
         Changes the delay between messages.
         """
