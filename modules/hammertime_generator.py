@@ -52,7 +52,7 @@ class HammertimeGenerator:
 
         tk.Label(self.mainframe, text="Show:").grid(column=1, row=1, sticky=E)
         self.method = StringVar(
-            value=f'1. {time.strftime("%m/%d/%Y", time.localtime(time.time()))}'
+            value=f'{time.strftime("%m/%d/%Y", time.localtime(time.time()))}'
         )
         self.method_combo_box = tk.Combobox(self.mainframe, textvariable=self.method)
         self.method_combo_box.grid(column=2, row=1, sticky=(W, E))
