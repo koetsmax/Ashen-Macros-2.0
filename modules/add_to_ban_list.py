@@ -12,7 +12,6 @@ import keyboard
 import time
 import launcher
 import configparser
-from ttkwidgets import tooltips
 
 
 class AddToBanList:
@@ -258,6 +257,8 @@ class AddToBanList:
             parts = ban.split("-")
 
             # Extract the gamertag and Discord tag
+            username = "N/A"
+            discord_tag = "N/A"
             gamertag = (
                 parts[0].split(":")[1].strip()
                 if parts[0].split(":")[1].strip().count("?") < 3

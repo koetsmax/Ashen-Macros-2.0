@@ -17,7 +17,7 @@ class HammertimeGenerator:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("Add To Ban List")
+        self.root.title("Timestamp generator")
         self.root.option_add("*tearOff", FALSE)
 
         # Create the menu
