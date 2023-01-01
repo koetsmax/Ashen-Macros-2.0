@@ -95,6 +95,8 @@ class AddToBanList:
         )
         self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
 
+        self.start_button.state(["disabled"])
+
         for child in self.requiem.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
