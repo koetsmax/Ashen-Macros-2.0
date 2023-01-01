@@ -106,8 +106,8 @@ class AshenQueue:
     #     self.captaincy = captaincy
     #     pass
     def index_queue(self, x, y, list):
-        queuemessage = open("queue.txt", "r")
-        queuemessagelines = queuemessage.readlines()
+        with open("queue.txt", "r", encoding="UTF-8") as queuemessage:
+            queuemessagelines = queuemessage.readlines()
         for line in queuemessagelines:
             # remove everything in between the : and -- and remove the : and -- from the line
             part1 = line.split(":")
@@ -295,7 +295,7 @@ class AshenQueue:
     def check_activity(self, activity1, activity2, unique_elements):
         print(self.allships)
         for ship in self.allships:
-            if activity1 not in ship or activity2 not in ship:
+            if activity1 not in ship or activity2 not in ship or "voyage" in ship:
                 if unique_elements != []:
                     print(
                         f"there is someone in queue for {activity2} which does not exist"
@@ -338,3 +338,20 @@ root = Tk()
 root.eval("tk::PlaceWindow . center")
 AshenQueue(root)
 root.mainloop()
+
+# todo:
+# test current state
+# possibly fix check_activity function
+# get the gui looking not shit
+# replace print statements with gui labels
+# sort the queue
+# add a button for processing
+# create some sort of other decentralized gui that can run basically all commands
+
+
+# create semi-auto staffchecker. runs staffchecked queue search and grab data from that
+# to grab data grab everything and only keep data inside brackets
+# then do @data in public channel to get user mention
+# then copy that to get userid
+# then do some magic to grab the xbox
+# do staffcheck procedure
