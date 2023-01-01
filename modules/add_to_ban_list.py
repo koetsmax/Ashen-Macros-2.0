@@ -95,8 +95,6 @@ class AddToBanList:
         )
         self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
 
-        self.start_button.state(["disabled"])
-
         for child in self.requiem.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
@@ -278,8 +276,8 @@ class AddToBanList:
 
             # Extract the user ID using a regular expression
             user_id_pattern = r"\d{17,19}"
-            user_id_match = re.search(user_id_pattern, string)
-            user_id = user_id_match.group() if user_id_match else "N/A"
+            user_id_matches = re.findall(user_id_pattern, ban)
+            user_id = user_id_matches[-1] if user_id_matches else "N/A"
 
             # Extract the reason
             reason = parts[-1].strip()
