@@ -12,6 +12,7 @@ import modules.fill_new_fleet as fill_new_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
 import modules.warning as warning
+import subprocess
 from pyuac import runAsAdmin, isUserAdmin
 
 
@@ -69,6 +70,13 @@ class Launcher:
         )
         self.discord_timestamp_generator_button.grid(row=5, sticky=(E, W))
 
+        self.auto_spiker_button = tk.Button(
+            self.mainframe,
+            text="Auto Spiker",
+            command=self.start_auto_spiker,
+        )
+        self.auto_spiker_button.grid(row=6, sticky=(E, W))
+
         self.check_for_updates_button = tk.Button(
             self.mainframe,
             text="Check For Updates!!!",
@@ -110,7 +118,7 @@ class Launcher:
 
     def start_add_to_ban_list(self):
         """
-        Starts the fill_new_fleet script.
+        Starts the add_to_ban_list script.
         """
         root.destroy()
         add_to_ban_list.start_script()
@@ -121,6 +129,12 @@ class Launcher:
         """
         root.destroy()
         hammertime_generator.start_script()
+
+    def start_auto_spiker(self):
+        """
+        Starts the auto_spiker script.
+        """
+        subprocess.Popen("./modules/autospiker.exe")
 
     def start_warning(self):
         """
