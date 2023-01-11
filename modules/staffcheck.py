@@ -1,14 +1,14 @@
 """
 This module is the main module of the program, initializing the GUI and the other modules.
 """
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301
+# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, E0611, W0611, I1101
 from tkinter import *
 from tkinter import ttk as tk
 import configparser
-import modules.submodules.start_check
-from .submodules.build_example_message import build_example_message
 import runpy
+import modules.submodules.start_check
 import launcher
+from .submodules.build_example_message import build_example_message
 
 
 class StaffCheck:
@@ -328,6 +328,9 @@ class CustomizeWindow:
 
 
 def start_script():
+    """
+    Starts the script.
+    """
     root = Tk()
     root.eval("tk::PlaceWindow . center")
     StaffCheck(root)

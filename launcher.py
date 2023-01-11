@@ -9,10 +9,12 @@ import requests
 from packaging import version
 import modules.staffcheck as staffcheck
 import modules.fill_new_fleet as fill_new_fleet
+import modules.setup_fleet as setup_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
 import modules.warning as warning
 import subprocess
+import configparser
 from pyuac import runAsAdmin, isUserAdmin
 
 
@@ -23,6 +25,25 @@ class Launcher:
 
     # Create the launcher window
     def __init__(self, root):
+
+        self.config = configparser.ConfigParser()
+
+        try:
+            # parse config file
+            self.config.read("settings.ini")
+            self.initial_command = self.config["COMMANDS"]["initial_command"]
+            self.follow_up = self.config["COMMANDS"]["follow_up"]
+        except KeyError:
+            self.config["COMMANDS"] = {
+                "initial_command": "2",
+                "follow_up": "0.4",
+            }
+            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                self.config.write(configfile)
+            self.config.read("settings.ini")
+            self.initial_command = self.config["COMMANDS"]["initial_command"]
+            self.follow_up = self.config["COMMANDS"]["follow_up"]
+
         self.root = root
         self.root.title("Launcher")
         self.root.option_add("*tearOff", FALSE)
@@ -56,26 +77,33 @@ class Launcher:
         )
         self.fillfleet_button.grid(row=3, sticky=(E, W))
 
+        # self.setupfleet_button = tk.Button(
+        #     self.mainframe,
+        #     text="Setup Fleet script",
+        #     command=self.start_setup_fleet,
+        # )
+        # self.setupfleet_button.grid(row=4, sticky=(E, W))
+
         self.add_to_ban_list_button = tk.Button(
             self.mainframe,
             text="Add to ban list script",
             command=self.start_add_to_ban_list,
         )
-        self.add_to_ban_list_button.grid(row=4, sticky=(E, W))
+        self.add_to_ban_list_button.grid(row=5, sticky=(E, W))
 
         self.discord_timestamp_generator_button = tk.Button(
             self.mainframe,
             text="Discord timestamp generator",
             command=self.start_hammertime_generator,
         )
-        self.discord_timestamp_generator_button.grid(row=5, sticky=(E, W))
+        self.discord_timestamp_generator_button.grid(row=6, sticky=(E, W))
 
         self.auto_spiker_button = tk.Button(
             self.mainframe,
             text="Auto Spiker",
             command=self.start_auto_spiker,
         )
-        self.auto_spiker_button.grid(row=6, sticky=(E, W))
+        self.auto_spiker_button.grid(row=7, sticky=(E, W))
 
         self.check_for_updates_button = tk.Button(
             self.mainframe,
@@ -88,6 +116,10 @@ class Launcher:
             self.mainframe, text="Kill Program", command=self.kill
         )
         self.kill_button.grid(row=80, sticky=(W, E))
+
+        self.delay_config_button = tk.Button(
+            self.mainframe, text="Command Delay", command=self.delay_config
+        )
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -115,6 +147,13 @@ class Launcher:
         """
         root.destroy()
         fill_new_fleet.start_script()
+
+    def start_setup_fleet(self):
+        """
+        Starts the setup_fleet script.
+        """
+        root.destroy()
+        setup_fleet.start_script()
 
     def start_add_to_ban_list(self):
         """
@@ -232,6 +271,78 @@ class Launcher:
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
         self.root.destroy()
+
+    def delay_config(self):
+        """
+        Opens the delay config window.
+        """
+
+        def save_changes(self):
+            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                try:
+                    self.config["COMMANDS"][
+                        "initial_command"
+                    ] = self.initial_command_entry.get()
+                    self.config["COMMANDS"]["follow_up"] = self.follow_up_entry.get()
+                except AttributeError:
+                    pass
+                self.config.write(configfile)
+
+        def reset_to_default(self):
+            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                self.config["COMMANDS"]["initial_command"] = "2"
+                self.config["COMMANDS"]["follow_up"] = "0.4"
+                self.config.write(configfile)
+                self.initial_command.set(2)
+                self.follow_up.set(0.4)
+
+        self.config.read("settings.ini")
+        self.customize_window = Toplevel()
+        self.customize_window.title("Customize Delay")
+        explanation = "Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)\nDelay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)\nAll of these delays need to be entered in seconds (ex. 2 or 2.5)"
+        explanation_label = tk.Label(self.customize_window, text=explanation)
+        explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
+
+        initial_command_label = tk.Label(
+            self.customize_window, text="Delay initial command:"
+        )
+        initial_command_label.grid(column=1, row=3, sticky=W)
+
+        self.initial_command = StringVar(
+            value=self.config["COMMANDS"]["initial_command"]
+        )
+        self.initial_command_entry = tk.Entry(
+            self.customize_window, width=75, textvariable=self.initial_command
+        )
+        self.initial_command_entry.grid(column=1, row=4, sticky=(E, W))
+
+        self.follow_up_label = tk.Label(self.customize_window, text="Delay follow up:")
+        self.follow_up_label.grid(column=1, row=5, sticky=W)
+
+        self.follow_up = StringVar(value=self.config["COMMANDS"]["follow_up"])
+        self.follow_up_entry = tk.Entry(
+            self.customize_window, width=75, textvariable=self.follow_up
+        )
+        self.follow_up_entry.grid(column=1, row=6, sticky=(E, W))
+
+        self.save_button = tk.Button(
+            self.customize_window,
+            text="Save Changes!",
+            command=lambda: save_changes(self),
+        )
+        self.save_button.grid(column=1, row=7, sticky=W)
+
+        self.reset_button = tk.Button(
+            self.customize_window,
+            text="Reset To Default!",
+            command=lambda: reset_to_default(self),
+        )
+        self.reset_button.grid(column=1, row=7, sticky=E)
+
+        for child in self.customize_window.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
+        self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
 
 
 if __name__ == "__main__":

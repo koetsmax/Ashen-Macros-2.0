@@ -9,6 +9,7 @@ from modules.submodules.functions.switch_channel import switch_channel
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import runpy
+import configparser
 import launcher
 
 
@@ -19,6 +20,7 @@ class Warning:
 
     def __init__(self, root):
         self.root = root
+        self.config = configparser.ConfigParser()
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 

@@ -8,6 +8,7 @@ from tkinter import ttk as tk
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import runpy
+import configparser
 import launcher
 
 
@@ -18,6 +19,7 @@ class FillNewFleet:
 
     def __init__(self, root):
         self.root = root
+        self.config = configparser.ConfigParser()
         self.root.title("Fill New Fleet")
         self.root.option_add("*tearOff", FALSE)
 

@@ -22,54 +22,66 @@ def start_check(self):
     except AttributeError:
         pass
     try:
-        lengths = [17, 18, 19]
-        if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
-            if self.xbox_gt.get() != "":
-                self.start_button.state(["disabled"])
-                try:
-                    self.save_button.state(["disabled"])
-                except (AttributeError, TclError):
-                    pass
-                try:
-                    self.reset_button.state(["disabled"])
-                except (AttributeError, TclError):
-                    pass
-                self.reason = ""
-                self.kill_button.state(["!disabled"])
-                self.menu_customize.entryconfigure(
-                    "Good to check message", state=DISABLED
-                )
-                self.menu_customize.entryconfigure(
-                    "Not good to check message", state=DISABLED
-                )
-                self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
-                self.menu_customize.entryconfigure(
-                    "Unprivate Xbox message", state=DISABLED
-                )
-                self.user_id_entry.config(state=[("disabled")])
-                self.xbox_gt_entry.config(state=[("disabled")])
-                self.channel_combo_box.config(state=[("disabled")])
-                self.method_combo_box.config(state=[("disabled")])
-                self.check_button.config(state=[("disabled")])
+        if " " not in self.user_id.get():
+            lengths = [17, 18, 19]
+            if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
+                if self.xbox_gt.get() != "":
+                    self.start_button.state(["disabled"])
+                    try:
+                        self.save_button.state(["disabled"])
+                    except (AttributeError, TclError):
+                        pass
+                    try:
+                        self.reset_button.state(["disabled"])
+                    except (AttributeError, TclError):
+                        pass
+                    self.reason = ""
+                    self.kill_button.state(["!disabled"])
+                    self.menu_customize.entryconfigure(
+                        "Good to check message", state=DISABLED
+                    )
+                    self.menu_customize.entryconfigure(
+                        "Not good to check message", state=DISABLED
+                    )
+                    self.menu_customize.entryconfigure(
+                        "Join AWR message", state=DISABLED
+                    )
+                    self.menu_customize.entryconfigure(
+                        "Unprivate Xbox message", state=DISABLED
+                    )
+                    self.user_id_entry.config(state=[("disabled")])
+                    self.xbox_gt_entry.config(state=[("disabled")])
+                    self.channel_combo_box.config(state=[("disabled")])
+                    self.method_combo_box.config(state=[("disabled")])
+                    self.check_button.config(state=[("disabled")])
 
-                self.currentstate = "BeepBoop"
-                update_status(self, "Status: Received ID and Gamertag", 6.25)
-                update_status(self, "Status: Determining if precheck is enabled", 12.5)
-                if "selected" in self.check_button.state():
-                    modules.submodules.pre_check.pre_check(self)
+                    self.currentstate = "BeepBoop"
+                    update_status(self, "Status: Received ID and Gamertag", 6.25)
+                    update_status(
+                        self, "Status: Determining if precheck is enabled", 12.5
+                    )
+                    if "selected" in self.check_button.state():
+                        modules.submodules.pre_check.pre_check(self)
+                    else:
+                        determine_method(self)
                 else:
-                    determine_method(self)
+                    self.error_label = tk.Label(
+                        self.mainframe,
+                        text="Error! Gamertag must not be empty",
+                        foreground="Red",
+                    )
+                    self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
             else:
                 self.error_label = tk.Label(
                     self.mainframe,
-                    text="Error! Gamertag must not be empty",
+                    text=f"Error! {len(self.user_id.get())} is an incorrect length for userID!",
                     foreground="Red",
                 )
                 self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
         else:
             self.error_label = tk.Label(
                 self.mainframe,
-                text=f"Error! {len(self.user_id.get())} is an incorrect length for userID!",
+                text="Error! UserID must not contain spaces",
                 foreground="Red",
             )
             self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
