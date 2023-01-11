@@ -22,58 +22,56 @@ class SetupFleet:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        # Create the tabbed menu for the diferent fleets
-        # self.server_selector = tk.Notebook(root)
-        # self.server_selector.grid(row=0, column=0, sticky=(N, W, E, S))
-
-        # self.regular = tk.Frame(self.server_selector)
-        # self.meghunt = tk.Frame(self.server_selector)
-        # self.specialized = tk.Frame(self.server_selector)
-
-        # self.server_selector.add(self.regular, text="Regular")
-        # self.server_selector.add(self.meghunt, text="Meghunt")
-        # self.server_selector.add(self.specialized, text="Specialized")
-
         # Create the labels
 
         # Regular
-        # self.sloop_label = tk.Label(self.regular, text="Sloops")
-        # self.sloop_label.grid(column=1, row=1)
-        # self.brigantine_label = tk.Label(self.regular, text="Brigantines")
-        # self.brigantine_label.grid(column=2, row=1)
-        # self.galleon_label = tk.Label(self.regular, text="Galleons")
-        # self.galleon_label.grid(column=3, row=1)
+        self.sloop_label = tk.Label(self.mainframe, text="Sloops")
+        self.sloop_label.grid(column=1, row=1)
+        self.brigantine_label = tk.Label(self.mainframe, text="Brigantines")
+        self.brigantine_label.grid(column=2, row=1)
+        self.galleon_label = tk.Label(self.mainframe, text="Galleons")
+        self.galleon_label.grid(column=3, row=1)
 
-        # self.sloop = IntVar(value="0")
-        # self.sloop_combobox = tk.Combobox(
-        #     self.regular, width=2, textvariable=self.sloop
-        # )
-        # self.sloop_combobox["values"] = (0, 1, 2, 3, 4, 5)
-        # self.sloop_combobox.grid(column=1, row=2)
+        self.sloop = IntVar(value=0)
+        self.sloop_combobox = tk.Combobox(
+            self.mainframe, width=2, textvariable=self.sloop
+        )
+        self.sloop_combobox["values"] = (0, 1, 2, 3, 4, 5)
+        self.sloop_combobox.grid(column=1, row=2)
 
-        # self.brigantine = StringVar(value="5")
-        # self.brigantine_combobox = tk.Combobox(
-        #     self.regular, width=2, textvariable=self.brigantine
-        # )
-        # self.brigantine_combobox.grid(column=2, row=2)
-        # self.brigantine_combobox["values"] = (0, 1, 2, 3, 4, 5)
-
-        # self.fleet = StringVar(value="1")
-        # self.fleet_combo_box = tk.Combobox(self.meghunt, textvariable=self.fleet)
-        # self.fleet_combo_box.grid(column=2, row=1, sticky=(W, E))
-        # self.fleet_combo_box["values"] = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+        self.brigantine = StringVar(value=5)
+        self.brigantine_combobox = tk.Combobox(
+            self.mainframe, width=2, textvariable=self.brigantine
+        )
+        self.brigantine_combobox.grid(column=2, row=2)
+        self.brigantine_combobox["values"] = (0, 1, 2, 3, 4, 5)
 
         self.galleon = StringVar(value="0")
-        self.galleon_combobox = tk.Combobox(self.mainframe, textvariable=self.galleon)
+        self.galleon_combobox = tk.Combobox(
+            self.mainframe, width=2, textvariable=self.galleon
+        )
         self.galleon_combobox.grid(column=3, row=2)
         self.galleon_combobox["values"] = (0, 1, 2, 3, 4, 5)
 
-        # for child in self.mainframe.winfo_children():
-        #     child.grid_configure(padx=5, pady=5)
+        # Create the buttons
+        self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
+        self.start_button.grid(columnspan=9, row=3, sticky=(E, W))
 
-        galleon1 = self.galleon.get()
+        for child in self.mainframe.winfo_children():
+            child.grid_configure(padx=5, pady=5)
 
-        print(galleon1)
+            # TODO:
+            # add ship naming + captaincy selector
+            # add optional startfleet command
+            # add optional fleet info
+            # probably work with a paging system so GUI doesn't get too big
+            # archive old repo
+            # add options for fleet types (regular, meg hunt, specialized)
+            # add page for what everyone wants to do. will look like this:
+            # CFL - ship num/type - input ID - activity
+
+    def start(self):
+        pass
 
 
 def start_script():

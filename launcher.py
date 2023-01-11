@@ -77,12 +77,12 @@ class Launcher:
         )
         self.fillfleet_button.grid(row=3, sticky=(E, W))
 
-        # self.setupfleet_button = tk.Button(
-        #     self.mainframe,
-        #     text="Setup Fleet script",
-        #     command=self.start_setup_fleet,
-        # )
-        # self.setupfleet_button.grid(row=4, sticky=(E, W))
+        self.setupfleet_button = tk.Button(
+            self.mainframe,
+            text="Setup Fleet script",
+            command=self.start_setup_fleet,
+        )
+        self.setupfleet_button.grid(row=4, sticky=(E, W))
 
         self.add_to_ban_list_button = tk.Button(
             self.mainframe,
