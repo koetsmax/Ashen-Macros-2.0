@@ -21,7 +21,7 @@ def after_check_message(self):
         command=lambda: modules.submodules.start_check.continue_to_next(self),
     )
     self.kill_button.config(
-        text="Send DM to unprivate Xbox", command=lambda: unprivate_xbox(self)
+        text="Open modmail to unprivate Xbox", command=lambda: unprivate_xbox(self)
     )
     self.start_button.config(
         text="Needs to join the AWR", command=lambda: join_awr(self)
@@ -31,34 +31,36 @@ def after_check_message(self):
 
 def unprivate_xbox(self):
     """
-    This function sends a DM to the user to unprivate their Xbox
+    This function opens a modmail for the user to unprivate their Xbox
     """
-    switch_channel(self, self.user_id.get())
     clear_typing_bar(self)
-    keyboard.write(
-        "Hey! In order for you to play in our fleets, we require your xbox profile to be **public**. To do so, please follow the instructions below."
-    )
-    keyboard.press_and_release("shift+enter")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("• Go to xbox.com > xbox profile > Privacy Settings")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("• Others can:")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("- Others can see your friends list")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("- Others can see your game and app history")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("- Others can see your activity feed")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write("- Others can see your game and app history")
-    keyboard.press_and_release("shift+enter")
-    keyboard.press_and_release("shift+enter")
-    keyboard.write(
-        "Allow **everybody** to see the above settings and click **Submit**."
-    )
-    keyboard.press_and_release("enter")
+    switch_channel(self, "#on-duty-chat")
+    create_mm = ["/create ", f"{self.user_id.get()}"]
+    execute_command(self, create_mm[0], create_mm[1:])
+    # keyboard.write(
+    #     "Hey! In order for you to play in our fleets, we require your xbox profile to be **public**. To do so, please follow the instructions below."
+    # )
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("• Go to xbox.com > xbox profile > Privacy Settings")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("• Others can:")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("- Others can see your friends list")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("- Others can see your game and app history")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("- Others can see your activity feed")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write("- Others can see your game and app history")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.press_and_release("shift+enter")
+    # keyboard.write(
+    #     "Allow **everybody** to see the above settings and click **Submit**."
+    # )
+    # keyboard.press_and_release("enter")
     time.sleep(3)
-    update_status(self, "Sent DM to unprivate!", "")
+    update_status(self, "Opened modmail for them to unprivate!", "")
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar(self)
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]

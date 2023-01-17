@@ -209,6 +209,21 @@ class AshenQueue:
 
         print(self.ships)
 
+        self.ships = []
+        for ship in self.allships:
+            match = re.search(":(.*): (.*) - (.*)", ship)
+            if match:
+                status, fleet, name = match.groups()
+                self.ships.append({"status": status, "fleet": fleet, "name": name})
+        print(self.ships)
+
+        # activity1 = "fotd"
+        # activity2 = "fort of the damned"
+        # if any(activity1 in ship['name'] or activity2 in ship['name'] for ship in ships):
+        #     print("Activity found in a ship")
+        # else:
+        #     print("Activity not found in any ship")
+
         # check if there are people in queue for the ships that need people
 
         try:
@@ -295,15 +310,19 @@ class AshenQueue:
     def check_activity(self, activity1, activity2, unique_elements):
         print(self.allships)
         for ship in self.allships:
+            print(ship)
             if activity1 not in ship or activity2 not in ship or "voyage" in ship:
                 if unique_elements != []:
                     print(
                         f"there is someone in queue for {activity2} which does not exist"
                     )
+            else:
+                print(f"dingdingding {activity2}")
 
     def check_existing_activities(self):
         # compare two lists and check if there are numbers that are only in one list
 
+        # Add all queues to one list
         allqueue = []
         allqueue.append(self.fotdqueue)
         allqueue.append(self.wequeue)
@@ -316,22 +335,21 @@ class AshenQueue:
         allqueue.append(self.sfqueue)
         allqueue.append(self.ttqueue)
         allqueue.append(self.anyqueue)
+        # Check if anyone is in queue for only one activity
         unique_elements = self.compare_lists(allqueue)
-        print(unique_elements)
+        print(f"unique_elements = {unique_elements}")
 
         # check if there are people in queue for an activity that does not exist
-
-        print(self.allships)
         self.check_activity("fort", "fotd", unique_elements[0])
-        self.check_activity("world", "we", unique_elements[1])
-        self.check_activity("athena", "af", unique_elements[2])
-        self.check_activity("gold", "gh", unique_elements[3])
-        self.check_activity("order", "oos", unique_elements[4])
-        self.check_activity("merchant", "ma", unique_elements[5])
-        self.check_activity("fishing", "hc", unique_elements[6])
-        self.check_activity("sunken", "sk", unique_elements[7])
-        self.check_activity("sea", "sf", unique_elements[8])
-        self.check_activity("tall", "tt", unique_elements[9])
+        # self.check_activity("world", "we", unique_elements[1])
+        # self.check_activity("athena", "af", unique_elements[2])
+        # self.check_activity("gold", "gh", unique_elements[3])
+        # self.check_activity("order", "oos", unique_elements[4])
+        # self.check_activity("merchant", "ma", unique_elements[5])
+        # self.check_activity("fishing", "hc", unique_elements[6])
+        # self.check_activity("sunken", "sk", unique_elements[7])
+        # self.check_activity("sea", "sf", unique_elements[8])
+        # self.check_activity("tall", "tt", unique_elements[9])
 
 
 root = Tk()
@@ -340,13 +358,14 @@ AshenQueue(root)
 root.mainloop()
 
 # todo:
-# test current state
-# possibly fix check_activity function
+# fix check_activity function
+# ^^ rework this to do it for every person in queue rather than every ship
 # get the gui looking not shit
 # replace print statements with gui labels
 # sort the queue
 # add a button for processing
 # create some sort of other decentralized gui that can run basically all commands
+# check if there are people in queue for unrecognized activities
 
 
 # create semi-auto staffchecker. runs staffchecked queue search and grab data from that
