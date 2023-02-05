@@ -105,6 +105,8 @@ def continue_to_next(self):
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     if self.method.get() != "All Commands" or self.currentstate == "Done":
         update_status(self, "Check Completed!!!", 100)
+        self.user_id.set("")
+        self.xbox_gt.set("")
         self.function_button.state(["disabled"])
         self.start_button.state(["!disabled"])
         self.kill_button.state(["!disabled"])
