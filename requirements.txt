@@ -3,3 +3,6 @@ pywin32
 packaging
 requests
 pyuac
+openai
+fuzzywuzzy
+pyautogui

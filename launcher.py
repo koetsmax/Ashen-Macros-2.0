@@ -9,7 +9,6 @@ import requests
 from packaging import version
 import modules.staffcheck as staffcheck
 import modules.fill_new_fleet as fill_new_fleet
-import modules.setup_fleet as setup_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
 import modules.warning as warning
@@ -77,13 +76,6 @@ class Launcher:
         )
         self.fillfleet_button.grid(row=3, sticky=(E, W))
 
-        self.setupfleet_button = tk.Button(
-            self.mainframe,
-            text="Setup Fleet script",
-            command=self.start_setup_fleet,
-        )
-        self.setupfleet_button.grid(row=4, sticky=(E, W))
-
         self.add_to_ban_list_button = tk.Button(
             self.mainframe,
             text="Add to ban list script",
@@ -148,12 +140,12 @@ class Launcher:
         root.destroy()
         fill_new_fleet.start_script()
 
-    def start_setup_fleet(self):
-        """
-        Starts the setup_fleet script.
-        """
-        root.destroy()
-        setup_fleet.start_script()
+    # def start_setup_fleet(self):
+    #     """
+    #     Starts the setup_fleet script.
+    #     """
+    #     root.destroy()
+    #     setup_fleet.start_script()
 
     def start_add_to_ban_list(self):
         """

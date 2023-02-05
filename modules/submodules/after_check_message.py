@@ -4,6 +4,7 @@ This module handles everything after the check message has been sent
 # pylint: disable=E0401, E0402, C0301
 import time
 import keyboard
+import pyautogui
 import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
@@ -37,28 +38,31 @@ def unprivate_xbox(self):
     switch_channel(self, "#on-duty-chat")
     create_mm = ["/create ", f"{self.user_id.get()}"]
     execute_command(self, create_mm[0], create_mm[1:])
-    # keyboard.write(
-    #     "Hey! In order for you to play in our fleets, we require your xbox profile to be **public**. To do so, please follow the instructions below."
-    # )
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("• Go to xbox.com > xbox profile > Privacy Settings")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("• Others can:")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("- Others can see your friends list")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("- Others can see your game and app history")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("- Others can see your activity feed")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write("- Others can see your game and app history")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.press_and_release("shift+enter")
-    # keyboard.write(
-    #     "Allow **everybody** to see the above settings and click **Submit**."
-    # )
-    # keyboard.press_and_release("enter")
+    time.sleep(8)
+    pyautogui.hotkey("alt", "up")
+    time.sleep(2)
+    keyboard.write(
+        "Hey! In order for you to play in our fleets, we require your xbox profile to be **public**. To do so, please follow the instructions below."
+    )
+    keyboard.press_and_release("shift+enter")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("• Go to xbox.com > xbox profile > Privacy Settings")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("• Others can:")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("- Others can see your friends list")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("- Others can see your game and app history")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("- Others can see your activity feed")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write("- Others can see your game and app history")
+    keyboard.press_and_release("shift+enter")
+    keyboard.press_and_release("shift+enter")
+    keyboard.write(
+        "Allow **everybody** to see the above settings and click **Submit**."
+    )
+
     time.sleep(3)
     update_status(self, "Opened modmail for them to unprivate!", "")
     switch_channel(self, "#on-duty-chat")
@@ -72,6 +76,9 @@ def unprivate_xbox(self):
     )
     keyboard.write(built_unprivate_xbox_message)
     keyboard.press_and_release("enter")
+    time.sleep(2)
+    pyautogui.hotkey("alt", "up")
+    time.sleep(2)
     modules.submodules.start_check.continue_to_next(self)
 
 

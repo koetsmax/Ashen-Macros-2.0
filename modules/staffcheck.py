@@ -240,7 +240,7 @@ class StaffCheck:
             "unprivate_xbox_message",
             "userID = Discord ID\nTime = automatic hammertime timestamp",
             3,
-            "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
+            "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             self.start_button,
             self.root,
             self.mainframe,

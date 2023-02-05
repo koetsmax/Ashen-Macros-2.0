@@ -5,6 +5,8 @@ from tkinter import *
 from tkinter import ttk as tk
 import keyboard
 from pynput.mouse import Button, Controller
+from fuzzywuzzy import fuzz
+import openai
 
 mouse = Controller()
 
@@ -14,6 +16,10 @@ class AshenQueue:
         """
         This class is the main class of the program, initializing the GUI and the other modules.
         """
+
+        # read the token from openai.token
+        with open("openai.token", "r", encoding="UTF-8") as token_file:
+            openai.api_key = token_file.read()
         self.root = root
         self.fotdqueue = []
         self.wequeue = []
@@ -120,11 +126,6 @@ class AshenQueue:
         with open("infomessage.txt", "w", encoding="UTF-8") as f:
             f.write(self.info)
 
-    #     # only a true shipswap if in bold but program wont know that
-    #     self.together = together
-    #     self.captaincy = captaincy
-    #     pass
-
     def index_queue(self, activity1, activity2):
         return list(
             filter(
@@ -210,10 +211,19 @@ class AshenQueue:
 
         for line in infomessage_lines:
             line = line.lower()
-            match = re.search(":(.*): (.*) - (.*)", line)
+            match = re.search(":(.*): (fl|cfl) (\d+) - (.*) (.*) (\d+)", line)
             if match:
-                status, fleet, name = match.groups()
-                self.ships.append({"status": status, "fleet": fleet, "name": name})
+                status, ship_type, fleet, name, ship_class, ship_number = match.groups()
+                self.ships.append(
+                    {
+                        "status": status,
+                        "ship_type": ship_type,
+                        "fleet": fleet,
+                        "name": name,
+                        "ship_class": ship_class,
+                        "ship_number": ship_number,
+                    }
+                )
         print(self.ships)
 
         try:
@@ -271,82 +281,94 @@ class AshenQueue:
             self.processlabel = tk.Label(self.mainframe, text="no ships need people")
             self.processlabel.grid(row=1, column=0, sticky="w")
 
-    def compare_lists(self, lists):
-        # Create a list to store the unique elements for each input list
-        unique_elements = []
+    def check_existing_activities(self):
 
-        # Iterate over the input lists
-        for i, list1 in enumerate(lists):
-            # Create an empty list to store the unique elements for this input list
-            only_in_list1 = []
+        ship_name_mapping = {
+            "fotd": ["fotd", "fort of the damned"],
+            "world events": ["world events", "we"],
+            "athena": ["athena", "athena's", "af"],
+            "gold hoarders": ["gold hoarders", "gold hoarder", "gh"],
+            "order of souls": ["order of souls", "order of soul", "oos", "oss"],
+            "merchant alliance": ["merchant alliance", "merchant", "ma"],
+            "sea forts": ["sea forts", "sea fort", "sf"],
+            "sunken kingdom": ["sunken kingdom", "shrine", "sk"],
+            "adventure": ["adventure", "adventures", "adv"],
+            "fishing": ["fishing", "fish", "hc"],
+            "tall tales": ["tall tales", "tall tale", "tt"],
+            # Add more ship name mappings here
+        }
 
-            # Iterate over the elements in list1
-            for element in list1:
-                # Initialize a flag to track whether the element is unique to list1
-                is_unique = True
+        # Define the invalid requests
+        invalid_requests = []
 
-                # Iterate over the other input lists
-                for j, list2 in enumerate(lists):
-                    # Skip the current list (list1) and lists that have already been processed
-                    if i == j:
-                        continue
+        # Iterate over the activities
+        for person in self.queue:
+            # Define a flag to check if the activity is valid
+            is_valid = False
 
-                    # If the element is in one of the other lists, it is not unique to list1
-                    if element in list2:
-                        is_unique = False
+            if "any" in person["activity"]:
+                is_valid = True
+
+            # Check if the activity is valid using fuzzy matching
+            if not is_valid:
+                for ship in self.ships:
+                    ratio = fuzz.token_set_ratio(ship["name"], person["activity"])
+                    if ratio >= 80:
+                        is_valid = True
+                        print(
+                            f"{person['activity']} is valid solved with fuzzy matching first try"
+                        )
                         break
 
-                # If the element is unique to list1, add it to the only_in_list1 list
-                if is_unique:
-                    only_in_list1.append(element)
+            # If the activity is not valid and the ratio is less than 80%
+            if not is_valid:
+                for ship in self.ships:
+                    if ship["name"] in ship_name_mapping:
+                        mapping = ship_name_mapping[ship["name"]]
+                        for mapped_name in mapping:
+                            if mapped_name in person["activity"]:
+                                is_valid = True
+                                print(
+                                    f"{person['activity']} is valid solved with static mapping first try"
+                                )
+                                break
+            if not is_valid:
+                # Ask GPT-3 to correct the spelling
+                response = openai.Completion.create(
+                    engine="text-davinci-003",
+                    prompt=(
+                        f"could you correct the spelling of '{person['activity']}'?"
+                    ),
+                )
+                corrected_activity = response["choices"][0]["text"]
+                corrected_activity = corrected_activity.strip().lower()
+                print(f"corrected activity: {corrected_activity}")
+                # Check if the corrected activity is valid using fuzzy matching and GPT-3
+                for ship in self.ships:
+                    ratio = fuzz.token_set_ratio(ship, corrected_activity)
+                    if ratio >= 80:
+                        is_valid = True
+                        print(
+                            f"{person['activity']} is valid solved with fuzzy matching second try"
+                        )
+                        break
+                if not is_valid:
+                    for ship in self.ships:
+                        if ship["name"] in ship_name_mapping:
+                            mapping = ship_name_mapping[ship["name"]]
+                            for mapped_name in mapping:
+                                if mapped_name in corrected_activity:
+                                    is_valid = True
+                                    print(
+                                        f"{corrected_activity} is valid solved with static mapping second try"
+                                    )
+                                    break
 
-            # Add the list of unique elements for this input list to the unique_elements list
-            unique_elements.append(only_in_list1)
+            if not is_valid:
+                invalid_requests.append(person)
 
-        # Return the list of lists of unique elements
-        return unique_elements
-
-    def check_activity(self, activity1, activity2, unique_elements):
-        if not any(
-            activity1 in ship["name"]
-            or activity2 in ship["name"]
-            or "voyage" in ship["name"]
-            for ship in self.ships
-        ):
-            if unique_elements != []:
-                print(f"there is someone in queue for {activity1} which does not exist")
-
-    def check_existing_activities(self):
-        # compare two lists and check if there are numbers that are only in one list
-
-        # Add all queues to one list
-        allqueue = []
-        allqueue.append(self.fotdqueue)
-        allqueue.append(self.wequeue)
-        allqueue.append(self.athenaqueue)
-        allqueue.append(self.ghqueue)
-        allqueue.append(self.oosqueue)
-        allqueue.append(self.maqueue)
-        allqueue.append(self.hcqueue)
-        allqueue.append(self.skqueue)
-        allqueue.append(self.sfqueue)
-        allqueue.append(self.ttqueue)
-        allqueue.append(self.anyqueue)
-        # Check if anyone is in queue for only one activity
-        unique_elements = self.compare_lists(allqueue)
-        print(f"unique_elements = {unique_elements}")
-
-        # check if there are people in queue for an activity that does not exist
-        self.check_activity("fort", "fotd", unique_elements[0])
-        self.check_activity("world", "we", unique_elements[1])
-        self.check_activity("athena", "af", unique_elements[2])
-        self.check_activity("gold", "gh", unique_elements[3])
-        self.check_activity("order", "oos", unique_elements[4])
-        self.check_activity("merchant", "ma", unique_elements[5])
-        self.check_activity("fishing", "hc", unique_elements[6])
-        self.check_activity("sunken", "sk", unique_elements[7])
-        self.check_activity("sea", "sf", unique_elements[8])
-        self.check_activity("tall", "tt", unique_elements[9])
+        # Print the invalid requests
+        print(invalid_requests)
 
 
 root = Tk()
@@ -355,8 +377,6 @@ AshenQueue(root)
 root.mainloop()
 
 # todo:
-# rework check_activity function
-# ^^ rework this to do it for every person in queue rather than every ship
 # get the gui looking not shit
 # replace print statements with gui labels
 # sort the queue

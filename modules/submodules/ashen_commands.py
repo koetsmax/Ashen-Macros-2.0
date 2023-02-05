@@ -10,6 +10,8 @@ from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
 from .functions.update_status import update_status
+import json
+import pyautogui
 
 
 def ashen_commands(self):
@@ -17,6 +19,7 @@ def ashen_commands(self):
     This function makes changes to the GUI and applies commands to the buttons
     """
     self.currentstate = "AshenCommands"
+
     update_status(self, "", 56.25)
     switch_channel(self, self.channel.get())
     clear_typing_bar(self)
@@ -42,6 +45,23 @@ def ashen_commands(self):
     )
     self.kill_button.state(["!disabled"])
     update_status(self, "Press Continue to... You get it", "")
+    with open("gt_dump.json", "r", encoding="UTF-8") as gt_file:
+        data = json.load(gt_file)
+        for item in data:
+            if self.xbox_gt.get() in item["Gamer Tags"].split(", "):
+                self.log.tag_configure(
+                    "warning", font=("TkTextFont:", 10), foreground="red"
+                )
+                self.log["state"] = "normal"
+                self.log.insert(
+                    "end",
+                    f"\nfound alternate gamertag: {item['Gamer Tags']}",
+                    ("warning"),
+                )
+                self.log.see("end")
+                self.log["state"] = "disabled"
+                print("found gamertag", item["Gamer Tags"])
+                break
 
 
 def needs_to_remove_friends(self):
