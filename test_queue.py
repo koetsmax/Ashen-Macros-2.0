@@ -2,7 +2,6 @@ import openai
 from fuzzywuzzy import fuzz
 
 # Define the OpenAI API key
-openai.api_key = "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"
 
 # Define the ship names and the activities
 ships = ["fotd", "world events", "athena"]
