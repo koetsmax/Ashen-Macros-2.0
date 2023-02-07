@@ -252,12 +252,6 @@ class Launcher:
 
         url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"
         print(url)
-        # go to url and download the exe
-        #
-        # run the exe
-        # delete the exe as administrator
-        # run the launcher again
-        # Create the config file for the updater
 
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)

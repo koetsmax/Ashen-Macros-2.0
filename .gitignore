@@ -1,7 +1,5 @@
 openai.token
-infomessage.txt
-queue.txt
-ashen_queue.py
+ashen queue/*
 /.vscode
 settings.ini
 Installforge project.ifp
