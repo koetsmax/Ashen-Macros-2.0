@@ -99,7 +99,6 @@ root.mainloop()
 
 # get the gui looking less shit
 # replace some print statements with gui labels
-# add a button for processing
 # create some sort of other decentralized gui that can run basically all commands
 
 
