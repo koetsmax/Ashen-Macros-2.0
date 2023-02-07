@@ -6,3 +6,4 @@ pyuac
 openai
 fuzzywuzzy
 pyautogui
+pyperclip
