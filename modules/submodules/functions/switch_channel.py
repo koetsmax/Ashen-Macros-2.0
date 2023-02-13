@@ -8,11 +8,12 @@ from .clear_typing_bar import clear_typing_bar
 from .update_status import update_status
 
 
-def switch_channel(self, channel):
+def switch_channel(self, channel, *args):
     """
     This module attempts to switch between discord channels
     """
-    clear_typing_bar(self)
+    if not args:
+        clear_typing_bar(self)
     try:
         update_status(self, f"Status: Attempting to switch channel to {channel}", "")
     except AttributeError:

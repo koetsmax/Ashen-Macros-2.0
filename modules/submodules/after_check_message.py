@@ -65,7 +65,7 @@ def unprivate_xbox(self):
 
     time.sleep(3)
     update_status(self, "Opened modmail for them to unprivate!", "")
-    switch_channel(self, "#on-duty-chat")
+    switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar(self)
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
     built_unprivate_xbox_message = built_unprivate_xbox_message.replace(

@@ -1,47 +1,10 @@
+# pylint: disable=W1401, W0614, W0401
 import re
 from tkinter import *
 from tkinter import ttk as tk
 
 
-def index_queue(self, activity1, activity2):
-    return list(
-        filter(
-            lambda member: member["activity"] in [activity1, activity2],
-            self.queue,
-        )
-    )
-
-
-def check_ship(self, ship, _activity, queue, anyqueue):
-    if queue and anyqueue:
-        if queue[0] > anyqueue[0]:
-            print(
-                f"{anyqueue[0]} is in queue for anything which is needed on {ship['fleet']} {ship['name']}"
-            )
-            anyqueue.remove(anyqueue[0])
-        else:
-            print(
-                f"{queue[0]} is in queue for {_activity} which is needed on {ship['fleet']} {ship['name']}"
-            )
-            queue.remove(queue[0])
-    elif queue:
-        print(
-            f"{queue[0]} is in queue for {_activity} which is needed on {ship['fleet']} {ship['name']}"
-        )
-        queue.remove(queue[0])
-    elif anyqueue:
-        print(
-            f"{anyqueue[0]} is in queue for anything which is needed on {ship['fleet']} {ship['name']}"
-        )
-        anyqueue.remove(anyqueue[0])
-    else:
-        self.queuemessage_ships.append(ship)
-        print(
-            f"no one in queue for {_activity} which is needed on {ship['fleet']} {ship['name']}"
-        )
-
-
-def check_ships(self):
+def index_queue(self):
 
     self.queue = []
     with open("queue.txt", "r", encoding="UTF-8") as queuemessage:
@@ -65,19 +28,8 @@ def check_ships(self):
 
     print(self.queue)
 
-    self.fotdqueue = index_queue(self, "fotd", "fort of the damned")
-    self.wequeue = index_queue(self, "we", "world event")
-    self.athenaqueue = index_queue(self, "af", "athena")
-    self.ghqueue = index_queue(self, "gh", "gold hoarders")
-    self.oosqueue = index_queue(self, "oos", "order of souls")
-    self.maqueue = index_queue(self, "ma", "merchant")
-    self.hcqueue = index_queue(self, "hc", "fish")
-    self.skqueue = index_queue(self, "sk", "sunken kingdom")
-    self.sfqueue = index_queue(self, "sf", "sea fort")
-    self.ttqueue = index_queue(self, "tt", "tall tale")
-    self.anyqueue = index_queue(self, "any", "anything")
 
-    # check if any of the ships need people
+def index_ships(self):
     with open("infomessage.txt", "r", encoding="UTF-8") as infomessage:
         infomessage_lines = infomessage.readlines()
     self.ships = []
@@ -86,18 +38,25 @@ def check_ships(self):
         line = line.lower()
         match = re.search(":(.*): (fl|cfl) (\d+) - (.*) (brig|sloop|gal) (\d+)", line)
         if match:
-            status, ship_type, fleet, name, ship_class, ship_number = match.groups()
+            status, _type, fleet, name, _class, number = match.groups()
             self.ships.append(
                 {
                     "status": status,
-                    "ship_type": ship_type,
+                    "type": _type,
                     "fleet": fleet,
                     "name": name,
-                    "ship_class": ship_class,
-                    "ship_number": ship_number,
+                    "class": _class,
+                    "number": number,
                 }
             )
     print(self.ships)
+
+
+def check_ships(self):
+
+    index_queue(self)
+
+    index_ships(self)
 
     try:
         self.processlabel.destroy()
@@ -112,43 +71,27 @@ def check_ships(self):
 
     if self.ships != []:
         for ship in self.ships:
-            print(ship["name"])
+            # print(ship["name"])
             if "warn" in ship["status"]:
-                print(ship)
-                if "fotd" in ship["name"] or "fort" in ship["name"]:
-                    check_ship(
-                        self, ship, "fort of the damned", self.fotdqueue, self.anyqueue
-                    )
-                elif "we" in ship["name"] or "world" in ship["name"]:
-                    check_ship(self, ship, "world events", self.wequeue, self.anyqueue)
-                elif "af" in ship["name"] or "athena" in ship["name"]:
-                    check_ship(self, ship, "athena", self.athenaqueue, self.anyqueue)
-                elif "gh" in ship["name"] or "gold" in ship["name"]:
-                    check_ship(self, ship, "gold hoarders", self.ghqueue, self.anyqueue)
-                elif "oos" in ship["name"] or "order" in ship["name"]:
-                    check_ship(
-                        self, ship, "order of souls", self.oosqueue, self.anyqueue
-                    )
-                elif "ma" in ship["name"] or "merchant" in ship["name"]:
-                    check_ship(self, ship, "merchant", self.maqueue, self.anyqueue)
-                elif "hc" in ship["name"] or "fishing" in ship["name"]:
-                    check_ship(self, ship, "fishing", self.hcqueue, self.anyqueue)
-                elif "sk" in ship["name"] or "sunken" in ship["name"]:
-                    check_ship(
-                        self, ship, "sunken kingdom", self.skqueue, self.anyqueue
-                    )
-                elif "sf" in ship["name"] or "sea" in ship["name"]:
-                    check_ship(self, ship, "sea forts", self.sfqueue, self.anyqueue)
-                elif "tt" in ship["name"] or "tall" in ship["name"]:
-                    check_ship(self, ship, "tall tales", self.ttqueue, self.anyqueue)
+                # print(ship)
+                for member in self.queue:
+                    if member["activity"].find(ship["name"]) != -1:
+                        print(
+                            f"{ship['type']} {ship['fleet']} {ship['name']} {ship['type']} {ship['number']} needs {member}"
+                        )
+                        self.queue.remove(member)
+                        break
+                    else:
+                        print(member["activity"], ship["name"])
                 else:
-                    self.unrecognized_label = tk.Label(
-                        self.mainframe,
-                        text=f"activity {ship['name']} not recognized (full name = {ship})",
+                    self.queuemessage_ships.append(ship)
+                    print(
+                        f"{ship['type']} {ship['fleet']} {ship['name']} {ship['type']} {ship['number']} needs people, but no one is in queue"
                     )
-                    self.unrecognized_label.grid(row=1, column=0, sticky="w")
             else:
-                print(f"{ship['fleet']} {ship['name']} does not need people")
+                print(
+                    f"{ship['type']} {ship['fleet']} {ship['name']} {ship['type']} {ship['number']} does not need people"
+                )
     else:
         self.processlabel = tk.Label(self.mainframe, text="no ships need people")
         self.processlabel.grid(row=1, column=0, sticky="w")

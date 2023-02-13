@@ -1,5 +1,3 @@
-from tkinter import *
-from tkinter import ttk as tk
 import time
 import pyperclip
 import keyboard

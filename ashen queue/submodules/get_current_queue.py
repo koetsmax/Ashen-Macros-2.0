@@ -1,3 +1,4 @@
+# pylint: disable=W0614, W0401
 import time
 import keyboard
 from tkinter import *

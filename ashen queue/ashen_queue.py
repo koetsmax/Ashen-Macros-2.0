@@ -1,3 +1,4 @@
+# pylint: disable=W0614, W0401
 from tkinter import *
 from tkinter import ttk as tk
 import openai
@@ -5,6 +6,7 @@ import submodules.add_queue_message
 import submodules.check_existing_activities
 import submodules.check_ships
 import submodules.get_current_queue
+import submodules.staffcheck_finder
 from pynput.mouse import Controller
 
 
@@ -19,17 +21,6 @@ class AshenQueue:
             openai.api_key = token_file.read()
         self.mouse = Controller()
         self.root = root
-        self.fotdqueue = []
-        self.wequeue = []
-        self.athenaqueue = []
-        self.ghqueue = []
-        self.oosqueue = []
-        self.maqueue = []
-        self.hcqueue = []
-        self.skqueue = []
-        self.sfqueue = []
-        self.ttqueue = []
-        self.anyqueue = []
         self.queue = []
         self.info = []
         self.together = []
@@ -38,6 +29,21 @@ class AshenQueue:
         self.infolabel = None
         self.processlabel = None
         self.unrecognized_label = None
+        # ship name mappings
+        self.ship_name_mapping = {
+            "fotd": ["fotd", "fort of the damned"],
+            "world events": ["world event", "world events", "we"],
+            "athena": ["athena", "athena's", "af"],
+            "gold hoarders": ["gold hoarders", "gold hoarder", "gh"],
+            "order of souls": ["order of souls", "order of soul", "oos", "oss"],
+            "merchant alliance": ["merchant alliance", "merchant", "ma"],
+            "sea forts": ["sea forts", "sea fort", "sf"],
+            "sunken kingdom": ["sunken kingdom", "shrine", "sk"],
+            "adventure": ["adventure", "adventures", "adv"],
+            "fishing": ["fishing", "fish", "hc"],
+            "tall tales": ["tall tales", "tall tale", "tt"],
+            # Add more ship name mappings here
+        }
 
         self.root.title("AshenQueue")
         self.root.option_add("*tearOff", FALSE)
@@ -75,6 +81,13 @@ class AshenQueue:
         )
         self.add_queue_message_button.grid(column=4, row=1, sticky=(W, E))
 
+        self.staffcheck_finder_button = tk.Button(
+            self.mainframe,
+            text="Staffcheck finder",
+            command=lambda: submodules.staffcheck_finder.staffcheck_finder(self),
+        )
+        self.staffcheck_finder_button.grid(column=5, row=1, sticky=(W, E))
+
     def start(self):
         submodules.get_current_queue.get_current_queue(self)
         try:
@@ -92,7 +105,6 @@ root.mainloop()
 
 
 # todo:
-
 # full rewrite of check_ships
 # suggest processing using same way we do check for existing activities
 
