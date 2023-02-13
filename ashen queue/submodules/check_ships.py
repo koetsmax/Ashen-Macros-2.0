@@ -6,6 +6,8 @@ from tkinter import ttk as tk
 
 def index_queue(self):
 
+    print(self.root.geometry())
+
     self.queue = []
     with open("queue.txt", "r", encoding="UTF-8") as queuemessage:
         queuemessagelines = queuemessage.readlines()

@@ -12,6 +12,7 @@ import modules.fill_new_fleet as fill_new_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
 import modules.warning as warning
+import modules.submodules.functions.window_positions as window_positions
 import subprocess
 import configparser
 from pyuac import runAsAdmin, isUserAdmin
@@ -130,6 +131,7 @@ class Launcher:
         """
         Starts the staffcheck script.
         """
+        window_positions.save_window_position(root)
         root.destroy()
         staffcheck.start_script()
 
@@ -137,20 +139,15 @@ class Launcher:
         """
         Starts the fill_new_fleet script.
         """
+        window_positions.save_window_position(root)
         root.destroy()
         fill_new_fleet.start_script()
-
-    # def start_setup_fleet(self):
-    #     """
-    #     Starts the setup_fleet script.
-    #     """
-    #     root.destroy()
-    #     setup_fleet.start_script()
 
     def start_add_to_ban_list(self):
         """
         Starts the add_to_ban_list script.
         """
+        window_positions.save_window_position(root)
         root.destroy()
         add_to_ban_list.start_script()
 
@@ -158,6 +155,7 @@ class Launcher:
         """
         Starts the fill_new_fleet script.
         """
+        window_positions.save_window_position(root)
         root.destroy()
         hammertime_generator.start_script()
 
@@ -171,6 +169,7 @@ class Launcher:
         """
         Starts the warning script.
         """
+        window_positions.save_window_position(root)
         root.destroy()
         warning.start_script()
 
@@ -178,6 +177,7 @@ class Launcher:
         """
         Kills the program.
         """
+        window_positions.save_window_position(root)
         root.destroy()
 
     def update_window(self, text, update_is_available):
@@ -334,6 +334,10 @@ class Launcher:
 if __name__ == "__main__":
     print("main")
     root = Tk()
-    root.eval("tk::PlaceWindow . center")
+    window_positions.load_window_position(root)
+    # root.eval("tk::PlaceWindow . center")
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     Launcher(root)
     root.mainloop()

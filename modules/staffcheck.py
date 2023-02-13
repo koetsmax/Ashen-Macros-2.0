@@ -7,6 +7,7 @@ from tkinter import ttk as tk
 import configparser
 import runpy
 import modules.submodules.start_check
+import modules.submodules.functions.window_positions as window_positions
 import launcher
 from .submodules.build_example_message import build_example_message
 
@@ -48,7 +49,7 @@ class StaffCheck:
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
                 "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
                 "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
-                "unprivate_xbox_message": "userID has been sent a message to unprivate their xbox - Good to remove from the queue if they don't join within 10 minutes (Time)",
+                "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             }
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
@@ -250,6 +251,7 @@ class StaffCheck:
         """
         Goes back to the launcher.
         """
+        window_positions.save_window_position(self.root)
         self.root.destroy()
         # run the launcher using runpy
         runpy.run_module("launcher", run_name="__main__")
@@ -332,6 +334,10 @@ def start_script():
     Starts the script.
     """
     root = Tk()
-    root.eval("tk::PlaceWindow . center")
+    window_positions.load_window_position(root)
+    # root.eval("tk::PlaceWindow . center")
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     StaffCheck(root)
     root.mainloop()

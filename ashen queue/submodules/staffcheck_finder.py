@@ -82,28 +82,40 @@ def search_image(self, small_image, big_image_path):
 
 def click_on_matches(self, click_locations):
     unchecked_match = []
+    unchecked_confirm = []
     for (x, y) in click_locations:
         print(x, y)
 
         # time.sleep(5)
         self.mouse.position = (x, y)
         self.mouse.click(Button.left)
-        time.sleep(0.5)
+        time.sleep(0.7)
         result = search_image(self, "img/staffchecked.png", "img/discord.png")
         if result != []:
             print("User is staffchecked")
         else:
             unchecked_match.append((x, y))
             print("User is not staffchecked")
+        self.mouse.position = (x - 15, y - 20)
+        self.mouse.click(Button.left)
 
     for (x, y) in unchecked_match:
         self.mouse.position = (x, y)
         self.mouse.click(Button.right)
+        time.sleep(0.6)
         result = search_image(self, "img/profile.png", "img/discord.png")
         if result == []:
             print("Match must have been a role, skipping")
         else:
             print(result)
+            unchecked_confirm.append((x, y))
+        self.mouse.position = (x + 5, y - 5)
+        self.mouse.click(Button.left)
+
+    if unchecked_confirm == []:
+        print("No one in queue is currently unstaffchecked")
+    else:
+        print(f"The following users are unstaffchecked: {unchecked_confirm}")
 
 
 def staffcheck_finder(self):

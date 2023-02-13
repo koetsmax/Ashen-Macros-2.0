@@ -2,16 +2,12 @@ Closed Ships
 No ships are closed!
 
 Full Ships
-:pending: FL 1 - FotD Brig 1
+:stable: FL 1 - FotD Brig 1
 :stable: FL 1 - World Event Brig 2
 :stable: FL 1 - Athena Brig 3
-:stable: FL 1 - Order of Souls Brig 4
-:stable: FL 2 - FotD Brig 1
-:stable: FL 2 - World Event Brig 2
-:stable: FL 2 - Athena Brig 3
-:stable: FL 2 - Athena Brig 4
+:stable: FL 1 - Athena Brig 4
+:warn: FL 1 - OOS Brig 5
 
 Ships Requiring Crew
-:warn: FL 1 - Athena Brig 5 -- Needs 1
-:warn: FL 2 - Reaper Voyage Brig 5 -- Needs 1
+All ships are currently full!
  

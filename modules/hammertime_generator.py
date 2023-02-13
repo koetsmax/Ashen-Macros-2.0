@@ -8,6 +8,7 @@ from tkinter import ttk as tk
 import runpy
 import time
 import launcher
+import modules.submodules.functions.window_positions as window_positions
 
 
 class HammertimeGenerator:
@@ -84,6 +85,7 @@ class HammertimeGenerator:
         """
         Goes back to the launcher.
         """
+        window_positions.save_window_position(self.root)
         self.root.destroy()
         # run the launcher using runpy
         runpy.run_module("launcher", run_name="__main__")
@@ -127,6 +129,10 @@ class HammertimeGenerator:
 
 def start_script():
     root = Tk()
-    root.eval("tk::PlaceWindow . center")
+    window_positions.load_window_position(root)
+    # root.eval("tk::PlaceWindow . center")
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     HammertimeGenerator(root)
     root.mainloop()

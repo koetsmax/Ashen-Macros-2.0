@@ -23,8 +23,6 @@ class AshenQueue:
         self.root = root
         self.queue = []
         self.info = []
-        self.together = []
-        self.captaincy = []
         self.queuelabel = None
         self.infolabel = None
         self.processlabel = None
