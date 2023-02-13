@@ -8,8 +8,11 @@ def save_window_position(window, *args):
         "x_offset": str(window.winfo_x()),
         "y_offset": str(window.winfo_y()),
     }
-    with open("settings.ini", "w", encoding="UTF-8") as file:
-        config.write(file)
+    try:
+        with open("settings.ini", "w", encoding="UTF-8") as file:
+            config.write(file)
+    except PermissionError:
+        pass
     if 1 in args:
         window.destroy()
 
