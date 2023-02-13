@@ -48,6 +48,17 @@ class Launcher:
         self.root.title("Launcher")
         self.root.option_add("*tearOff", FALSE)
 
+        file_info = os.stat("settings.ini")
+        file_permissions = file_info.st_mode & 0o777
+        print(oct(file_permissions))
+        if oct(file_permissions) != "0o666":
+            if isUserAdmin():
+                os.chmod("settings.ini", 0o666)
+            else:
+                # Re-run the program with admin rights
+                self.root.destroy()
+                runAsAdmin()
+
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
