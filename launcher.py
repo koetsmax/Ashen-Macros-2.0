@@ -48,16 +48,28 @@ class Launcher:
         self.root.title("Launcher")
         self.root.option_add("*tearOff", FALSE)
 
-        file_info = os.stat("settings.ini")
-        file_permissions = file_info.st_mode & 0o777
-        print(oct(file_permissions))
-        if oct(file_permissions) != "0o666":
-            if isUserAdmin():
-                os.chmod("settings.ini", 0o666)
-            else:
-                # Re-run the program with admin rights
-                self.root.destroy()
-                runAsAdmin()
+        try:
+            directory_path = "../launcher"
+            result = subprocess.run(
+                ["icacls", directory_path], capture_output=True, text=True, check=True
+            )
+            output = result.stdout.strip()
+
+            # Check if full control permissions are present for Everyone
+            if not "Everyone:(OI)(CI)(F)" in output:
+                print(output)
+                if isUserAdmin():
+                    subprocess.run(
+                        ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"],
+                        check=True,
+                    )
+                    print("Permissions changed to 777")
+                else:
+                    # Re-run the program with admin rights
+                    self.root.destroy()
+                    runAsAdmin()
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            print("File not found")
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")

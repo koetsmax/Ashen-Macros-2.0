@@ -1,4 +1,5 @@
 import configparser
+import os
 
 
 def save_window_position(window, *args):
@@ -11,8 +12,9 @@ def save_window_position(window, *args):
     try:
         with open("settings.ini", "w", encoding="UTF-8") as file:
             config.write(file)
-    except PermissionError:
-        pass
+    except PermissionError as e:
+        print("PermissionError: Could not save window position.\n", e)
+        print(os.getcwd())
     if 1 in args:
         window.destroy()
 
