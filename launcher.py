@@ -12,6 +12,7 @@ import modules.fill_new_fleet as fill_new_fleet
 import modules.add_to_ban_list as add_to_ban_list
 import modules.hammertime_generator as hammertime_generator
 import modules.warning as warning
+import modules.rename_fleet as rename_fleet
 import modules.submodules.functions.window_positions as window_positions
 import subprocess
 import configparser
@@ -92,6 +93,13 @@ class Launcher:
         )
         self.add_warning_button.grid(row=2, sticky=(E, W))
 
+        self.rename_fleet_button = tk.Button(
+            self.mainframe,
+            text="Rename fleet script",
+            command=self.start_rename_fleet,
+        )
+        self.rename_fleet_button.grid(row=4, sticky=(E, W))
+
         # add fill_new_fleet module to the launcher
         self.fillfleet_button = tk.Button(
             self.mainframe,
@@ -157,6 +165,14 @@ class Launcher:
         window_positions.save_window_position(root)
         root.destroy()
         staffcheck.start_script()
+
+    def start_rename_fleet(self):
+        """
+        Starts the rename_fleet script.
+        """
+        window_positions.save_window_position(root)
+        root.destroy()
+        rename_fleet.start_script()
 
     def start_fill_new_fleet(self):
         """

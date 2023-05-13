@@ -21,7 +21,6 @@ class AddToBanList:
     """
 
     def __init__(self, root):
-
         # read the delay from the INI file
         self.config = configparser.ConfigParser()
         try:
@@ -208,7 +207,7 @@ class AddToBanList:
             self.add_to_ban_list_other()
             self.discord_name.set("")
             self.xbox_gamertag.set("")
-            self.user_id.set("")
+
             self.reason.set("")
         elif self.server_selector.index(self.server_selector.select()) == 2:
             self.ban_user_id = self.obsidian_user_id_entry.get()
@@ -233,10 +232,13 @@ class AddToBanList:
         keyboard.write(self.ban_discord_name)
         time.sleep(0.5)
         keyboard.press_and_release("right")
+        keyboard.write(self.ban_user_id)
+        time.sleep(0.5)
+        keyboard.press_and_release("right")
         keyboard.write(self.ban_xbox_gamertag)
         time.sleep(0.5)
         keyboard.press_and_release("right")
-        keyboard.write(self.ban_user_id)
+        keyboard.write("N/A")
         time.sleep(0.5)
         keyboard.press_and_release("right")
         keyboard.write(self.server)
@@ -247,7 +249,6 @@ class AddToBanList:
         keyboard.press_and_release("right")
 
     def extract_info(self, string):
-
         url = "https://docs.google.com/spreadsheets/d/1V5Z61CKmJoNZn7L3PWziJdbHRVzYuxaZU4qTOIRHfWg/edit#gid=125271616"
         # open the url in the default browser
         webbrowser.open(url, new=2)
@@ -275,6 +276,9 @@ class AddToBanList:
             for i, part in enumerate(parts):
                 if "#" in part:
                     discord_tag = part.strip()
+                elif "DC:" in part:
+                    part = part.replace("DC:", "")
+                    xuid = part.strip()
 
             # Extract the user ID using a regular expression
             user_id_pattern = r"\d{17,19}"
@@ -287,10 +291,13 @@ class AddToBanList:
             keyboard.write(discord_tag)
             time.sleep(0.5)
             keyboard.press_and_release("right")
+            keyboard.write(user_id)
+            time.sleep(0.5)
+            keyboard.press_and_release("right")
             keyboard.write(gamertag)
             time.sleep(0.5)
             keyboard.press_and_release("right")
-            keyboard.write(user_id)
+            keyboard.write(xuid)
             time.sleep(0.5)
             keyboard.press_and_release("right")
             keyboard.write("Requiem")
@@ -302,9 +309,6 @@ class AddToBanList:
             time.sleep(0.5)
             keyboard.press_and_release("ctrl + left")
             time.sleep(0.5)
-
-            # Return the extracted information as a tuple
-        return gamertag, user_id, discord_tag, reason
 
 
 class SettingsWindow:
