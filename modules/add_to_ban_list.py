@@ -278,7 +278,7 @@ class AddToBanList:
                     discord_tag = part.strip()
                 elif "DC:" in part:
                     part = part.replace("DC:", "")
-                    xuid = part.strip()
+                    xuid = part.strip() if part.strip().count("?") < 3 else "N/A"
 
             # Extract the user ID using a regular expression
             user_id_pattern = r"\d{17,19}"

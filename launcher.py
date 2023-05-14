@@ -26,7 +26,6 @@ class Launcher:
 
     # Create the launcher window
     def __init__(self, root):
-
         self.config = configparser.ConfigParser()
 
         try:
