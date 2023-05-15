@@ -124,6 +124,7 @@ class StaffCheck:
         self.method_combo_box.grid(column=2, row=4, sticky=(W, E))
         self.method_combo_box["values"] = (
             "All Commands",
+            "Purge Commands",
             "Elemental Commands",
             "Ashen Commands",
             "Invite Tracker",

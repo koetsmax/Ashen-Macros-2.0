@@ -103,7 +103,8 @@ def continue_to_next(self):
     self.function_button.config(text="Cool Button", command=None)
     self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
-    if self.method.get() != "All Commands" or self.currentstate == "Done":
+    exempted_methods = ["Purge Commands", "All Commands"]
+    if self.method.get() not in exempted_methods or self.currentstate == "Done":
         update_status(self, "Check Completed!!!", 100)
         if self.currentstate == "Done":
             self.user_id.set("")
@@ -147,6 +148,16 @@ def continue_to_next(self):
         elif self.currentstate == "CheckMessage":
             self.currentstate = "Done"
             modules.submodules.start_check.continue_to_next(self)
+    elif self.method.get() == "Purge Commands":
+        if self.currentstate == "PreCheck":
+            modules.submodules.elemental_commands.elemental_commands(self)
+        elif self.currentstate == "ElementalCommands":
+            modules.submodules.ashen_commands.ashen_commands(self)
+        elif self.currentstate == "AshenCommands":
+            modules.submodules.check_message.check_message(self)
+        elif self.currentstate == "CheckMessage":
+            self.currentstate = "Done"
+            modules.submodules.start_check.continue_to_next(self)
 
 
 def determine_method(self):
@@ -161,6 +172,9 @@ def determine_method(self):
         self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
+        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
+        modules.submodules.elemental_commands.elemental_commands(self)
+    elif self.method.get() == "Purge Commands":
         update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Elemental Commands":
