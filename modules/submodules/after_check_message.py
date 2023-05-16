@@ -9,7 +9,6 @@ import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-from .functions.update_status import update_status
 
 
 def after_check_message(self):
@@ -64,7 +63,6 @@ def unprivate_xbox(self):
     )
 
     time.sleep(3)
-    update_status(self, "Opened modmail for them to unprivate!", "")
     switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar(self)
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]

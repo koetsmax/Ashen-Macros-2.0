@@ -9,7 +9,6 @@ from .check_message import not_good_to_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-from .functions.update_status import update_status
 import json
 import pyautogui
 
@@ -20,7 +19,6 @@ def ashen_commands(self):
     """
     self.currentstate = "AshenCommands"
 
-    update_status(self, "", 56.25)
     switch_channel(self, self.channel.get())
     clear_typing_bar(self)
     search = [
@@ -29,7 +27,6 @@ def ashen_commands(self):
         f"gamertag: {self.xbox_gt.get()}",
     ]
     execute_command(self, search[0], search[1:])
-    update_status(self, "", 62.5)
     self.start_button.state(["!disabled"])
     self.start_button.config(
         text="Continue",
@@ -44,7 +41,6 @@ def ashen_commands(self):
         text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
     )
     self.kill_button.state(["!disabled"])
-    update_status(self, "Press Continue to... You get it", "")
 
 
 def needs_to_remove_friends(self):

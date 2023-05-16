@@ -142,17 +142,6 @@ class StaffCheck:
         )
         self.check_button.grid(column=2, row=5, sticky=(W, E))
 
-        self.progressbar = tk.Progressbar(
-            self.mainframe, orient=HORIZONTAL, length=200, mode="determinate"
-        )
-        self.progressbar.grid(column=1, columnspan=2, row=9, sticky=(W, E))
-
-        self.log = Text(
-            self.mainframe, state="disabled", width=20, height=3, wrap="word"
-        )
-        self.log.grid(column=1, columnspan=2, row=10, sticky=(E, W))
-        self.log.tag_configure("highlightline", font=("TkTextFont:", 10))
-
         self.function_button = tk.Button(self.mainframe, text="Cool Button")
         self.function_button.grid(column=1, row=5, sticky=(W, E))
         self.function_button.state(["disabled"])
