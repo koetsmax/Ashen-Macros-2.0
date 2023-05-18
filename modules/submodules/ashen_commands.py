@@ -9,8 +9,6 @@ from .check_message import not_good_to_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-import json
-import pyautogui
 
 
 def ashen_commands(self):
