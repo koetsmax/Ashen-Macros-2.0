@@ -37,6 +37,10 @@ def ashen_commands(self):
         command=lambda: needs_to_remove_friends(self),
     )
     self.function_button.state(["!disabled"])
+    self.function_button_2.config(
+        text="Needs to verify account", command=lambda: needs_to_verify(self)
+    )
+    self.function_button_2.state(["!disabled"])
     self.kill_button.config(
         text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
     )
@@ -49,7 +53,7 @@ def needs_to_remove_friends(self):
     """
     self.reason = StringVar(value="Needs to remove banned friends:")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
@@ -61,7 +65,19 @@ def needs_to_unprivate_xbox(self):
     """
     self.reason = StringVar(value="Needs to unprivate xbox")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
+    for child in self.mainframe.winfo_children():
+        child.grid_configure(padx=5, pady=5)
+    not_good_to_check(self)
+
+
+def needs_to_verify(self):
+    """
+    This function notes the member as not good to check if they have to verify their account
+    """
+    self.reason = StringVar(value="Needs to verify account")
+    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)

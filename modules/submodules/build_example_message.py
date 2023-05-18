@@ -18,6 +18,7 @@ def build_example_message(self, id_):
     not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
     unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
+    verify_message = self.config["STAFFCHECK"]["verify_message"]
     self.start_button.state(["!disabled"])
     try:
         self.error_label.destroy()
@@ -33,6 +34,10 @@ def build_example_message(self, id_):
         pass
     try:
         self.error_label3.destroy()
+    except AttributeError:
+        pass
+    try:
+        self.error_label4.destroy()
     except AttributeError:
         pass
 
@@ -74,6 +79,14 @@ def build_example_message(self, id_):
             foreground="Red",
         )
         self.error_label3.grid(columnspan=2, column=1, row=7, sticky=E)
+    if not "userID" in verify_message or not "Time" in verify_message:
+        self.start_button.state(["disabled"])
+        self.error_label4 = tk.Label(
+            self.mainframe,
+            text="Error! Bad Verify message!",
+            foreground="Red",
+        )
+        self.error_label4.grid(columnspan=2, column=1, row=7, sticky=E)
 
     if id_ == 0:
         good_example_string = good_to_check_message
@@ -101,6 +114,10 @@ def build_example_message(self, id_):
             "userID", "@Max"
         )
         final_string = unprivate_xbox_example_string.replace("Time", "in 10 minutes")
+    elif id_ == 4:
+        verify_example_string = verify_message
+        verify_example_string = verify_example_string.replace("userID", "@Max")
+        final_string = verify_example_string.replace("Time", "in 10 minutes")
     if id_ != 99:
         self.example_label = tk.Label(self.customize_window, text=final_string)
         self.example_label.grid(column=1, row=6, padx=5, pady=5)

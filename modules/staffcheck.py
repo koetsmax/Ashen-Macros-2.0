@@ -29,6 +29,7 @@ class StaffCheck:
         self.example_label = None
         self.example_label1 = None
         self.example_label2 = None
+        self.example_label3 = None
         self.root = root
         self.config = configparser.ConfigParser()
         try:
@@ -44,12 +45,14 @@ class StaffCheck:
             self.unprivate_xbox_message = self.config["STAFFCHECK"][
                 "unprivate_xbox_message"
             ]
+            self.verify_message = self.config["STAFFCHECK"]["verify_message"]
         except KeyError:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
                 "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
                 "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
                 "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
+                "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             }
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
@@ -64,6 +67,7 @@ class StaffCheck:
             self.unprivate_xbox_message = self.config["STAFFCHECK"][
                 "unprivate_xbox_message"
             ]
+            self.verify_message = self.config["STAFFCHECK"]["verify_message"]
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
@@ -87,6 +91,9 @@ class StaffCheck:
         )
         self.menu_customize.add_command(
             label="Unprivate Xbox message", command=self.edit_unprivate_xbox
+        )
+        self.menu_customize.add_command(
+            label="Verify message", command=self.edit_verify
         )
         self.menu_help.add_command(label="Help", command=self.show_help)
 
@@ -157,6 +164,18 @@ class StaffCheck:
             command=lambda: modules.submodules.start_check.start_check(self),
         )
         self.start_button.grid(columnspan=2, column=2, row=6, sticky=(E, W))
+
+        self.function_button_2 = tk.Button(self.mainframe, text="Cool Button 2")
+        self.function_button_2.grid(column=1, row=7, sticky=(W, E))
+        self.function_button_2.state(["disabled"])
+
+        self.stop_button = tk.Button(
+            self.mainframe,
+            text="Stop check!",
+            command=lambda: modules.submodules.check_message.stop_check(self),
+        )
+        self.stop_button.grid(columnspan=2, column=2, row=7, sticky=(E, W))
+        self.stop_button.state(["disabled"])
 
         build_example_message(self, 99)
 
@@ -232,6 +251,24 @@ class StaffCheck:
             "userID = Discord ID\nTime = automatic hammertime timestamp",
             3,
             "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
+            self.start_button,
+            self.root,
+            self.mainframe,
+        )
+
+    def edit_verify(self):
+        """
+        Edit the message that is sent in on duty chat when a user has been requested to verify their account.
+        """
+        try:
+            self.error_label.destroy()
+        except AttributeError:
+            pass
+        CustomizeWindow(
+            "verify_message",
+            "userID = Discord ID\nTime = automatic hammertime timestamp",
+            4,
+            "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             self.start_button,
             self.root,
             self.mainframe,

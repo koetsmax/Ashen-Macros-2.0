@@ -63,12 +63,13 @@ def not_good_to_check(self):
     switch_channel(self, "#on-duty-chat")
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
+    self.function_button_2.state(["disabled"])
     try:
         self.reason.get()
     except AttributeError:
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
     self.start_button.config(
@@ -97,3 +98,13 @@ def build_not_good_to_check(self):
     keyboard.write(built_not_good_to_check_message)
     keyboard.press_and_release("enter")
     after_check_message(self)
+
+
+def stop_check(self):
+    """
+    This function stops the check process
+    """
+    self.currentstate = "CheckMessage"
+    modules.submodules.start_check.continue_to_next(self)
+    self.start_button.state(["!disabled"])
+    self.function_button.state(["!disabled"])

@@ -26,6 +26,7 @@ def start_check(self):
             if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
                 if self.xbox_gt.get() != "":
                     self.start_button.state(["disabled"])
+                    self.stop_button.state(["!disabled"])
                     try:
                         self.save_button.state(["disabled"])
                     except (AttributeError, TclError):
@@ -103,10 +104,11 @@ def continue_to_next(self):
         if self.currentstate == "Done":
             self.user_id.set("")
             self.xbox_gt.set("")
+            self.stop_button.state(["disabled"])
         self.function_button.state(["disabled"])
+        self.function_button_2.state(["disabled"])
         self.start_button.state(["!disabled"])
         self.kill_button.state(["!disabled"])
-        self.log.see("end")
         try:
             self.save_button.state(["!disabled"])
         except (AttributeError, TclError):
@@ -161,7 +163,7 @@ def determine_method(self):
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
         modules.submodules.elemental_commands.elemental_commands(self)
