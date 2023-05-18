@@ -9,7 +9,6 @@ import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
-from .functions.update_status import update_status
 
 
 def after_check_message(self):
@@ -27,7 +26,11 @@ def after_check_message(self):
     self.start_button.config(
         text="Needs to join the AWR", command=lambda: join_awr(self)
     )
+    self.function_button_2.config(
+        text="Needs to verify account", command=lambda: verify_account(self)
+    )
     self.kill_button.state(["!disabled"])
+    self.function_button_2.state(["!disabled"])
 
 
 def unprivate_xbox(self):
@@ -64,7 +67,6 @@ def unprivate_xbox(self):
     )
 
     time.sleep(3)
-    update_status(self, "Opened modmail for them to unprivate!", "")
     switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar(self)
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
@@ -98,5 +100,25 @@ def join_awr(self):
         "Time", f"<t:{round(time.time() + 600)}:R>"
     )
     keyboard.write(built_join_awr_message)
+    keyboard.press_and_release("enter")
+    modules.submodules.start_check.continue_to_next(self)
+
+
+def verify_account(self):
+    """
+    This function executes a command to notify the user to verify their account
+    """
+    clear_typing_bar(self)
+    switch_channel(self, "#on-duty-chat")
+    verifyaccount = ["/verify ", f"{self.user_id.get()}"]
+    execute_command(self, verifyaccount[0], verifyaccount[1:])
+    built_verify_account_message = self.config["STAFFCHECK"]["verify_account_message"]
+    built_verify_account_message = built_verify_account_message.replace(
+        "userID", f"<@{self.user_id.get()}>"
+    )
+    built_verify_account_message = built_verify_account_message.replace(
+        "Time", f"<t:{round(time.time() + 600)}:R>"
+    )
+    keyboard.write(built_verify_account_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)

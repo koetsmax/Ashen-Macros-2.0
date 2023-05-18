@@ -10,7 +10,6 @@ import modules.submodules.ashen_commands
 import modules.submodules.invite_tracker
 import modules.submodules.sot_official
 import modules.submodules.check_message
-from .functions.update_status import update_status
 
 
 def start_check(self):
@@ -27,6 +26,7 @@ def start_check(self):
             if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
                 if self.xbox_gt.get() != "":
                     self.start_button.state(["disabled"])
+                    self.stop_button.state(["!disabled"])
                     try:
                         self.save_button.state(["disabled"])
                     except (AttributeError, TclError):
@@ -56,10 +56,6 @@ def start_check(self):
                     self.check_button.config(state=[("disabled")])
 
                     self.currentstate = "BeepBoop"
-                    update_status(self, "Status: Received ID and Gamertag", 6.25)
-                    update_status(
-                        self, "Status: Determining if precheck is enabled", 12.5
-                    )
                     if "selected" in self.check_button.state():
                         modules.submodules.pre_check.pre_check(self)
                     else:
@@ -105,14 +101,14 @@ def continue_to_next(self):
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     exempted_methods = ["Purge Commands", "All Commands"]
     if self.method.get() not in exempted_methods or self.currentstate == "Done":
-        update_status(self, "Check Completed!!!", 100)
         if self.currentstate == "Done":
             self.user_id.set("")
             self.xbox_gt.set("")
+            self.stop_button.state(["disabled"])
         self.function_button.state(["disabled"])
+        self.function_button_2.state(["disabled"])
         self.start_button.state(["!disabled"])
         self.kill_button.state(["!disabled"])
-        self.log.see("end")
         try:
             self.save_button.state(["!disabled"])
         except (AttributeError, TclError):
@@ -164,35 +160,24 @@ def determine_method(self):
     """
     This function determines which method to use
     """
-    update_status(self, "Status: Determining Method", 31.25)
-
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Purge Commands":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Elemental Commands":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Ashen Commands":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.ashen_commands.ashen_commands(self)
     elif self.method.get() == "Invite Tracker":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.invite_tracker.invite_tracker(self)
     elif self.method.get() == "SOT Official":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.sot_official.sot_official(self)
     elif self.method.get() == "Check Message":
-        update_status(self, f"Status: Method determined: {self.method.get()}", 37.5)
         modules.submodules.check_message.check_message(self)
     else:
-        update_status(self, "Status: Unable to determine method. Please try again", 0)
         self.start_button.state(["!disabled"])
-        self.progressbar.config(value=0)

@@ -10,7 +10,6 @@ import modules.submodules.start_check
 from .after_check_message import after_check_message
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
-from .functions.update_status import update_status
 
 
 def check_message(self):
@@ -18,7 +17,6 @@ def check_message(self):
     This function makes changes to the GUI and applies commands to the buttons
     """
     self.currentstate = "CheckMessage"
-    update_status(self, "", 93.75)
     switch_channel(self, "#on-duty-chat")
 
     self.function_button.config(
@@ -31,7 +29,6 @@ def check_message(self):
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
-    update_status(self, "Press ONE of the buttons to do what you want to do", "")
 
 
 def good_to_check(self):
@@ -51,7 +48,6 @@ def good_to_check(self):
     )
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
-    update_status(self, "Posted Good to Check Message!", 100)
     modules.submodules.start_check.continue_to_next(self)
 
 
@@ -67,12 +63,13 @@ def not_good_to_check(self):
     switch_channel(self, "#on-duty-chat")
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
+    self.function_button_2.state(["disabled"])
     try:
         self.reason.get()
     except AttributeError:
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=7, sticky=(W, E))
+        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
     self.start_button.config(
@@ -100,5 +97,14 @@ def build_not_good_to_check(self):
     clear_typing_bar(self)
     keyboard.write(built_not_good_to_check_message)
     keyboard.press_and_release("enter")
-    update_status(self, "Posted Not Good to Check Message!", 100)
     after_check_message(self)
+
+
+def stop_check(self):
+    """
+    This function stops the check process
+    """
+    self.currentstate = "CheckMessage"
+    modules.submodules.start_check.continue_to_next(self)
+    self.start_button.state(["!disabled"])
+    self.function_button.state(["!disabled"])
