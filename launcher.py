@@ -1,22 +1,24 @@
 """
 Creates the launcher window and checks for updates.
 """
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, C0209, C0301, W0611, W0201, C0415
+import configparser
+
 import os
-from tkinter import *
+import subprocess
+from tkinter import FALSE, E, N, S, Tk, Toplevel, W
 from tkinter import ttk as tk
 import requests
+from typing import Callable
 from packaging import version
-import modules.staffcheck as staffcheck
-import modules.fill_new_fleet as fill_new_fleet
+from pyuac import isUserAdmin, runAsAdmin
 import modules.add_to_ban_list as add_to_ban_list
+import modules.fill_new_fleet as fill_new_fleet
 import modules.hammertime_generator as hammertime_generator
-import modules.warning as warning
 import modules.rename_fleet as rename_fleet
+import modules.staffcheck as staffcheck
 import modules.submodules.functions.window_positions as window_positions
-import subprocess
-import configparser
-from pyuac import runAsAdmin, isUserAdmin
+import modules.warning as warning
+import modules.widgets as widgets
 
 
 class Launcher:
@@ -27,6 +29,8 @@ class Launcher:
     # Create the launcher window
     def __init__(self, root):
         self.config = configparser.ConfigParser()
+        with open("version", "r", encoding="UTF-8") as versionfile:
+            local_version = versionfile.read().strip()
 
         try:
             # parse config file
@@ -73,152 +77,137 @@ class Launcher:
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="NWES")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
         # Create the buttons
-        self.staffcheck_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="                       Staffcheck script                       ",
-            command=self.start_staffcheck,
+            "                       Staffcheck script                       ",
+            self.start_script("Staffcheck"),
+            1,
+            1,
+            "E, W",
         )
-        self.staffcheck_button.grid(row=1, sticky=(E, W))
 
-        self.add_warning_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Add warning script",
-            command=self.start_warning,
+            "Add warning script",
+            self.start_script("Add warning"),
+            2,
+            1,
+            "E, W",
         )
-        self.add_warning_button.grid(row=2, sticky=(E, W))
 
-        self.rename_fleet_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Rename fleet script",
-            command=self.start_rename_fleet,
+            "Rename fleet script",
+            self.start_script("Rename fleet"),
+            3,
+            1,
+            "E, W",
         )
-        self.rename_fleet_button.grid(row=4, sticky=(E, W))
 
-        # add fill_new_fleet module to the launcher
-        self.fillfleet_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Fill new Fleet script",
-            command=self.start_fill_new_fleet,
+            "Fill new Fleet script",
+            self.start_script("Fill new fleet"),
+            4,
+            1,
+            "E, W",
         )
-        self.fillfleet_button.grid(row=3, sticky=(E, W))
 
-        self.add_to_ban_list_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Add to ban list script",
-            command=self.start_add_to_ban_list,
+            "Add to ban list script",
+            self.start_script("Add to ban list"),
+            5,
+            1,
+            "E, W",
         )
-        self.add_to_ban_list_button.grid(row=5, sticky=(E, W))
 
-        self.discord_timestamp_generator_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Discord timestamp generator",
-            command=self.start_hammertime_generator,
+            "Discord timestamp generator",
+            self.start_script("Discord timestamp generator"),
+            6,
+            1,
+            "E, W",
         )
-        self.discord_timestamp_generator_button.grid(row=6, sticky=(E, W))
 
-        self.auto_spiker_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Auto Spiker",
-            command=self.start_auto_spiker,
+            "Auto spiker",
+            self.start_script("Auto Spiker"),
+            7,
+            1,
+            "E, W",
         )
-        self.auto_spiker_button.grid(row=7, sticky=(E, W))
 
-        self.check_for_updates_button = tk.Button(
+        widgets.create_button(
             self.mainframe,
-            text="Check For Updates!!!",
-            command=lambda: self.check_for_updates(False),
+            "Check for updates!!!",
+            lambda: self.check_for_updates(False),
+            8,
+            1,
+            "E, W",
         )
-        self.check_for_updates_button.grid(row=79, sticky=(W, E))
 
-        self.kill_button = tk.Button(
-            self.mainframe, text="Kill Program", command=self.kill
+        widgets.create_button(
+            self.mainframe,
+            "Kill Program",
+            self.start_script("Kill"),
+            80,
+            1,
+            "E, W",
         )
-        self.kill_button.grid(row=80, sticky=(W, E))
 
-        self.delay_config_button = tk.Button(
-            self.mainframe, text="Command Delay", command=self.delay_config
+        widgets.create_button(
+            self.mainframe,
+            "Command Delay",
+            self.delay_config,
+            82,
+            1,
+            "W",
+        )
+
+        widgets.create_label(
+            self.mainframe,
+            f"Version: {local_version}",
+            82,
+            1,
+            "E",
         )
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-        # add a small text in the bottom right of the launcher window to show the version
-        with open("version", "r", encoding="UTF-8") as versionfile:
-            local_version = versionfile.read()
-        self.version_label = tk.Label(
-            self.mainframe, text=f"Version: {local_version}", font=("arial", 8)
-        )
-        self.version_label.grid(row=81, sticky=E)
-
         self.check_for_updates(True)
 
-    def start_staffcheck(self):
+    def start_script(self, script_name: str) -> Callable[[], None]:
         """
-        Starts the staffcheck script.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-        staffcheck.start_script()
-
-    def start_rename_fleet(self):
-        """
-        Starts the rename_fleet script.
+        Starts a specified script.
         """
         window_positions.save_window_position(root)
         root.destroy()
-        rename_fleet.start_script()
+        if script_name.strip() == "Staffcheck":
+            staffcheck.start_script()
+        elif script_name.strip() == "Add warning":
+            warning.start_script()
+        elif script_name.strip() == "Add to ban list":
+            add_to_ban_list.start_script()
+        elif script_name.strip() == "Discord timestamp generator":
+            hammertime_generator.start_script()
+        elif script_name.strip() == "Auto spiker":
+            subprocess.Popen("./modules/autospiker.exe")
+        elif script_name.strip() == "kill":
+            pass
+        else:
+            raise ValueError(f"Unknown script name: {script_name}")
+        return lambda: None
 
-    def start_fill_new_fleet(self):
-        """
-        Starts the fill_new_fleet script.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-        fill_new_fleet.start_script()
-
-    def start_add_to_ban_list(self):
-        """
-        Starts the add_to_ban_list script.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-        add_to_ban_list.start_script()
-
-    def start_hammertime_generator(self):
-        """
-        Starts the fill_new_fleet script.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-        hammertime_generator.start_script()
-
-    def start_auto_spiker(self):
-        """
-        Starts the auto_spiker script.
-        """
-        subprocess.Popen("./modules/autospiker.exe")
-
-    def start_warning(self):
-        """
-        Starts the warning script.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-        warning.start_script()
-
-    def kill(self):
-        """
-        Kills the program.
-        """
-        window_positions.save_window_position(root)
-        root.destroy()
-
-    def update_window(self, text, update_is_available):
+    def update_window(self, text: str, update_is_available: bool) -> Callable[[], None]:
         """
         Creates the update window.
         """
@@ -242,6 +231,8 @@ class Launcher:
             yes_button.grid(column=1, row=2, sticky=W)
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
+
+        return lambda: None
 
     def check_for_updates(self, silent):
         """
