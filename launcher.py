@@ -5,7 +5,7 @@ import configparser
 
 import os
 import subprocess
-from tkinter import FALSE, E, N, S, Tk, Toplevel, W
+from tkinter import *
 from tkinter import ttk as tk
 import requests
 from typing import Callable
@@ -85,7 +85,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "                       Staffcheck script                       ",
-            self.start_script("Staffcheck"),
+            lambda: self.start_script("Staffcheck"),
             1,
             1,
             "E, W",
@@ -94,7 +94,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Add warning script",
-            self.start_script("Add warning"),
+            lambda: self.start_script("Add warning"),
             2,
             1,
             "E, W",
@@ -103,7 +103,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Rename fleet script",
-            self.start_script("Rename fleet"),
+            lambda: self.start_script("Rename fleet"),
             3,
             1,
             "E, W",
@@ -112,7 +112,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Fill new Fleet script",
-            self.start_script("Fill new fleet"),
+            lambda: self.start_script("Fill new fleet"),
             4,
             1,
             "E, W",
@@ -121,7 +121,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Add to ban list script",
-            self.start_script("Add to ban list"),
+            lambda: self.start_script("Add to ban list"),
             5,
             1,
             "E, W",
@@ -130,7 +130,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Discord timestamp generator",
-            self.start_script("Discord timestamp generator"),
+            lambda: self.start_script("Discord timestamp generator"),
             6,
             1,
             "E, W",
@@ -139,7 +139,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Auto spiker",
-            self.start_script("Auto Spiker"),
+            lambda: self.start_script("Auto Spiker"),
             7,
             1,
             "E, W",
@@ -148,7 +148,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Check for updates!!!",
-            lambda: self.check_for_updates(False),
+            lambda: lambda: self.check_for_updates(False),
             8,
             1,
             "E, W",
@@ -157,7 +157,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Kill Program",
-            self.start_script("Kill"),
+            lambda: self.start_script("Kill"),
             80,
             1,
             "E, W",
@@ -166,7 +166,7 @@ class Launcher:
         widgets.create_button(
             self.mainframe,
             "Command Delay",
-            self.delay_config,
+            lambda: self.delay_config,
             82,
             1,
             "W",
@@ -192,14 +192,19 @@ class Launcher:
         window_positions.save_window_position(root)
         root.destroy()
         if script_name.strip() == "Staffcheck":
+            pass
             staffcheck.start_script()
         elif script_name.strip() == "Add warning":
+            pass
             warning.start_script()
         elif script_name.strip() == "Add to ban list":
+            pass
             add_to_ban_list.start_script()
         elif script_name.strip() == "Discord timestamp generator":
+            pass
             hammertime_generator.start_script()
         elif script_name.strip() == "Auto spiker":
+            pass
             subprocess.Popen("./modules/autospiker.exe")
         elif script_name.strip() == "kill":
             pass
