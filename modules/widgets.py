@@ -1,11 +1,10 @@
 from tkinter import ttk
 import tkinter as tk
-from typing import List, Callable
-import configparser
+from typing import List, Callable, Union
 
 
 def create_button(
-    parent: ttk.Widget,
+    parent: Union[tk.Toplevel, ttk.Frame],
     text: str,
     command: Callable,
     row: int,
@@ -18,7 +17,7 @@ def create_button(
 
 
 def create_label(
-    parent: ttk.Widget,
+    parent: Union[tk.Toplevel, ttk.Frame],
     text: str,
     row: int,
     column: int,
@@ -30,14 +29,12 @@ def create_label(
     Creates a label widget and places it in the parent widget.
     """
     label = ttk.Label(parent, text=text)
-    label.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return label
 
 
 def create_listbox(
-    parent: ttk.Widget,
+    parent: Union[tk.Toplevel, ttk.Frame],
     items: List[str],
     variable: tk.StringVar,
     row: int,
@@ -51,21 +48,19 @@ def create_listbox(
 
 
 def create_entry(
-    parent: ttk.Widget,
-    text: str,
+    parent: Union[tk.Toplevel, ttk.Frame],
     variable: tk.StringVar,
     row: int,
     column: int,
     sticky: str = "",
 ) -> ttk.Entry:
     entry = ttk.Entry(parent, textvariable=variable)
-    entry.insert(0, text)
     entry.grid(row=row, column=column, sticky=sticky)
     return entry
 
 
 def create_checkbox(
-    parent: ttk.Widget,
+    parent: Union[tk.Toplevel, tk.Frame],
     text: str,
     variable: tk.BooleanVar,
     row: int,
