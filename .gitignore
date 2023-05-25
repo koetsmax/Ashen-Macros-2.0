@@ -1,4 +1,5 @@
 openai.token
+pyproject.toml
 /.vscode
 settings.ini
 Installforge project.ifp
