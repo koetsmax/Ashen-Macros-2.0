@@ -1,15 +1,12 @@
 """
 This module adds a warning to the specified member.
 """
-
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, W0201
 from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.switch_channel import switch_channel
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import runpy
-import configparser
 import launcher
 import modules.submodules.functions.window_positions as window_positions
 
@@ -21,13 +18,12 @@ class Warning:
 
     def __init__(self, root):
         self.root = root
-        self.config = configparser.ConfigParser()
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
@@ -35,7 +31,7 @@ class Warning:
         tk.Label(self.mainframe, text="Channel:").grid(column=1, row=1, sticky=E)
         self.channel = StringVar(value="#on-duty-commands")
         self.channel_combo_box = tk.Combobox(self.mainframe, textvariable=self.channel)
-        self.channel_combo_box.grid(column=2, row=1, sticky=(W, E))
+        self.channel_combo_box.grid(column=2, row=1, sticky="W, E")
         self.channel_combo_box["values"] = (
             "#staff-commands",
             "#on-duty-commands",
@@ -47,27 +43,23 @@ class Warning:
         tk.Label(self.mainframe, text="Preset warning:").grid(column=1, row=2, sticky=E)
         self.reason = StringVar(value="leave warning (rule 5)")
         self.reason_combo_box = tk.Combobox(self.mainframe, textvariable=self.reason)
-        self.reason_combo_box.grid(column=2, row=2, sticky=(W, E))
+        self.reason_combo_box.grid(column=2, row=2, sticky="W, E")
         self.values = ("leave warning (rule 5)", "Alt+F4 warning")
         self.reason_combo_box["values"] = self.values
 
         # Create the labels and entry boxes
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=3, sticky=E)
         self.user_id = StringVar()
-        self.user_id_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.user_id
-        )
-        self.user_id_entry.grid(column=2, row=3, sticky=(W, E))
+        self.user_id_entry = tk.Entry(self.mainframe, width=19, textvariable=self.user_id)
+        self.user_id_entry.grid(column=2, row=3, sticky="W, E")
 
         tk.Label(
             self.mainframe,
             text="Custom Reason:",
         ).grid(column=1, row=4, sticky=E)
         self.custom_reason = StringVar()
-        self.custom_reason_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.custom_reason
-        )
-        self.custom_reason_entry.grid(column=2, row=4, sticky=(W, E))
+        self.custom_reason_entry = tk.Entry(self.mainframe, width=19, textvariable=self.custom_reason)
+        self.custom_reason_entry.grid(column=2, row=4, sticky="W, E")
 
         # create a checkbox for loghistory
         self.check = BooleanVar(value=False)
@@ -93,13 +85,11 @@ class Warning:
         self.nodm_checkbox.grid(columnspan=2, column=1, row=6, sticky=W)
 
         # Create the buttons
-        self.kill_button = tk.Button(
-            self.mainframe, text="Back to launcher", command=self.back
-        )
-        self.kill_button.grid(row=81, columnspan=5, sticky=(W, E))
+        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button.grid(row=81, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
-        self.start_button.grid(row=79, columnspan=5, sticky=(W, E))
+        self.start_button.grid(row=79, columnspan=5, sticky="W, E")
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -155,7 +145,7 @@ class Warning:
             execute_command(self, loghistory[0], loghistory[1:])
             self.start_button.config(text="Add warning", command=self.add_warning)
             self.stop_button = tk.Button(self.mainframe, text="Stop", command=self.stop)
-            self.stop_button.grid(row=80, columnspan=5, sticky=(W, E))
+            self.stop_button.grid(row=80, columnspan=5, sticky="W, E")
             self.stop_button.state(["!disabled"])
         else:
             clear_typing_bar(self)
@@ -167,9 +157,7 @@ class Warning:
 def start_script():
     root = Tk()
     window_positions.load_window_position(root)
-    # root.eval("tk::PlaceWindow . center")
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     Warning(root)
     root.mainloop()

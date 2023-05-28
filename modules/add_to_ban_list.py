@@ -1,8 +1,6 @@
 """
 This module adds the specified member to the ban list.
 """
-
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, W0201
 from tkinter import *
 from tkinter import ttk as tk
 import re
@@ -53,14 +51,14 @@ class AddToBanList:
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
         # Create the tabbed menu for the diferent servers
 
         self.server_selector = tk.Notebook(root)
-        self.server_selector.grid(row=0, column=0, sticky=(N, W, E, S))
+        self.server_selector.grid(row=0, column=0, sticky="N, W, E, S")
 
         self.requiem = tk.Frame(self.server_selector)
         self.fortune = tk.Frame(self.server_selector)
@@ -73,27 +71,23 @@ class AddToBanList:
         # create the labels and entry boxes for the requiem tab
 
         self.ban_label = tk.Label(self.requiem, text="Entire Ban Entry as in AoA:")
-        self.ban_label.grid(column=1, row=1, sticky=(W, E))
+        self.ban_label.grid(column=1, row=1, sticky="W, E")
 
         self.ban_entry = StringVar()
-        self.ban_entry_entry = tk.Entry(
-            self.requiem, width=19, textvariable=self.ban_entry
-        )
-        self.ban_entry_entry.grid(column=2, row=1, sticky=(W, E))
+        self.ban_entry_entry = tk.Entry(self.requiem, width=19, textvariable=self.ban_entry)
+        self.ban_entry_entry.grid(column=2, row=1, sticky="W, E")
 
         self.explanation_label = tk.Label(
             self.requiem,
             text="Allows multiple bans seperated by a comma\nExample: 123456789,987654321",
         )
-        self.explanation_label.grid(columnspan=6, row=2, sticky=(W, E))
+        self.explanation_label.grid(columnspan=6, row=2, sticky="W, E")
 
         self.start_button = tk.Button(self.requiem, text="Submit", command=self.start)
-        self.start_button.grid(row=79, columnspan=5, sticky=(W, E))
+        self.start_button.grid(row=79, columnspan=5, sticky="W, E")
 
-        self.kill_button = tk.Button(
-            self.requiem, text="Back to launcher", command=self.back
-        )
-        self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
+        self.kill_button = tk.Button(self.requiem, text="Back to launcher", command=self.back)
+        self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         for child in self.requiem.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -102,34 +96,28 @@ class AddToBanList:
         tk.Label(self.fortune, text="Discord ID:").grid(column=1, row=2, sticky=E)
         self.user_id = StringVar()
         self.user_id_entry = tk.Entry(self.fortune, width=19, textvariable=self.user_id)
-        self.user_id_entry.grid(column=2, row=2, sticky=(W, E))
+        self.user_id_entry.grid(column=2, row=2, sticky="W, E")
 
         tk.Label(self.fortune, text="Discord Name:").grid(column=1, row=3, sticky=E)
         self.discord_name = StringVar()
-        self.discord_name_entry = tk.Entry(
-            self.fortune, width=19, textvariable=self.discord_name
-        )
-        self.discord_name_entry.grid(column=2, row=3, sticky=(W, E))
+        self.discord_name_entry = tk.Entry(self.fortune, width=19, textvariable=self.discord_name)
+        self.discord_name_entry.grid(column=2, row=3, sticky="W, E")
 
         tk.Label(self.fortune, text="Xbox Gamertag:").grid(column=1, row=4, sticky=E)
         self.xbox_gamertag = StringVar()
-        self.xbox_gamertag_entry = tk.Entry(
-            self.fortune, width=19, textvariable=self.xbox_gamertag
-        )
-        self.xbox_gamertag_entry.grid(column=2, row=4, sticky=(W, E))
+        self.xbox_gamertag_entry = tk.Entry(self.fortune, width=19, textvariable=self.xbox_gamertag)
+        self.xbox_gamertag_entry.grid(column=2, row=4, sticky="W, E")
 
         tk.Label(self.fortune, text="Reason:").grid(column=1, row=5, sticky=E)
         self.reason = StringVar()
         self.reason_entry = tk.Entry(self.fortune, width=19, textvariable=self.reason)
-        self.reason_entry.grid(column=2, row=5, sticky=(W, E))
+        self.reason_entry.grid(column=2, row=5, sticky="W, E")
 
-        self.kill_button = tk.Button(
-            self.fortune, text="Back to launcher", command=self.back
-        )
-        self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
+        self.kill_button = tk.Button(self.fortune, text="Back to launcher", command=self.back)
+        self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.fortune, text="Submit", command=self.start)
-        self.start_button.grid(row=79, columnspan=5, sticky=(W, E))
+        self.start_button.grid(row=79, columnspan=5, sticky="W, E")
 
         for child in self.fortune.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -137,41 +125,29 @@ class AddToBanList:
         # Create the labels and entry boxes for the obsidian tab
         tk.Label(self.obsidian, text="Discord ID:").grid(column=1, row=2, sticky=E)
         self.obsidian_user_id = StringVar()
-        self.obsidian_user_id_entry = tk.Entry(
-            self.obsidian, width=19, textvariable=self.user_id
-        )
-        self.obsidian_user_id_entry.grid(column=2, row=2, sticky=(W, E))
+        self.obsidian_user_id_entry = tk.Entry(self.obsidian, width=19, textvariable=self.user_id)
+        self.obsidian_user_id_entry.grid(column=2, row=2, sticky="W, E")
 
         tk.Label(self.obsidian, text="Discord Name:").grid(column=1, row=3, sticky=E)
         self.obsidian_discord_name = StringVar()
-        self.obsidian_discord_name_entry = tk.Entry(
-            self.obsidian, width=19, textvariable=self.discord_name
-        )
-        self.obsidian_discord_name_entry.grid(column=2, row=3, sticky=(W, E))
+        self.obsidian_discord_name_entry = tk.Entry(self.obsidian, width=19, textvariable=self.discord_name)
+        self.obsidian_discord_name_entry.grid(column=2, row=3, sticky="W, E")
 
         tk.Label(self.obsidian, text="Xbox Gamertag:").grid(column=1, row=4, sticky=E)
         self.obsidian_xbox_gamertag = StringVar()
-        self.obsidian_xbox_gamertag_entry = tk.Entry(
-            self.obsidian, width=19, textvariable=self.xbox_gamertag
-        )
-        self.obsidian_xbox_gamertag_entry.grid(column=2, row=4, sticky=(W, E))
+        self.obsidian_xbox_gamertag_entry = tk.Entry(self.obsidian, width=19, textvariable=self.xbox_gamertag)
+        self.obsidian_xbox_gamertag_entry.grid(column=2, row=4, sticky="W, E")
 
         tk.Label(self.obsidian, text="Reason:").grid(column=1, row=5, sticky=E)
         self.obsidian_reason = StringVar()
-        self.obsidian_reason_entry = tk.Entry(
-            self.obsidian, width=19, textvariable=self.reason
-        )
-        self.obsidian_reason_entry.grid(column=2, row=5, sticky=(W, E))
+        self.obsidian_reason_entry = tk.Entry(self.obsidian, width=19, textvariable=self.reason)
+        self.obsidian_reason_entry.grid(column=2, row=5, sticky="W, E")
 
-        self.obsidian_kill_button = tk.Button(
-            self.obsidian, text="Back to launcher", command=self.back
-        )
-        self.obsidian_kill_button.grid(row=80, columnspan=5, sticky=(W, E))
+        self.obsidian_kill_button = tk.Button(self.obsidian, text="Back to launcher", command=self.back)
+        self.obsidian_kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
-        self.obsidian_start_button = tk.Button(
-            self.obsidian, text="Submit", command=self.start
-        )
-        self.obsidian_start_button.grid(row=79, columnspan=5, sticky=(W, E))
+        self.obsidian_start_button = tk.Button(self.obsidian, text="Submit", command=self.start)
+        self.obsidian_start_button.grid(row=79, columnspan=5, sticky="W, E")
 
         for child in self.obsidian.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -268,11 +244,7 @@ class AddToBanList:
             # Extract the gamertag and Discord tag
             gamertag = "N/A"
             discord_tag = "N/A"
-            gamertag = (
-                parts[0].split(":")[1].strip()
-                if parts[0].split(":")[1].strip().count("?") < 3
-                else "N/A"
-            )
+            gamertag = parts[0].split(":")[1].strip() if parts[0].split(":")[1].strip().count("?") < 3 else "N/A"
             for i, part in enumerate(parts):
                 if "#" in part:
                     discord_tag = part.strip()
@@ -344,9 +316,7 @@ class SettingsWindow:
         explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
 
         self.message = StringVar(value=self.config["ADD_TO_BAN_LIST"]["delay"])
-        self.message_entry = tk.Entry(
-            self.customize_window, width=75, textvariable=self.message
-        )
+        self.message_entry = tk.Entry(self.customize_window, width=75, textvariable=self.message)
         self.message_entry.grid(column=1, row=4, sticky=(E, W))
 
         self.save_button = tk.Button(
@@ -372,9 +342,7 @@ class SettingsWindow:
 def start_script():
     root = Tk()
     window_positions.load_window_position(root)
-    # root.eval("tk::PlaceWindow . center")
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddToBanList(root)
     root.mainloop()

@@ -1,4 +1,3 @@
-# pylint: disable=E0401, E0402, I1101
 """
 Function that tries to activate the discord window
 """
@@ -12,7 +11,7 @@ def window_enumeration_handler(hwnd, top_windows):
     top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
 
 
-def activate_window(self, window):
+def activate_window(window: str):
     """
     Function that tries to activate the discord window
     """

@@ -1,7 +1,6 @@
 """
 This module initiates the staffcheck process and determines which method to use
 """
-# pylint: disable=E0401, E0402, W0401 W0614
 from tkinter import *
 from tkinter import ttk as tk
 import modules.submodules.pre_check
@@ -37,18 +36,10 @@ def start_check(self):
                         pass
                     self.reason = ""
                     self.kill_button.state(["!disabled"])
-                    self.menu_customize.entryconfigure(
-                        "Good to check message", state=DISABLED
-                    )
-                    self.menu_customize.entryconfigure(
-                        "Not good to check message", state=DISABLED
-                    )
-                    self.menu_customize.entryconfigure(
-                        "Join AWR message", state=DISABLED
-                    )
-                    self.menu_customize.entryconfigure(
-                        "Unprivate Xbox message", state=DISABLED
-                    )
+                    self.menu_customize.entryconfigure("Good to check message", state=DISABLED)
+                    self.menu_customize.entryconfigure("Not good to check message", state=DISABLED)
+                    self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
+                    self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
                     self.user_id_entry.config(state=[("disabled")])
                     self.xbox_gt_entry.config(state=[("disabled")])
                     self.channel_combo_box.config(state=[("disabled")])
@@ -163,7 +154,7 @@ def determine_method(self):
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
+        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
         modules.submodules.elemental_commands.elemental_commands(self)

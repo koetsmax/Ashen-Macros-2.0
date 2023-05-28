@@ -1,14 +1,16 @@
 """
-This module is the main module of the program, initializing the GUI and the other modules.
+This module creates the GUI for the staff check module.
 """
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, E0611, W0611, I1101
-from tkinter import *
-from tkinter import ttk as tk
 import configparser
 import runpy
-import modules.submodules.start_check
-import modules.submodules.functions.window_positions as window_positions
+from tkinter import *
+from tkinter import ttk as tk
+
 import launcher
+import modules.submodules.functions.window_positions as window_positions
+import modules.submodules.start_check
+import modules.widgets
+
 from .submodules.build_example_message import build_example_message
 
 
@@ -18,33 +20,15 @@ class StaffCheck:
     """
 
     def __init__(self, root):
-        self.good_window = None
-        self.good_to_check_entry = None
-        self.join_awr_window = None
-        self.save_button = None
-        self.reset_button = None
-        self.not_good_to_check_entry = None
-        self.edit_join_awr_entry = None
-        self.not_good_window = None
-        self.example_label = None
-        self.example_label1 = None
-        self.example_label2 = None
-        self.example_label3 = None
         self.root = root
         self.config = configparser.ConfigParser()
         try:
             # parse config file
             self.config.read("settings.ini")
-            self.good_to_check_message = self.config["STAFFCHECK"][
-                "good_to_check_message"
-            ]
-            self.not_good_to_check_message = self.config["STAFFCHECK"][
-                "not_good_to_check_message"
-            ]
+            self.good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
+            self.not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-            self.unprivate_xbox_message = self.config["STAFFCHECK"][
-                "unprivate_xbox_message"
-            ]
+            self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
         except KeyError:
             self.config["STAFFCHECK"] = {
@@ -57,16 +41,10 @@ class StaffCheck:
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
-            self.good_to_check_message = self.config["STAFFCHECK"][
-                "good_to_check_message"
-            ]
-            self.not_good_to_check_message = self.config["STAFFCHECK"][
-                "not_good_to_check_message"
-            ]
+            self.good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
+            self.not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-            self.unprivate_xbox_message = self.config["STAFFCHECK"][
-                "unprivate_xbox_message"
-            ]
+            self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
@@ -80,44 +58,34 @@ class StaffCheck:
         menubar.add_cascade(menu=self.menu_customize, label="Customize")
         menubar.add_cascade(menu=self.menu_help, label="Help")
 
-        self.menu_customize.add_command(
-            label="Good to check message", command=self.edit_good_to_check
-        )
-        self.menu_customize.add_command(
-            label="Not good to check message", command=self.edit_not_good_to_check
-        )
-        self.menu_customize.add_command(
-            label="Join AWR message", command=self.edit_join_awr
-        )
-        self.menu_customize.add_command(
-            label="Unprivate Xbox message", command=self.edit_unprivate_xbox
-        )
-        self.menu_customize.add_command(
-            label="Verify message", command=self.edit_verify
-        )
+        self.menu_customize.add_command(label="Good to check message", command=self.edit_good_to_check)
+        self.menu_customize.add_command(label="Not good to check message", command=self.edit_not_good_to_check)
+        self.menu_customize.add_command(label="Join AWR message", command=self.edit_join_awr)
+        self.menu_customize.add_command(label="Unprivate Xbox message", command=self.edit_unprivate_xbox)
+        self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
         self.menu_help.add_command(label="Help", command=self.show_help)
 
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
+        widgets.create_label
+
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=1, sticky=E)
         self.user_id = StringVar()
-        self.user_id_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.user_id
-        )
-        self.user_id_entry.grid(column=2, row=1, sticky=(W, E))
+        self.user_id_entry = tk.Entry(self.mainframe, width=19, textvariable=self.user_id)
+        self.user_id_entry.grid(column=2, row=1, sticky="W, E")
 
         tk.Label(self.mainframe, text="GamerTag:").grid(column=1, row=2, sticky=E)
         self.xbox_gt = StringVar()
         self.xbox_gt_entry = tk.Entry(self.mainframe, textvariable=self.xbox_gt)
-        self.xbox_gt_entry.grid(column=2, row=2, sticky=(W, E))
+        self.xbox_gt_entry.grid(column=2, row=2, sticky="W, E")
 
         tk.Label(self.mainframe, text="Channel:").grid(column=1, row=3, sticky=E)
         self.channel = StringVar(value="#on-duty-commands")
         self.channel_combo_box = tk.Combobox(self.mainframe, textvariable=self.channel)
-        self.channel_combo_box.grid(column=2, row=3, sticky=(W, E))
+        self.channel_combo_box.grid(column=2, row=3, sticky="W, E")
         self.channel_combo_box["values"] = (
             "#staff-commands",
             "#on-duty-commands",
@@ -128,7 +96,7 @@ class StaffCheck:
         tk.Label(self.mainframe, text="Method:").grid(column=1, row=4, sticky=E)
         self.method = StringVar(value="All Commands")
         self.method_combo_box = tk.Combobox(self.mainframe, textvariable=self.method)
-        self.method_combo_box.grid(column=2, row=4, sticky=(W, E))
+        self.method_combo_box.grid(column=2, row=4, sticky="W, E")
         self.method_combo_box["values"] = (
             "All Commands",
             "Purge Commands",
@@ -147,16 +115,14 @@ class StaffCheck:
             onvalue=1,
             offvalue=0,
         )
-        self.check_button.grid(column=2, row=5, sticky=(W, E))
+        self.check_button.grid(column=2, row=5, sticky="W, E")
 
         self.function_button = tk.Button(self.mainframe, text="Cool Button")
-        self.function_button.grid(column=1, row=5, sticky=(W, E))
+        self.function_button.grid(column=1, row=5, sticky="W, E")
         self.function_button.state(["disabled"])
 
-        self.kill_button = tk.Button(
-            self.mainframe, text="Back to launcher", command=self.back
-        )
-        self.kill_button.grid(column=1, row=6, sticky=(W, E))
+        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button.grid(column=1, row=6, sticky="W, E")
 
         self.start_button = tk.Button(
             self.mainframe,
@@ -166,7 +132,7 @@ class StaffCheck:
         self.start_button.grid(columnspan=2, column=2, row=6, sticky=(E, W))
 
         self.function_button_2 = tk.Button(self.mainframe, text="Cool Button 2")
-        self.function_button_2.grid(column=1, row=7, sticky=(W, E))
+        self.function_button_2.grid(column=1, row=7, sticky="W, E")
         self.function_button_2.state(["disabled"])
 
         self.stop_button = tk.Button(
@@ -329,9 +295,7 @@ class CustomizeWindow:
         type_label.grid(column=1, row=3, sticky=W)
 
         self.message = StringVar(value=self.config["STAFFCHECK"][type_])
-        self.message_entry = tk.Entry(
-            self.customize_window, width=75, textvariable=self.message
-        )
+        self.message_entry = tk.Entry(self.customize_window, width=75, textvariable=self.message)
         self.message_entry.grid(column=1, row=4, sticky=(E, W))
 
         build_example_message(self, id_)
@@ -362,9 +326,7 @@ def start_script():
     """
     root = Tk()
     window_positions.load_window_position(root)
-    # root.eval("tk::PlaceWindow . center")
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     StaffCheck(root)
     root.mainloop()

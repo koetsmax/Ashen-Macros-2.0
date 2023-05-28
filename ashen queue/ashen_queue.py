@@ -47,44 +47,40 @@ class AshenQueue:
         self.root.option_add("*tearOff", FALSE)
 
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        self.get_queue_buttom = tk.Button(
-            self.mainframe, text="Get current queue", command=self.start
-        )
-        self.get_queue_buttom.grid(column=1, row=1, sticky=(W, E))
+        self.get_queue_buttom = tk.Button(self.mainframe, text="Get current queue", command=self.start)
+        self.get_queue_buttom.grid(column=1, row=1, sticky="W, E")
 
         self.check_ships_button = tk.Button(
             self.mainframe,
             text="Check ships",
             command=lambda: submodules.check_ships.check_ships(self),
         )
-        self.check_ships_button.grid(column=2, row=1, sticky=(W, E))
+        self.check_ships_button.grid(column=2, row=1, sticky="W, E")
 
         self.check_existing_activities_button = tk.Button(
             self.mainframe,
             text="Check existing activities",
-            command=lambda: submodules.check_existing_activities.check_existing_activities(
-                self
-            ),
+            command=lambda: submodules.check_existing_activities.check_existing_activities(self),
         )
-        self.check_existing_activities_button.grid(column=3, row=1, sticky=(W, E))
+        self.check_existing_activities_button.grid(column=3, row=1, sticky="W, E")
 
         self.add_queue_message_button = tk.Button(
             self.mainframe,
             text="Add queue message",
             command=lambda: submodules.add_queue_message.add_queue_message(self),
         )
-        self.add_queue_message_button.grid(column=4, row=1, sticky=(W, E))
+        self.add_queue_message_button.grid(column=4, row=1, sticky="W, E")
 
         self.staffcheck_finder_button = tk.Button(
             self.mainframe,
             text="Staffcheck finder",
             command=lambda: submodules.staffcheck_finder.staffcheck_finder(self),
         )
-        self.staffcheck_finder_button.grid(column=5, row=1, sticky=(W, E))
+        self.staffcheck_finder_button.grid(column=5, row=1, sticky="W, E")
 
     def start(self):
         submodules.get_current_queue.get_current_queue(self)
@@ -93,7 +89,7 @@ class AshenQueue:
         except AttributeError:
             pass
         self.queuelabel = tk.Label(self.mainframe, text=self.queue)
-        self.queuelabel.grid(column=1, row=2, sticky=(W, E))
+        self.queuelabel.grid(column=1, row=2, sticky="W, E")
 
 
 root = Tk()

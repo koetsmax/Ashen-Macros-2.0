@@ -1,7 +1,6 @@
 """
 This modules handles all of the ashen commands
 """
-# pylint: disable=E0401, E0402, W0401, W0614
 from tkinter import *
 from tkinter import ttk as tk
 import modules.submodules.start_check
@@ -18,7 +17,7 @@ def ashen_commands(self):
     self.currentstate = "AshenCommands"
 
     switch_channel(self, self.channel.get())
-    clear_typing_bar(self)
+    clear_typing_bar()
     search = [
         "/search ",
         f"member: {self.user_id.get()}",
@@ -35,13 +34,9 @@ def ashen_commands(self):
         command=lambda: needs_to_remove_friends(self),
     )
     self.function_button.state(["!disabled"])
-    self.function_button_2.config(
-        text="Needs to verify account", command=lambda: needs_to_verify(self)
-    )
+    self.function_button_2.config(text="Needs to verify account", command=lambda: needs_to_verify(self))
     self.function_button_2.state(["!disabled"])
-    self.kill_button.config(
-        text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
-    )
+    self.kill_button.config(text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self))
     self.kill_button.state(["!disabled"])
 
 
@@ -51,7 +46,7 @@ def needs_to_remove_friends(self):
     """
     self.reason = StringVar(value="Needs to remove banned friends:")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
@@ -63,7 +58,7 @@ def needs_to_unprivate_xbox(self):
     """
     self.reason = StringVar(value="Needs to unprivate xbox")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
@@ -75,7 +70,7 @@ def needs_to_verify(self):
     """
     self.reason = StringVar(value="Needs to verify account")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky=(W, E))
+    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
