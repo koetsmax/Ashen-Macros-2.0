@@ -1,15 +1,16 @@
 """
 This module creates the GUI for the staff check module.
 """
+from typing import Union
 import configparser
 import runpy
 from tkinter import *
-from tkinter import ttk as tk
+from tkinter import ttk
 
 import launcher
 import modules.submodules.functions.window_positions as window_positions
 import modules.submodules.start_check
-import modules.widgets
+import modules.widgets as widgets
 
 from .submodules.build_example_message import build_example_message
 
@@ -53,94 +54,52 @@ class StaffCheck:
         self.root["menu"] = menubar
 
         self.menu_customize = Menu(menubar)
-        self.menu_help = Menu(menubar)
 
         menubar.add_cascade(menu=self.menu_customize, label="Customize")
-        menubar.add_cascade(menu=self.menu_help, label="Help")
 
         self.menu_customize.add_command(label="Good to check message", command=self.edit_good_to_check)
         self.menu_customize.add_command(label="Not good to check message", command=self.edit_not_good_to_check)
         self.menu_customize.add_command(label="Join AWR message", command=self.edit_join_awr)
         self.menu_customize.add_command(label="Unprivate Xbox message", command=self.edit_unprivate_xbox)
         self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
-        self.menu_help.add_command(label="Help", command=self.show_help)
 
-        self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
+        self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        widgets.create_label
-
-        tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=1, sticky=E)
+        widgets.create_label(self.mainframe, "Discord ID:", 1, 1, E)
         self.user_id = StringVar()
-        self.user_id_entry = tk.Entry(self.mainframe, width=19, textvariable=self.user_id)
-        self.user_id_entry.grid(column=2, row=1, sticky="W, E")
+        self.user_id_entry = widgets.create_entry(self.mainframe, self.user_id, 1, 2, "W, E")
 
-        tk.Label(self.mainframe, text="GamerTag:").grid(column=1, row=2, sticky=E)
+        widgets.create_label(self.mainframe, "GamerTag:", 2, 1, E)
         self.xbox_gt = StringVar()
-        self.xbox_gt_entry = tk.Entry(self.mainframe, textvariable=self.xbox_gt)
-        self.xbox_gt_entry.grid(column=2, row=2, sticky="W, E")
+        self.xbox_gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 2, 2, "W, E")
 
-        tk.Label(self.mainframe, text="Channel:").grid(column=1, row=3, sticky=E)
+        widgets.create_label(self.mainframe, "Channel:", 3, 1, E)
         self.channel = StringVar(value="#on-duty-commands")
-        self.channel_combo_box = tk.Combobox(self.mainframe, textvariable=self.channel)
-        self.channel_combo_box.grid(column=2, row=3, sticky="W, E")
-        self.channel_combo_box["values"] = (
-            "#staff-commands",
-            "#on-duty-commands",
-            "#captain-commands",
-            "#admin-commands",
-        )
+        channel_options = ["#staff-commands", "#on-duty-commands", "#captain-commands", "#admin-commands"]
+        self.channel_combo_box = widgets.create_listbox(self.mainframe, channel_options, self.channel, 3, 2, "W, E")
 
-        tk.Label(self.mainframe, text="Method:").grid(column=1, row=4, sticky=E)
+        widgets.create_label(self.mainframe, "Method:", 4, 1, E)
         self.method = StringVar(value="All Commands")
-        self.method_combo_box = tk.Combobox(self.mainframe, textvariable=self.method)
-        self.method_combo_box.grid(column=2, row=4, sticky="W, E")
-        self.method_combo_box["values"] = (
-            "All Commands",
-            "Purge Commands",
-            "Elemental Commands",
-            "Ashen Commands",
-            "Invite Tracker",
-            "SOT Official",
-            "Check Message",
-        )
+        method_options = ["All Commands", "Purge Commands", "Elemental Commands", "Ashen Commands", "Invite Tracker", "SOT Official", "Check Message"]
+        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.method, 4, 2, "W, E")
 
         self.check = BooleanVar(value=False)
-        self.check_button = tk.Checkbutton(
-            self.mainframe,
-            variable=self.check,
-            text="Check ID/GT in on-duty-chat",
-            onvalue=1,
-            offvalue=0,
-        )
-        self.check_button.grid(column=2, row=5, sticky="W, E")
+        self.pre_check_button = widgets.create_checkbox(self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E")
 
-        self.function_button = tk.Button(self.mainframe, text="Cool Button")
-        self.function_button.grid(column=1, row=5, sticky="W, E")
+        self.function_button = widgets.create_button(self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E")
         self.function_button.state(["disabled"])
 
-        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
-        self.kill_button.grid(column=1, row=6, sticky="W, E")
+        self.kill_button = widgets.create_button(self.mainframe, "Back to launcher", self.back, 6, 1, "W, E")
 
-        self.start_button = tk.Button(
-            self.mainframe,
-            text="Start check!",
-            command=lambda: modules.submodules.start_check.start_check(self),
-        )
-        self.start_button.grid(columnspan=2, column=2, row=6, sticky=(E, W))
+        self.start_button = widgets.create_button(self.mainframe, "Start check!", lambda: modules.submodules.start_check.start_check(self), 6, 2, "W, E", 1, 2)
 
-        self.function_button_2 = tk.Button(self.mainframe, text="Cool Button 2")
-        self.function_button_2.grid(column=1, row=7, sticky="W, E")
+        self.function_button_2 = widgets.create_button(self.mainframe, "Cool Button 2", lambda: None, 7, 1, "W, E")
         self.function_button_2.state(["disabled"])
 
-        self.stop_button = tk.Button(
-            self.mainframe,
-            text="Stop check!",
-            command=lambda: modules.submodules.check_message.stop_check(self),
-        )
-        self.stop_button.grid(columnspan=2, column=2, row=7, sticky=(E, W))
+        self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")
         self.stop_button.state(["disabled"])
 
         build_example_message(self, 99)
@@ -158,15 +117,7 @@ class StaffCheck:
             self.error_label.destroy()
         except AttributeError:
             pass
-        CustomizeWindow(
-            "good_to_check_message",
-            "userID = Discord ID\nxboxGT = Gamertag",
-            0,
-            "userID Good to check -- GT: xboxGT",
-            self.start_button,
-            self.root,
-            self.mainframe,
-        )
+        CustomizeWindow("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0, "userID Good to check -- GT: xboxGT", self.start_button, self.mainframe)
 
     def edit_not_good_to_check(self):
         """
@@ -176,15 +127,7 @@ class StaffCheck:
             self.error_label.destroy()
         except AttributeError:
             pass
-        CustomizeWindow(
-            "not_good_to_check_message",
-            "userID = Discord ID\nxboxGT = Gamertag\nReason = reason",
-            1,
-            "userID **Not** Good to check -- GT: xboxGT -- Reason",
-            self.start_button,
-            self.root,
-            self.mainframe,
-        )
+        CustomizeWindow("not_good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1, "userID **Not** Good to check -- GT: xboxGT -- Reason", self.start_button, self.mainframe)
 
     def edit_join_awr(self):
         """
@@ -200,7 +143,6 @@ class StaffCheck:
             2,
             "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
             self.start_button,
-            self.root,
             self.mainframe,
         )
 
@@ -218,7 +160,6 @@ class StaffCheck:
             3,
             "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             self.start_button,
-            self.root,
             self.mainframe,
         )
 
@@ -236,7 +177,6 @@ class StaffCheck:
             4,
             "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             self.start_button,
-            self.root,
             self.mainframe,
         )
 
@@ -249,24 +189,18 @@ class StaffCheck:
         # run the launcher using runpy
         runpy.run_module("launcher", run_name="__main__")
 
-    def show_help(self):
-        """
-        Show the help window.
-        """
-        print("test")
-
 
 class CustomizeWindow:
     """
     class for the customize window
     """
 
-    def __init__(self, type_, explanation, id_, default, start_button, root, mainframe):
+    def __init__(self, type_: str, explanation: str, id_: int, default: str, start_button: ttk.Button, mainframe: Union[Toplevel, ttk.Frame]):
         def save_changes(self):
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 try:
                     self.example_label.destroy()
-                    self.config["STAFFCHECK"][type_] = self.message_entry.get()
+                    self.config["STAFFCHECK"][type_] = self.message.get()
                     build_example_message(self, id_)
                 except AttributeError:
                     pass
@@ -282,42 +216,32 @@ class CustomizeWindow:
                 build_example_message(self, id_)
 
         self.mainframe = mainframe
-        self.root = root
         self.start_button = start_button
         self.config = configparser.ConfigParser()
         self.config.read("settings.ini")
         self.customize_window = Toplevel()
         self.customize_window.title("Customize")
-        explanation_label = tk.Label(self.customize_window, text=explanation)
-        explanation_label.grid(rowspan=2, column=1, row=1, sticky=W)
 
-        type_label = tk.Label(self.customize_window, text=f"{type_}:")
-        type_label.grid(column=1, row=3, sticky=W)
+        widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
+        widgets.create_label(self.customize_window, f"{type_}:", 3, 1, "W")
 
         self.message = StringVar(value=self.config["STAFFCHECK"][type_])
-        self.message_entry = tk.Entry(self.customize_window, width=75, textvariable=self.message)
-        self.message_entry.grid(column=1, row=4, sticky=(E, W))
+        widgets.create_entry(self.customize_window, self.message, 4, 1, "W, E", 75)
 
         build_example_message(self, id_)
 
-        self.save_button = tk.Button(
-            self.customize_window,
-            text="Save Changes!",
-            command=lambda: save_changes(self),
-        )
-        self.save_button.grid(column=1, row=7, sticky=W)
-
-        self.reset_button = tk.Button(
-            self.customize_window,
-            text="Reset To Default!",
-            command=lambda: reset_to_default(self),
-        )
-        self.reset_button.grid(column=1, row=7, sticky=E)
+        widgets.create_button(self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W")
+        widgets.create_button(self.customize_window, "Reset To Default!", lambda: reset_to_default(self), 7, 1, "E")
 
         for child in self.customize_window.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-        self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
+        self.customize_window.update_idletasks()
+        width = self.customize_window.winfo_width()
+        height = self.customize_window.winfo_height()
+        x = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
+        self.customize_window.geometry("{}x{}+{}+{}".format(width, height, x, y))
 
 
 def start_script():
