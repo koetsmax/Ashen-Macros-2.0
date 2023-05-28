@@ -10,9 +10,11 @@ def create_button(
     row: int,
     column: int,
     sticky: str = "",
+    rowspan: int = 1,
+    columnspan: int = 1,
 ) -> ttk.Button:
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(row=row, column=column, sticky=sticky)
+    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return button
 
 
@@ -53,14 +55,15 @@ def create_entry(
     row: int,
     column: int,
     sticky: str = "",
+    width: int = 0,
 ) -> ttk.Entry:
-    entry = ttk.Entry(parent, textvariable=variable)
+    entry = ttk.Entry(parent, textvariable=variable, width=width)
     entry.grid(row=row, column=column, sticky=sticky)
     return entry
 
 
 def create_checkbox(
-    parent: Union[tk.Toplevel, tk.Frame],
+    parent: Union[tk.Toplevel, ttk.Frame],
     text: str,
     variable: tk.BooleanVar,
     row: int,
