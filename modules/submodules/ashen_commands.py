@@ -21,7 +21,7 @@ def ashen_commands(self):
     search = [
         "/search ",
         f"member: {self.user_id.get()}",
-        f"gamertag: {self.xbox_gt.get()}",
+        f"gamertag: {self.xbox_gt}",
     ]
     execute_command(self, search[0], search[1:])
     self.start_button.state(["!disabled"])

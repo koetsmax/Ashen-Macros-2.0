@@ -35,7 +35,7 @@ def good_to_check(self):
     clear_typing_bar()
     built_good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
     built_good_to_check_message = built_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt.get()}")
+    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
@@ -69,7 +69,7 @@ def build_not_good_to_check(self):
     """
     built_not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     built_not_good_to_check_message = built_not_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt.get()}")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
     built_not_good_to_check_message = built_not_good_to_check_message.replace("Reason", f"{self.reason.get()}")
     clear_typing_bar()
     keyboard.write(built_not_good_to_check_message)

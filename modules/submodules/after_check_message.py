@@ -31,7 +31,7 @@ def unprivate_xbox(self):
     This function opens a modmail for the user to unprivate their Xbox
     """
     clear_typing_bar()
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     create_mm = ["/create ", f"{self.user_id.get()}"]
     execute_command(self, create_mm[0], create_mm[1:])
     time.sleep(8)

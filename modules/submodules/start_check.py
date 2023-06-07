@@ -1,6 +1,7 @@
 """
 This module initiates the staffcheck process and determines which method to use
 """
+import requests
 from tkinter import *
 from tkinter import ttk as tk
 import modules.submodules.pre_check
@@ -23,7 +24,20 @@ def start_check(self):
         if " " not in self.user_id.get():
             lengths = [17, 18, 19]
             if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
-                if self.xbox_gt.get() != "":
+                payload = {"userID": self.user_id.get()}
+                response = requests.post("http://127.0.0.1:8000/", json=payload)
+                if response.status_code != 200:
+                    self.error_label = tk.Label(
+                        self.mainframe,
+                        text=f"Error when trying to get userID from API!\n{response.status_code} {response.reason}",
+                        foreground="Red",
+                    )
+                    self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
+                    return
+                # get the xbox gt form the json response
+                self.xbox_gt = response.json()["linked_xbox"]
+                if self.xbox_gt != []:
+                    self.gamertag_label.config(text=self.xbox_gt)
                     self.start_button.state(["disabled"])
                     self.stop_button.state(["!disabled"])
                     try:
@@ -41,23 +55,18 @@ def start_check(self):
                     self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
                     self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
                     self.user_id_entry.config(state=[("disabled")])
-                    self.xbox_gt_entry.config(state=[("disabled")])
                     self.channel_combo_box.config(state=[("disabled")])
                     self.method_combo_box.config(state=[("disabled")])
-                    self.check_button.config(state=[("disabled")])
+                    self.pre_check_button.config(state=[("disabled")])
 
                     self.currentstate = "BeepBoop"
-                    if "selected" in self.check_button.state():
+                    if "selected" in self.pre_check_button.state():
                         modules.submodules.pre_check.pre_check(self)
                     else:
                         determine_method(self)
                 else:
-                    self.error_label = tk.Label(
-                        self.mainframe,
-                        text="Error! Gamertag must not be empty",
-                        foreground="Red",
-                    )
-                    self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
+                    self.gamertag_label.config(text="Not linked")
+                    modules.submodules.elemental_commands.elemental_commands(self, 1)
             else:
                 self.error_label = tk.Label(
                     self.mainframe,
@@ -94,7 +103,7 @@ def continue_to_next(self):
     if self.method.get() not in exempted_methods or self.currentstate == "Done":
         if self.currentstate == "Done":
             self.user_id.set("")
-            self.xbox_gt.set("")
+            self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
         self.function_button.state(["disabled"])
         self.function_button_2.state(["disabled"])
@@ -117,10 +126,9 @@ def continue_to_next(self):
         self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
         self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
         self.user_id_entry.config(state=[("!disabled")])
-        self.xbox_gt_entry.config(state=[("!disabled")])
         self.channel_combo_box.config(state=[("!disabled")])
         self.method_combo_box.config(state=[("!disabled")])
-        self.check_button.config(state=[("!disabled")])
+        self.pre_check_button.config(state=[("!disabled")])
     elif self.method.get() == "All Commands":
         if self.currentstate == "PreCheck":
             modules.submodules.elemental_commands.elemental_commands(self)

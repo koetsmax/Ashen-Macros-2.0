@@ -33,7 +33,7 @@ def search_gamertag(self):
     keyboard.press_and_release("ctrl+f")
     keyboard.press_and_release("ctrl+a")
     keyboard.press_and_release("backspace")
-    keyboard.write(f"in:#on-duty-chat {self.xbox_gt.get()}")
+    keyboard.write(f"in:#on-duty-chat {self.xbox_gt}")
     keyboard.press_and_release("enter")
 
     self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.determine_method(self))

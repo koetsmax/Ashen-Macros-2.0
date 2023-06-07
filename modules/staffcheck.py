@@ -73,8 +73,7 @@ class StaffCheck:
         self.user_id_entry = widgets.create_entry(self.mainframe, self.user_id, 1, 2, "W, E")
 
         widgets.create_label(self.mainframe, "GamerTag:", 2, 1, E)
-        self.xbox_gt = StringVar()
-        self.xbox_gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 2, 2, "W, E")
+        self.gamertag_label = widgets.create_label(self.mainframe, "Unknown", 2, 2, W)
 
         widgets.create_label(self.mainframe, "Channel:", 3, 1, E)
         self.channel = StringVar(value="#on-duty-commands")
