@@ -25,7 +25,7 @@ def start_check(self):
             lengths = [17, 18, 19]
             if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
                 payload = {"userID": self.user_id.get()}
-                response = requests.post("http://127.0.0.1:8000/", json=payload)
+                response = requests.post("http://127.0.0.1:8000/", json=payload, timeout=30)
                 if response.status_code != 200:
                     self.error_label = tk.Label(
                         self.mainframe,
@@ -36,6 +36,7 @@ def start_check(self):
                     return
                 # get the xbox gt form the json response
                 self.xbox_gt = response.json()["linked_xbox"]
+                self.mutual_guils = response.json()["mutual_guilds"]
                 if self.xbox_gt != []:
                     self.gamertag_label.config(text=self.xbox_gt)
                     self.start_button.state(["disabled"])
