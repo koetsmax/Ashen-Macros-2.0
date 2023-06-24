@@ -79,7 +79,7 @@ class AddToBanList:
 
         self.explanation_label = tk.Label(
             self.requiem,
-            text="Allows multiple bans seperated by a comma\nExample: 123456789,987654321",
+            text="Allows multiple bans. The macro automatically seperates it into multiple entries.",
         )
         self.explanation_label.grid(columnspan=6, row=2, sticky="W, E")
 
@@ -233,9 +233,12 @@ class AddToBanList:
         time.sleep(2)
         keyboard.press_and_release("down")
 
-        bans = string.split(",")
+        bans = string.split(")")
 
         for ban in bans:
+            # ignore the ban if it is empty
+            if ban == "":
+                continue
             print(ban)
 
             # Split the string by the '-' character
