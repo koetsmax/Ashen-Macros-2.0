@@ -2,9 +2,10 @@
 Creates the launcher window and checks for updates.
 """
 import configparser
+import logging
 import os
 import subprocess
-from tkinter import FALSE, E, StringVar, Tk, Toplevel, W, ttk
+from tkinter import FALSE, StringVar, Tk, Toplevel, ttk
 from typing import Callable
 
 import requests
@@ -16,9 +17,17 @@ import modules.fill_new_fleet as fill_new_fleet
 import modules.hammertime_generator as hammertime_generator
 import modules.rename_fleet as rename_fleet
 import modules.staffcheck as staffcheck
+import modules.submodules.functions.widgets as widgets
 import modules.submodules.functions.window_positions as window_positions
 import modules.warning as warning
-import modules.widgets as widgets
+
+# Configure the logger
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+log = logging.getLogger(__name__)
 
 
 class Launcher:
@@ -50,27 +59,30 @@ class Launcher:
         self.root = _root
         self.root.title("Launcher")
         self.root.option_add("*tearOff", FALSE)
+        self.root.resizable(FALSE, FALSE)
 
         try:
             directory_path = "../launcher"
-            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)
+            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)  # pylint: disable=line-too-long
             output = result.stdout.strip()
 
             # Check if full control permissions are present for Everyone
             if not "Everyone:(OI)(CI)(F)" in output:
-                print(output)
+                log.debug("current permissions: %s", output)
+
                 if isUserAdmin():
                     subprocess.run(
                         ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"],
                         check=True,
                     )
-                    print("Permissions changed to 777")
+                    log.debug("Permissions updated to 777")
                 else:
                     # Re-run the program with admin rights
                     self.root.destroy()
                     runAsAdmin()
+
         except (FileNotFoundError, subprocess.CalledProcessError):
-            print("File not found")
+            log.warning("Launcher folder not found")
 
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky="NWES")
@@ -79,12 +91,11 @@ class Launcher:
 
         button_data = [
             ("Staffcheck script", lambda: self.start_script("Staffcheck"), 1, 1, "E, W"),
-            ("Add warning script", lambda: self.start_script("Add warning"), 2, 1, "E, W"),
-            ("Rename fleet script", lambda: self.start_script("Rename fleet"), 3, 1, "E, W"),
-            ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 4, 1, "E, W"),
-            ("Add to ban list script", lambda: self.start_script("Add to ban list"), 5, 1, "E, W"),
-            ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 6, 1, "E, W"),
-            ("Auto spiker", lambda: self.start_script("Auto Spiker"), 7, 1, "E, W"),
+            ("Add to ban list script", lambda: self.start_script("Add to ban list"), 2, 1, "E, W"),
+            ("Add warning script", lambda: self.start_script("Add warning"), 3, 1, "E, W"),
+            # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 4, 1, "E, W"),
+            # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 5, 1, "E, W"),
+            # ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 6, 1, "E, W"),  # pylint: disable=line-too-long
             ("Check for updates!!!", lambda: self.check_for_updates(False), 8, 1, "E, W"),
             ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
             ("Command Delay", lambda: self.delay_config(), 81, 1, "E, W"),  # pylint: disable=unnecessary-lambda
@@ -96,7 +107,7 @@ class Launcher:
         widgets.create_label(self.mainframe, f"Version: {local_version}", 82, 1, "E")
 
         for child in self.mainframe.winfo_children():
-            child.grid_configure(padx=5, pady=5)
+            child.grid_configure(padx=25, pady=5)
 
         self.check_for_updates(True)
 
@@ -114,7 +125,6 @@ class Launcher:
             "Fill new fleet": fill_new_fleet.start_script,
             "Add to ban list": add_to_ban_list.start_script,
             "Timestamp generator": hammertime_generator.start_script,
-            "Auto spiker": lambda: subprocess.Popen("./modules/autospiker.exe"),
             "Kill": lambda: None,
         }
 
@@ -135,10 +145,10 @@ class Launcher:
         widgets.create_label(updatewindow, text, 1, 1, "E")
 
         if update_is_available:
-            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update, 2, 1, W)
-            widgets.create_button(updatewindow, "For sure", lambda: self.commence_update, 2, 1, E)
+            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update, 2, 1, "W")
+            widgets.create_button(updatewindow, "For sure", lambda: self.commence_update, 2, 1, "E")
         else:
-            widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy, 2, 1, W)
+            widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy, 2, 1, "W")
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
@@ -148,46 +158,30 @@ class Launcher:
         """
         Checks for updates.
         """
-
-        # Request the latest version from the github api
-        request = requests.get(
-            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
-            timeout=15,
-        )
+        request = requests.get("https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15)  # pylint: disable=line-too-long
         if request.status_code != 200:
-            print(request.status_code)
-            print("Something went wrong :p")
-        else:
-            # Parse the json response
-            request_dictionary = request.json()
-            with open("version", "r", encoding="UTF-8") as versionfile:
-                local_version = versionfile.read()
-            self.online_version = request_dictionary["name"]
-            # Compare the versions
-            if version.parse(local_version) < version.parse(self.online_version):
-                if isUserAdmin():
-                    # Code of your program here
-                    self.update_window(
-                        "There is an update available.\nWould you like to download it?",
-                        True,
-                    )
-                else:
-                    # Re-run the program with admin rights
-                    self.root.destroy()
-                    runAsAdmin()
-            elif version.parse(local_version) == version.parse(self.online_version):
-                if not silent:
-                    self.update_window("You are currently on the most up-to-date version.", False)
-            elif version.parse(local_version) > version.parse(self.online_version):
-                if not silent:
-                    self.update_window("You are currently on the dev version", False)
+            log.error("Failed to check for updates. Error code: %s", request.status_code)
+            return
+        request_dictionary = request.json()
+        with open("version", "r", encoding="UTF-8") as versionfile:
+            local_version = versionfile.read()
+        self.online_version = request_dictionary["name"]
+        if version.parse(local_version) < version.parse(self.online_version):
+            if isUserAdmin():
+                self.update_window("There is an update available.\nWould you like to download it?", True)  # pylint: disable=line-too-long
+            else:
+                self.root.destroy()
+                runAsAdmin()
+        elif version.parse(local_version) == version.parse(self.online_version) and not silent:
+            self.update_window("You are currently on the most up-to-date version.", False)
+        elif version.parse(local_version) > version.parse(self.online_version) and not silent:
+            self.update_window("You are currently on the dev version", False)
 
     def commence_update(self):
         """
         Commences the update.
         """
-        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"
-        print(url)
+        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"  # pylint: disable=line-too-long
 
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
@@ -209,15 +203,15 @@ class Launcher:
         Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
         All of these delays need to be entered in seconds (ex. 2 or 2.5)
         """
-        widgets.create_label(self.customize_window, explanation, 1, 1, W, 2)
-        widgets.create_label(self.customize_window, "Delay initial command:", 3, 1, W)
-        widgets.create_label(self.customize_window, "Delay follow up:", 5, 1, W)
+        widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
+        widgets.create_label(self.customize_window, "Delay initial command:", 3, 1, "W")
+        widgets.create_label(self.customize_window, "Delay follow up:", 5, 1, "W")
 
         widgets.create_entry(self.customize_window, self.initial_command, 4, 1, "E, W")
         widgets.create_entry(self.customize_window, self.follow_up, 6, 1, "E, W")
 
-        widgets.create_button(self.customize_window, "Save Changes!", lambda: save_changes(self), 7, 1, W)
-        widgets.create_button(self.customize_window, "Reset To Default!", lambda: reset_to_default(self), 7, 1, E)
+        widgets.create_button(self.customize_window, "Save Changes!", lambda: save_changes(self), 7, 1, "W")  # pylint: disable=line-too-long
+        widgets.create_button(self.customize_window, "Reset To Default!", lambda: reset_to_default(self), 7, 1, "E")  # pylint: disable=line-too-long
 
         for child in self.customize_window.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -243,7 +237,6 @@ class Launcher:
 
 
 if __name__ == "__main__":
-    print("main")
     root = Tk()
     window_positions.load_window_position(root)
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
