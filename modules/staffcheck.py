@@ -10,7 +10,7 @@ from tkinter import ttk
 import launcher
 import modules.submodules.functions.window_positions as window_positions
 import modules.submodules.start_check
-import modules.widgets as widgets
+import modules.submodules.functions.widgets as widgets
 
 from .submodules.build_example_message import build_example_message
 
