@@ -4,15 +4,16 @@ This module creates the GUI for the staff check module.
 from typing import Union
 import configparser
 import runpy
-from tkinter import *
-from tkinter import ttk
+from tkinter import FALSE, StringVar, Tk, Toplevel, ttk, Menu, BooleanVar
 
-import launcher
+import launcher  # pylint: disable=unused-import
 import modules.submodules.functions.window_positions as window_positions
 import modules.submodules.start_check
 import modules.submodules.functions.widgets as widgets
 
 from .submodules.build_example_message import build_example_message
+
+# pylint: disable=line-too-long
 
 
 class StaffCheck:
@@ -68,19 +69,19 @@ class StaffCheck:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        widgets.create_label(self.mainframe, "Discord ID:", 1, 1, E)
+        widgets.create_label(self.mainframe, "Discord ID:", 1, 1, "E")
         self.user_id = StringVar()
         self.user_id_entry = widgets.create_entry(self.mainframe, self.user_id, 1, 2, "W, E")
 
-        widgets.create_label(self.mainframe, "GamerTag:", 2, 1, E)
-        self.gamertag_label = widgets.create_label(self.mainframe, "Unknown", 2, 2, W)
+        widgets.create_label(self.mainframe, "GamerTag:", 2, 1, "E")
+        self.gamertag_label = widgets.create_label(self.mainframe, "Unknown", 2, 2, "W")
 
-        widgets.create_label(self.mainframe, "Channel:", 3, 1, E)
+        widgets.create_label(self.mainframe, "Channel:", 3, 1, "E")
         self.channel = StringVar(value="#on-duty-commands")
         channel_options = ["#staff-commands", "#on-duty-commands", "#captain-commands", "#admin-commands"]
         self.channel_combo_box = widgets.create_listbox(self.mainframe, channel_options, self.channel, 3, 2, "W, E")
 
-        widgets.create_label(self.mainframe, "Method:", 4, 1, E)
+        widgets.create_label(self.mainframe, "Method:", 4, 1, "E")
         self.method = StringVar(value="All Commands")
         method_options = ["All Commands", "Purge Commands", "Elemental Commands", "Ashen Commands", "Invite Tracker", "SOT Official", "Check Message"]
         self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.method, 4, 2, "W, E")
@@ -98,7 +99,7 @@ class StaffCheck:
         self.function_button_2 = widgets.create_button(self.mainframe, "Cool Button 2", lambda: None, 7, 1, "W, E")
         self.function_button_2.state(["disabled"])
 
-        self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")
+        self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")  # type: ignore
         self.stop_button.state(["disabled"])
 
         build_example_message(self, 99)
@@ -113,7 +114,7 @@ class StaffCheck:
         Edit the message that is sent when a user is good to check.
         """
         try:
-            self.error_label.destroy()
+            self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
         CustomizeWindow("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0, "userID Good to check -- GT: xboxGT", self.start_button, self.mainframe)
@@ -123,7 +124,7 @@ class StaffCheck:
         Edit the message that is sent when a user is not good to check.
         """
         try:
-            self.error_label.destroy()
+            self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
         CustomizeWindow("not_good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1, "userID **Not** Good to check -- GT: xboxGT -- Reason", self.start_button, self.mainframe)
@@ -133,7 +134,7 @@ class StaffCheck:
         Edit the message that is sent in on duty chat when a user has been requested to join the AWR.
         """
         try:
-            self.error_label.destroy()
+            self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
         CustomizeWindow(
@@ -150,7 +151,7 @@ class StaffCheck:
         Edit the message that is sent in on duty chat when a user has been requested to unprivate their Xbox.
         """
         try:
-            self.error_label.destroy()
+            self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
         CustomizeWindow(
@@ -167,7 +168,7 @@ class StaffCheck:
         Edit the message that is sent in on duty chat when a user has been requested to verify their account.
         """
         try:
-            self.error_label.destroy()
+            self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
         CustomizeWindow(
@@ -238,9 +239,9 @@ class CustomizeWindow:
         self.customize_window.update_idletasks()
         width = self.customize_window.winfo_width()
         height = self.customize_window.winfo_height()
-        x = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
-        self.customize_window.geometry("{}x{}+{}+{}".format(width, height, x, y))
+        x_coordinate = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
+        y_coordinate = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
+        self.customize_window.geometry(f"{width}x{height}+{x_coordinate}+{y_coordinate}")
 
 
 def start_script():
