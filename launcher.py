@@ -5,7 +5,7 @@ import configparser
 import logging
 import os
 import subprocess
-from tkinter import FALSE, StringVar, Tk, Toplevel, ttk
+from tkinter import FALSE, Tk, Toplevel, ttk
 from typing import Callable
 
 import requests
@@ -22,11 +22,7 @@ import modules.submodules.functions.window_positions as window_positions
 import modules.warning as warning
 
 # Configure the logger
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()],
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler()])  # pylint: disable=line-too-long
 log = logging.getLogger(__name__)
 
 
@@ -47,10 +43,7 @@ class Launcher:
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
         except KeyError:
-            self.config["COMMANDS"] = {
-                "initial_command": "2",
-                "follow_up": "0.4",
-            }
+            self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
@@ -71,10 +64,7 @@ class Launcher:
                 log.debug("current permissions: %s", output)
 
                 if isUserAdmin():
-                    subprocess.run(
-                        ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"],
-                        check=True,
-                    )
+                    subprocess.run(["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"], check=True)  # pylint: disable=line-too-long
                     log.debug("Permissions updated to 777")
                 else:
                     # Re-run the program with admin rights
@@ -182,7 +172,6 @@ class Launcher:
         Commences the update.
         """
         url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"  # pylint: disable=line-too-long
-
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
@@ -190,50 +179,23 @@ class Launcher:
 
     def delay_config(self):
         """
-        Opens the delay config window.
+        Creates the delay config window.
         """
-        self.initial_command = StringVar(value=self.config["COMMANDS"]["initial_command"])
-        self.follow_up = StringVar(value=self.config["COMMANDS"]["follow_up"])
-
-        self.config.read("settings.ini")
-        self.customize_window = Toplevel()
-        self.customize_window.title("Customize Delay")
-        explanation = """
-        Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)
-        Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
-        All of these delays need to be entered in seconds (ex. 2 or 2.5)
-        """
-        widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
-        widgets.create_label(self.customize_window, "Delay initial command:", 3, 1, "W")
-        widgets.create_label(self.customize_window, "Delay follow up:", 5, 1, "W")
-
-        widgets.create_entry(self.customize_window, self.initial_command, 4, 1, "E, W")
-        widgets.create_entry(self.customize_window, self.follow_up, 6, 1, "E, W")
-
-        widgets.create_button(self.customize_window, "Save Changes!", lambda: save_changes(self), 7, 1, "W")  # pylint: disable=line-too-long
-        widgets.create_button(self.customize_window, "Reset To Default!", lambda: reset_to_default(self), 7, 1, "E")  # pylint: disable=line-too-long
-
-        for child in self.customize_window.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-
-        self.root.eval(f"tk::PlaceWindow {str(self.customize_window)} center")
-
-        def save_changes(self):
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
-                try:
-                    self.config["COMMANDS"]["initial_command"] = self.initial_command.get()
-                    self.config["COMMANDS"]["follow_up"] = self.follow_up.get()
-                except AttributeError:
-                    pass
-                self.config.write(configfile)
-
-        def reset_to_default(self):
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
-                self.config["COMMANDS"]["initial_command"] = "2"
-                self.config["COMMANDS"]["follow_up"] = "0.4"
-                self.config.write(configfile)
-                self.initial_command.set(2)
-                self.follow_up.set(0.4)
+        # pylint: disable=line-too-long
+        config = [
+            "Customize Delay",
+            """
+            Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)
+            Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
+            All of these delays need to be entered in seconds (ex. 2 or 2.5)
+            """,
+            ["Delay initial command:", "Delay follow up:"],
+            "COMMANDS",
+            ["initial_command", "follow_up"],
+            ["2", "0.4"],
+        ]
+        # pylint enable=line-too-long
+        widgets.CreateSettingsWIndow(self.root, config)
 
 
 if __name__ == "__main__":
