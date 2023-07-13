@@ -129,29 +129,29 @@ class Launcher:
         """
         Creates the update window.
         """
-        updatewindow = Toplevel(root)
+        updatewindow = Toplevel()
         root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
         updatewindow.title("Update available")
         widgets.create_label(updatewindow, text, 1, 1, "E")
 
         if update_is_available:
-            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update, 2, 1, "W")
-            widgets.create_button(updatewindow, "For sure", lambda: self.commence_update, 2, 1, "E")
+            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update, 2, 1, "E")
         else:
             widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy, 2, 1, "W")
+
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
         return lambda: None
 
-    def check_for_updates(self, silent):
+    def check_for_updates(self, silent) -> Callable[[], None]:
         """
         Checks for updates.
         """
         request = requests.get("https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15)  # pylint: disable=line-too-long
         if request.status_code != 200:
             log.error("Failed to check for updates. Error code: %s", request.status_code)
-            return
+            return lambda: None
         request_dictionary = request.json()
         with open("version", "r", encoding="UTF-8") as versionfile:
             local_version = versionfile.read()
@@ -167,7 +167,9 @@ class Launcher:
         elif version.parse(local_version) > version.parse(self.online_version) and not silent:
             self.update_window("You are currently on the dev version", False)
 
-    def commence_update(self):
+        return lambda: None
+
+    def commence_update(self) -> Callable[[], None]:
         """
         Commences the update.
         """
@@ -176,8 +178,9 @@ class Launcher:
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
         self.root.destroy()
+        return lambda: None
 
-    def delay_config(self):
+    def delay_config(self) -> Callable[[], None]:
         """
         Creates the delay config window.
         """
@@ -196,6 +199,7 @@ class Launcher:
         ]
         # pylint enable=line-too-long
         widgets.CreateSettingsWIndow(self.root, config)
+        return lambda: None
 
 
 if __name__ == "__main__":
