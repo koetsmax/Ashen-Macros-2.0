@@ -51,13 +51,14 @@ def create_listbox(
     row: int,
     column: int,
     sticky: str = "",
+    columnspan: int = 1,
 ) -> ttk.Combobox:
     """
     Creates a listbox widget and places it in the parent widget.
     """
     combobox = ttk.Combobox(parent, textvariable=variable)
     combobox["values"] = items
-    combobox.grid(row=row, column=column, sticky=sticky)
+    combobox.grid(row=row, column=column, sticky=sticky, columnspan=columnspan)
     return combobox
 
 
@@ -68,12 +69,13 @@ def create_entry(
     column: int,
     sticky: str = "",
     width: int = 0,
+    columnspan: int = 1,
 ) -> ttk.Entry:
     """
     Creates an entry widget and places it in the parent widget.
     """
     entry = ttk.Entry(parent, textvariable=variable, width=width)
-    entry.grid(row=row, column=column, sticky=sticky)
+    entry.grid(row=row, column=column, sticky=sticky, columnspan=columnspan)
     return entry
 
 
@@ -119,19 +121,25 @@ class CreateSettingsWIndow:
 
         self.variable1 = tk.StringVar(value=self.config[self.settings][self.variables[0]])
         print(self.variable1, self.variable1.get())
-        if self.variables[1] is not None:
+        try:
             self.variable2 = tk.StringVar(value=self.config[self.settings][self.variables[1]])
+        except (IndexError, AttributeError):
+            pass
 
         # Create the labels
         create_label(settings_window, explanation, 1, 1, "W", 2)
         create_label(settings_window, text[0], 3, 1, "W")
-        if text[1] is not None:
+        try:
             create_label(settings_window, text[1], 5, 1, "W")
+        except (IndexError, AttributeError):
+            pass
 
         # Create the entries
         self.entry1 = create_entry(settings_window, self.variable1, 4, 1, "E, W")
-        if self.variables[1] is not None:
+        try:
             self.entry2 = create_entry(settings_window, self.variable2, 6, 1, "E, W")
+        except (IndexError, AttributeError):
+            pass
 
         # Create the buttons
         create_button(settings_window, "Save Changes", lambda: self.save_changes(), 7, 1, "W")  # pylint: disable=W0108, line-too-long
@@ -149,8 +157,10 @@ class CreateSettingsWIndow:
         with open("settings.ini", "w", encoding="UTF-8") as configfile:
             try:
                 self.config[self.settings][self.variables[0]] = self.entry1.get()
-                if self.variables[1] is not None:
+                try:
                     self.config[self.settings][self.variables[1]] = self.entry2.get()
+                except (IndexError, AttributeError):
+                    pass
             except AttributeError:
                 pass
             self.config.write(configfile)
@@ -163,8 +173,10 @@ class CreateSettingsWIndow:
             self.variable1.set(self.defaults[0])
             self.config[self.settings][self.variables[0]] = self.defaults[0]
 
-            if self.variables[1] is not None:
+            try:
                 self.variable2.set(self.defaults[1])
                 self.config[self.settings][self.variables[1]] = self.defaults[1]
+            except (IndexError, AttributeError):
+                pass
 
             self.config.write(configfile)
