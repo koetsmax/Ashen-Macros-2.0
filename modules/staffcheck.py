@@ -102,6 +102,8 @@ class StaffCheck:
         self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")  # type: ignore
         self.stop_button.state(["disabled"])
 
+        self.status_label = widgets.create_label(self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2)
+
         build_example_message(self, 99)
 
         for child in self.mainframe.winfo_children():

@@ -10,85 +10,87 @@ import modules.submodules.ashen_commands
 import modules.submodules.invite_tracker
 import modules.submodules.sot_official
 import modules.submodules.check_message
+import modules.submodules.functions.widgets as widgets
 
 
 def start_check(self):
     """
     This function validates the user input and sets the currentstate to the appropriate value
     """
+    request_error = False
     try:
         self.error_label.destroy()
     except AttributeError:
         pass
     try:
-        if " " not in self.user_id.get():
-            lengths = [17, 18, 19]
-            if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
-                payload = {"userID": self.user_id.get()}
+        self.user_id.set(self.user_id.get().strip())
+        lengths = [17, 18, 19]
+        if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
+            payload = {"userID": self.user_id.get()}
+            try:
                 response = requests.post("http://127.0.0.1:8000/", json=payload, timeout=30)
                 if response.status_code != 200:
-                    self.error_label = tk.Label(
-                        self.mainframe,
-                        text=f"Error when trying to get userID from API!\n{response.status_code} {response.reason}",
-                        foreground="Red",
-                    )
-                    self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
-                    return
-                # get the xbox gt form the json response
-                self.xbox_gt = response.json()["linked_xbox"]
-                self.mutual_guils = response.json()["mutual_guilds"]
-                if self.xbox_gt != []:
-                    self.gamertag_label.config(text=self.xbox_gt)
-                    self.start_button.state(["disabled"])
-                    self.stop_button.state(["!disabled"])
-                    try:
-                        self.save_button.state(["disabled"])
-                    except (AttributeError, TclError):
-                        pass
-                    try:
-                        self.reset_button.state(["disabled"])
-                    except (AttributeError, TclError):
-                        pass
-                    self.reason = ""
-                    self.kill_button.state(["!disabled"])
-                    self.menu_customize.entryconfigure("Good to check message", state=DISABLED)
-                    self.menu_customize.entryconfigure("Not good to check message", state=DISABLED)
-                    self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
-                    self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
-                    self.user_id_entry.config(state=[("disabled")])
-                    self.channel_combo_box.config(state=[("disabled")])
-                    self.method_combo_box.config(state=[("disabled")])
-                    self.pre_check_button.config(state=[("disabled")])
-
-                    self.currentstate = "BeepBoop"
-                    if "selected" in self.pre_check_button.state():
-                        modules.submodules.pre_check.pre_check(self)
-                    else:
-                        determine_method(self)
+                    request_error = True
                 else:
-                    self.gamertag_label.config(text="Not linked")
-                    modules.submodules.elemental_commands.elemental_commands(self, 1)
+                    self.xbox_gt = response.json()["linked_xbox"]
+                    self.mutual_guilds = response.json()["mutual_guilds"]
+            except requests.exceptions.ConnectionError:
+                request_error = True
+            if not request_error:
+                continue_check(self, request_error)
             else:
-                self.error_label = tk.Label(
-                    self.mainframe,
-                    text=f"Error! {len(self.user_id.get())} is an incorrect length for userID!",
-                    foreground="Red",
-                )
-                self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
+                self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
+                self.xbox_gt = StringVar()
+                self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
+                self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
+                self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
+                self.gt_entry.focus()
+                for child in self.mainframe.winfo_children():
+                    child.grid_configure(padx=5, pady=5)
         else:
-            self.error_label = tk.Label(
-                self.mainframe,
-                text="Error! UserID must not contain spaces",
-                foreground="Red",
-            )
-            self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
-    except ValueError as error:
-        self.error_label = tk.Label(
-            self.mainframe,
-            text=f"Error! UserID is not a number!\n{error}",
-            foreground="Red",
-        )
-        self.error_label.grid(columnspan=2, rowspan=2, column=1, row=7, sticky=E)
+            self.status_label.config(text=f"ID is an incorrect length at {len(self.user_id.get())} characters", foreground="Red")
+    except ValueError:
+        self.status_label.config(text="ID must be a number", foreground="Red")
+
+
+def continue_check(self, request_error):
+    if request_error:
+        self.xbox_gt = self.xbox_gt.get().strip()
+        self.gt_entry_label.destroy()
+        self.gt_entry.destroy()
+        self.entered_gt_button.destroy()
+
+    if self.xbox_gt != []:
+        self.gamertag_label.config(text=self.xbox_gt)
+        self.start_button.state(["disabled"])
+        self.stop_button.state(["!disabled"])
+        try:
+            self.save_button.state(["disabled"])
+        except (AttributeError, TclError):
+            pass
+        try:
+            self.reset_button.state(["disabled"])
+        except (AttributeError, TclError):
+            pass
+        self.reason = ""
+        self.kill_button.state(["!disabled"])
+        self.menu_customize.entryconfigure("Good to check message", state=DISABLED)
+        self.menu_customize.entryconfigure("Not good to check message", state=DISABLED)
+        self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
+        self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
+        self.user_id_entry.config(state=[("disabled")])
+        self.channel_combo_box.config(state=[("disabled")])
+        self.method_combo_box.config(state=[("disabled")])
+        self.pre_check_button.config(state=[("disabled")])
+
+        self.currentstate = "BeepBoop"
+        if "selected" in self.pre_check_button.state():
+            modules.submodules.pre_check.pre_check(self)
+        else:
+            determine_method(self)
+    else:
+        self.gamertag_label.config(text="Not linked")
+        modules.submodules.elemental_commands.elemental_commands(self, 1)
 
 
 def continue_to_next(self):
