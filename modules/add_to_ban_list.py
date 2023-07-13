@@ -190,7 +190,7 @@ class AddToBanList:
             gamertag = parts[0].split(":")[1].strip() if parts[0].split(":")[1].strip().count("?") < 3 else "N/A"  # pylint: disable=line-too-long
             for i, part in enumerate(parts):
                 if i == 2:
-                    discord_tag = part.strip()
+                    discord_tag = part.strip() if part.strip().count("?") < 3 else "N/A"
                 elif "DC:" in part:
                     part = part.replace("DC:", "")
                     xuid = part.strip() if part.strip().count("?") < 3 else "N/A"
