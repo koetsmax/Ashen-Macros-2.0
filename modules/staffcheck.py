@@ -104,7 +104,7 @@ class StaffCheck:
 
         self.status_label = widgets.create_label(self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2)
 
-        build_example_message(self, 99)
+        build_example_message(self, 99, self.status_label)
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -119,7 +119,7 @@ class StaffCheck:
             self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
-        CustomizeWindow("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0, "userID Good to check -- GT: xboxGT", self.start_button, self.mainframe)
+        CustomizeWindow("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0, "userID Good to check -- GT: xboxGT", self.start_button, self.mainframe, self.status_label)
 
     def edit_not_good_to_check(self):
         """
@@ -129,7 +129,7 @@ class StaffCheck:
             self.error_label.destroy()  # type: ignore
         except AttributeError:
             pass
-        CustomizeWindow("not_good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1, "userID **Not** Good to check -- GT: xboxGT -- Reason", self.start_button, self.mainframe)
+        CustomizeWindow("not_good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1, "userID **Not** Good to check -- GT: xboxGT -- Reason", self.start_button, self.mainframe, self.status_label)
 
     def edit_join_awr(self):
         """
@@ -146,6 +146,7 @@ class StaffCheck:
             "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
             self.start_button,
             self.mainframe,
+            self.status_label,
         )
 
     def edit_unprivate_xbox(self):
@@ -163,6 +164,7 @@ class StaffCheck:
             "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             self.start_button,
             self.mainframe,
+            self.status_label,
         )
 
     def edit_verify(self):
@@ -180,6 +182,7 @@ class StaffCheck:
             "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             self.start_button,
             self.mainframe,
+            self.status_label,
         )
 
     def back(self):
@@ -197,17 +200,17 @@ class CustomizeWindow:
     class for the customize window
     """
 
-    def __init__(self, type_: str, explanation: str, id_: int, default: str, start_button: ttk.Button, mainframe: Union[Toplevel, ttk.Frame]):
+    def __init__(self, type_: str, explanation: str, id_: int, default: str, start_button: ttk.Button, mainframe: Union[Toplevel, ttk.Frame], status_label: ttk.Label):
         def save_changes(self):
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 try:
                     self.example_label.destroy()
                     self.config["STAFFCHECK"][type_] = self.message.get()
-                    build_example_message(self, id_)
+                    build_example_message(self, id_, status_label)
                 except AttributeError:
                     pass
                 self.config.write(configfile)
-                build_example_message(self, 99)
+                build_example_message(self, 99, status_label)
 
         def reset_to_default(self):
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
@@ -215,7 +218,7 @@ class CustomizeWindow:
                 self.config["STAFFCHECK"][type_] = default
                 self.config.write(configfile)
                 self.message.set(default)
-                build_example_message(self, id_)
+                build_example_message(self, id_, status_label)
 
         self.mainframe = mainframe
         self.start_button = start_button
@@ -230,7 +233,7 @@ class CustomizeWindow:
         self.message = StringVar(value=self.config["STAFFCHECK"][type_])
         widgets.create_entry(self.customize_window, self.message, 4, 1, "W, E", 75)
 
-        build_example_message(self, id_)
+        build_example_message(self, id_, status_label)
 
         widgets.create_button(self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W")
         widgets.create_button(self.customize_window, "Reset To Default!", lambda: reset_to_default(self), 7, 1, "E")
