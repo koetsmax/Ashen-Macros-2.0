@@ -1,11 +1,12 @@
 """
 This module builds the customizable messages and checks if they are valid.
 """
-from tkinter import *
-from tkinter import ttk as tk
+import tkinter as tk
+
+import modules.submodules.functions.widgets as widgets
 
 
-def build_example_message(self, id_: int):
+def build_example_message(self, id_: int, status_label: tk.Label):
     """
     This module builds the customizable messages and checks if they are valid.
     """
@@ -14,64 +15,29 @@ def build_example_message(self, id_: int):
     join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
     unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
     verify_message = self.config["STAFFCHECK"]["verify_message"]
+    final_string = ""
     self.start_button.state(["!disabled"])
-    try:
-        self.error_label.destroy()
-    except AttributeError:
-        pass
-    try:
-        self.error_label1.destroy()
-    except AttributeError:
-        pass
-    try:
-        self.error_label2.destroy()
-    except AttributeError:
-        pass
-    try:
-        self.error_label3.destroy()
-    except AttributeError:
-        pass
-    try:
-        self.error_label4.destroy()
-    except AttributeError:
-        pass
+    status_label.config(text="Waiting for ID", foreground="Black")
 
     if not "userID" in good_to_check_message or not "xboxGT" in good_to_check_message:
         self.start_button.state(["disabled"])
-        self.error_label = tk.Label(self.mainframe, text="Error! Bad Good to Check message!", foreground="Red")
-        self.error_label.grid(columnspan=2, column=1, row=7, sticky=E)
-    if not "userID" in not_good_to_check_message or not "xboxGT" in not_good_to_check_message or not "Reason" in not_good_to_check_message:
+        status_label.config(text="Error! Bad Good to Check message!", foreground="Red")
+
+    if not "userID" in not_good_to_check_message or not "xboxGT" in not_good_to_check_message or not "Reason" in not_good_to_check_message:  # pylint: disable=line-too-long
         self.start_button.state(["disabled"])
-        self.error_label1 = tk.Label(
-            self.mainframe,
-            text="Error! Bad Not Good to Check message!",
-            foreground="Red",
-        )
-        self.error_label1.grid(columnspan=2, column=1, row=7, sticky=E)
-    if not "userID" in join_awr_message or not "<#702904587027480607>" in join_awr_message or not "Time" in join_awr_message:
+        status_label.config(text="Error! Bad Not Good to Check message!", foreground="Red")
+
+    if not "userID" in join_awr_message or not "<#702904587027480607>" in join_awr_message or not "Time" in join_awr_message:  # pylint: disable=line-too-long
         self.start_button.state(["disabled"])
-        self.error_label2 = tk.Label(
-            self.mainframe,
-            text="Error! Bad Join AWR message!",
-            foreground="Red",
-        )
-        self.error_label2.grid(columnspan=2, column=1, row=7, sticky=E)
+        status_label.config(text="Error! Bad Join AWR message!", foreground="Red")
+
     if not "userID" in unprivate_xbox_message or not "Time" in unprivate_xbox_message:
         self.start_button.state(["disabled"])
-        self.error_label3 = tk.Label(
-            self.mainframe,
-            text="Error! Bad Unprivate Xbox message!",
-            foreground="Red",
-        )
-        self.error_label3.grid(columnspan=2, column=1, row=7, sticky=E)
+        status_label.config(text="Error! Bad Unprivate Xbox message!", foreground="Red")
+
     if not "userID" in verify_message or not "Time" in verify_message:
         self.start_button.state(["disabled"])
-        self.error_label4 = tk.Label(
-            self.mainframe,
-            text="Error! Bad Verify message!",
-            foreground="Red",
-        )
-        self.error_label4.grid(columnspan=2, column=1, row=7, sticky=E)
+        status_label.config(text="Error! Bad Verify message!", foreground="Red")
 
     if id_ == 0:
         good_example_string = good_to_check_message
@@ -85,7 +51,7 @@ def build_example_message(self, id_: int):
     elif id_ == 2:
         join_awr_example_string = join_awr_message
         join_awr_example_string = join_awr_example_string.replace("userID", "@Max")
-        join_awr_example_string = join_awr_example_string.replace("<#702904587027480607>", "Alliance Waiting Room")
+        join_awr_example_string = join_awr_example_string.replace("<#702904587027480607>", "Alliance Waiting Room")  # pylint: disable=line-too-long
         final_string = join_awr_example_string.replace("Time", "in 10 minutes")
     elif id_ == 3:
         unprivate_xbox_example_string = unprivate_xbox_message
@@ -96,5 +62,4 @@ def build_example_message(self, id_: int):
         verify_example_string = verify_example_string.replace("userID", "@Max")
         final_string = verify_example_string.replace("Time", "in 10 minutes")
     if id_ != 99:
-        self.example_label = tk.Label(self.customize_window, text=final_string)
-        self.example_label.grid(column=1, row=6, padx=5, pady=5)
+        self.example_label = widgets.create_label(self.customize_window, final_string, 6, 1)
