@@ -19,10 +19,6 @@ def start_check(self):
     """
     request_error = False
     try:
-        self.error_label.destroy()
-    except AttributeError:
-        pass
-    try:
         self.user_id.set(self.user_id.get().strip())
         lengths = [17, 18, 19]
         if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
@@ -34,6 +30,8 @@ def start_check(self):
                 else:
                     self.xbox_gt = response.json()["linked_xbox"]
                     self.mutual_guilds = response.json()["mutual_guilds"]
+                    guild_list = "\n".join(self.mutual_guilds)
+                    self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E")
             except requests.exceptions.ConnectionError:
                 request_error = True
             if not request_error:
@@ -83,7 +81,7 @@ def continue_check(self, request_error):
         self.method_combo_box.config(state=[("disabled")])
         self.pre_check_button.config(state=[("disabled")])
 
-        self.currentstate = "BeepBoop"
+        self.currentstate = None
         if "selected" in self.pre_check_button.state():
             modules.submodules.pre_check.pre_check(self)
         else:
@@ -99,7 +97,9 @@ def continue_to_next(self):
     """
     self.start_button.state(["disabled"])
     self.function_button.state(["disabled"])
+    self.function_button_2.state(["disabled"])
     self.function_button.config(text="Cool Button", command=None)
+    self.function_button_2.config(text="Cool Button 2", command=None)
     self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     exempted_methods = ["Purge Commands", "All Commands"]
@@ -108,6 +108,11 @@ def continue_to_next(self):
             self.user_id.set("")
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
+        try:
+            self.mutual_guilds_label.destroy()
+        except AttributeError:
+            pass
+
         self.function_button.state(["disabled"])
         self.function_button_2.state(["disabled"])
         self.start_button.state(["!disabled"])
@@ -164,8 +169,7 @@ def determine_method(self):
     """
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
-        self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
+        self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55)
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
         modules.submodules.elemental_commands.elemental_commands(self)
