@@ -17,18 +17,17 @@ def elemental_commands(self, *args):
     loghistory = ["/loghistory report ", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
     self.stop_button.state(["!disabled"])
+    self.function_button.state(["!disabled"])
 
     self.notespage = 2
     if not args:
         self.function_button.config(text="Add GT to Notes", command=lambda: add_note(self))
         self.kill_button.config(text=f"Check notes page {self.notespage}", command=lambda: check_notes_page(self))
         self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
-        self.start_button.state(["disabled"])
+        self.start_button.state(["!disabled"])
     else:
         self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
         self.kill_button.config(text="Tell to verify + link xbox", command=lambda: tell_to_verify_link_xbox(self))
-
-    self.function_button.state(["!disabled"])
 
 
 def add_note(self):
