@@ -115,30 +115,18 @@ class StaffCheck:
         """
         Edit the message that is sent when a user is good to check.
         """
-        try:
-            self.error_label.destroy()  # type: ignore
-        except AttributeError:
-            pass
         CustomizeWindow("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0, "userID Good to check -- GT: xboxGT", self.start_button, self.mainframe, self.status_label)
 
     def edit_not_good_to_check(self):
         """
         Edit the message that is sent when a user is not good to check.
         """
-        try:
-            self.error_label.destroy()  # type: ignore
-        except AttributeError:
-            pass
         CustomizeWindow("not_good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1, "userID **Not** Good to check -- GT: xboxGT -- Reason", self.start_button, self.mainframe, self.status_label)
 
     def edit_join_awr(self):
         """
         Edit the message that is sent in on duty chat when a user has been requested to join the AWR.
         """
-        try:
-            self.error_label.destroy()  # type: ignore
-        except AttributeError:
-            pass
         CustomizeWindow(
             "join_awr_message",
             "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp",
@@ -153,10 +141,6 @@ class StaffCheck:
         """
         Edit the message that is sent in on duty chat when a user has been requested to unprivate their Xbox.
         """
-        try:
-            self.error_label.destroy()  # type: ignore
-        except AttributeError:
-            pass
         CustomizeWindow(
             "unprivate_xbox_message",
             "userID = Discord ID\nTime = automatic hammertime timestamp",
@@ -171,10 +155,6 @@ class StaffCheck:
         """
         Edit the message that is sent in on duty chat when a user has been requested to verify their account.
         """
-        try:
-            self.error_label.destroy()  # type: ignore
-        except AttributeError:
-            pass
         CustomizeWindow(
             "verify_message",
             "userID = Discord ID\nTime = automatic hammertime timestamp",
