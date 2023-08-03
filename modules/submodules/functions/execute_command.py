@@ -10,7 +10,6 @@ def execute_command(self, command: str, subcommands: List[str]):
     """
     This function tries to execute a discord slash command
     """
-    # parse config file
     self.config.read("settings.ini")
     self.initial_command = float(self.config["COMMANDS"]["initial_command"])
     self.follow_up = float(self.config["COMMANDS"]["follow_up"])
