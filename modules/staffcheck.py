@@ -25,7 +25,6 @@ class StaffCheck:
         self.root = root
         self.config = configparser.ConfigParser()
         try:
-            # parse config file
             self.config.read("settings.ini")
             self.good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
             self.not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
