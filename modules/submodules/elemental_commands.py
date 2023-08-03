@@ -28,6 +28,7 @@ def elemental_commands(self, *args):
     else:
         self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
         self.kill_button.config(text="Tell to verify + link xbox", command=lambda: tell_to_verify_link_xbox(self))
+        self.start_button.state(["disabled"])
 
 
 def add_note(self):

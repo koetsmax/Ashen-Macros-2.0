@@ -84,5 +84,4 @@ def stop_check(self):
     self.currentstate = "CheckMessage"
     modules.submodules.start_check.continue_to_next(self)
     self.start_button.state(["!disabled"])
-    self.function_button.state(["!disabled"])
     self.status_label.config(text="Waiting for ID", foreground="black")
