@@ -12,14 +12,14 @@ import requests
 from packaging import version
 from pyuac import isUserAdmin, runAsAdmin
 
-import modules.add_to_ban_list as add_to_ban_list
-import modules.fill_new_fleet as fill_new_fleet
-import modules.hammertime_generator as hammertime_generator
-import modules.rename_fleet as rename_fleet
-import modules.staffcheck as staffcheck
-import modules.submodules.functions.widgets as widgets
-import modules.submodules.functions.window_positions as window_positions
-import modules.warning as warning
+from modules import add_to_ban_list
+from modules import fill_new_fleet
+from modules import hammertime_generator
+from modules import rename_fleet
+from modules import staffcheck
+from modules.submodules.functions import widgets
+from modules.submodules.functions import window_positions
+from modules import warning
 
 # Configure the logger
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler()])  # pylint: disable=line-too-long
