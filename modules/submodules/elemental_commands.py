@@ -14,7 +14,7 @@ def elemental_commands(self, *args):
     self.currentstate = "ElementalCommands"
     switch_channel(self.channel.get())
     clear_typing_bar()
-    loghistory = ["/loghistory report ", self.user_id.get()]
+    loghistory = ["/loghistory report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
