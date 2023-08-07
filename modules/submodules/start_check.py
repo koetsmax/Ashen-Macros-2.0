@@ -1,16 +1,17 @@
 """
 This module initiates the staffcheck process and determines which method to use
 """
+from tkinter import DISABLED, NORMAL, StringVar, TclError
+
 import requests
-from tkinter import *
-from tkinter import ttk as tk
-import modules.submodules.pre_check
-import modules.submodules.elemental_commands
+
 import modules.submodules.ashen_commands
-import modules.submodules.invite_tracker
-import modules.submodules.sot_official
 import modules.submodules.check_message
+import modules.submodules.elemental_commands
 import modules.submodules.functions.widgets as widgets
+import modules.submodules.invite_tracker
+import modules.submodules.pre_check
+import modules.submodules.sot_official
 
 
 def start_check(self):
@@ -24,7 +25,7 @@ def start_check(self):
         if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
             payload = {"userID": self.user_id.get()}
             try:
-                response = requests.post("http://127.0.0.1:8000/", json=payload, timeout=30)
+                response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=30)
                 if response.status_code != 200:
                     request_error = True
                 else:
