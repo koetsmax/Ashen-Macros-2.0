@@ -32,7 +32,7 @@ def start_check(self):
                     self.xbox_gt = response.json()["linked_xbox"]
                     self.mutual_guilds = response.json()["mutual_guilds"]
                     guild_list = "\n".join(self.mutual_guilds)
-                    self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E")
+                    self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
             except requests.exceptions.ConnectionError:
                 request_error = True
             if not request_error:
@@ -53,6 +53,7 @@ def start_check(self):
 
 
 def continue_check(self, request_error):
+    self.status_label.config(text="Running Check", foreground="black")
     if request_error:
         self.xbox_gt = self.xbox_gt.get().strip()
         self.gt_entry_label.destroy()
@@ -107,6 +108,7 @@ def continue_to_next(self):
     if self.method.get() not in exempted_methods or self.currentstate == "Done":
         if self.currentstate == "Done":
             self.user_id.set("")
+            self.status_label.config(text="Waiting for ID", foreground="black")
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
         try:
@@ -170,7 +172,7 @@ def determine_method(self):
     """
     if self.method.get() == "All Commands":
         self.reason = StringVar(value="Reason for Not Good To Check")
-        self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55)
+        self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
         modules.submodules.elemental_commands.elemental_commands(self)
