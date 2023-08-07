@@ -104,7 +104,7 @@ class RenameFleet:
                     f"activity: {ship}",
                 ]
                 print(rename)
-                # clear_typing_bar(self)
+                # clear_typing_bar()
                 # execute_command(self, rename[0], rename[1:])
 
 

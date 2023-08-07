@@ -12,7 +12,7 @@ def pre_check(self):
     This function checks if a previous check has been done on the user and searches by userID.
     """
     self.currentstate = "PreCheck"
-    switch_channel(self, "#on-duty-chat")
+    switch_channel("#on-duty-chat")
     clear_typing_bar()
     keyboard.press_and_release("ctrl+f")
     keyboard.press_and_release("ctrl+a")
@@ -28,7 +28,7 @@ def search_gamertag(self):
     """
     This function checks if a previous check has been done on the user and searches by Gamertag.
     """
-    switch_channel(self, "#on-duty-chat")
+    switch_channel("#on-duty-chat")
     clear_typing_bar()
     keyboard.press_and_release("ctrl+f")
     keyboard.press_and_release("ctrl+a")

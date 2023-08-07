@@ -12,7 +12,7 @@ def invite_tracker(self):
     This function checks how a user was invited to the server.
     """
     self.currentstate = "InviteTracker"
-    switch_channel(self, "#invite-tracker")
+    switch_channel("#invite-tracker")
     clear_typing_bar()
     keyboard.press_and_release("ctrl+f")
     keyboard.press_and_release("ctrl+a")

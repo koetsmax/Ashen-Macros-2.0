@@ -109,7 +109,7 @@ class Warning:
         """
         if self.check.get() == 1:
             self.stop_button.state(["disabled"])
-        clear_typing_bar(self)
+        clear_typing_bar()
         if self.custom_reason.get() != "":
             reason = self.custom_reason.get()
         else:
@@ -138,9 +138,9 @@ class Warning:
 
         # check if the user wants to check the loghistory
         if self.check.get() == 1:
-            clear_typing_bar(self)
-            switch_channel(self, self.channel.get())
-            clear_typing_bar(self)
+            clear_typing_bar()
+            switch_channel(self.channel.get())
+            clear_typing_bar()
             loghistory = ["/loghistory report", self.user_id.get()]
             execute_command(self, loghistory[0], loghistory[1:])
             self.start_button.config(text="Add warning", command=self.add_warning)
@@ -148,9 +148,9 @@ class Warning:
             self.stop_button.grid(row=80, columnspan=5, sticky="W, E")
             self.stop_button.state(["!disabled"])
         else:
-            clear_typing_bar(self)
-            switch_channel(self, self.channel.get())
-            clear_typing_bar(self)
+            clear_typing_bar()
+            switch_channel(self.channel.get())
+            clear_typing_bar()
             self.add_warning()
 
 

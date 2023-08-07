@@ -12,7 +12,7 @@ def elemental_commands(self, *args):
     This function executes all elemental commands.
     """
     self.currentstate = "ElementalCommands"
-    switch_channel(self, self.channel.get())
+    switch_channel(self.channel.get())
     clear_typing_bar()
     loghistory = ["/loghistory report ", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])

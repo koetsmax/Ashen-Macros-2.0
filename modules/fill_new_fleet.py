@@ -158,7 +158,7 @@ class FillNewFleet:
                 f"{to_process.fleetnum} {to_process.shipnum}",
             ]
             print(process)
-            clear_typing_bar(self)
+            clear_typing_bar()
             execute_command(self, process[0], process[1:])
             current_change -= 1
 

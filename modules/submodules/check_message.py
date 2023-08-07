@@ -16,7 +16,7 @@ def check_message(self):
     This function makes changes to the GUI and applies commands to the buttons
     """
     self.currentstate = "CheckMessage"
-    switch_channel(self, "#on-duty-chat")
+    switch_channel("#on-duty-chat")
 
     self.function_button.config(text="Don't Post Message", command=lambda: modules.submodules.start_check.continue_to_next(self))
     self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
@@ -47,7 +47,7 @@ def not_good_to_check(self):
     """
     self.currentstate = "CheckMessage"
     self.function_button.config(text="Don't Post Message", command=lambda: modules.submodules.start_check.continue_to_next(self))
-    switch_channel(self, "#on-duty-chat")
+    switch_channel("#on-duty-chat")
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
     self.function_button_2.state(["disabled"])

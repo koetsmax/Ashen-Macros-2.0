@@ -16,7 +16,7 @@ def ashen_commands(self):
     """
     self.currentstate = "AshenCommands"
 
-    switch_channel(self, self.channel.get())
+    switch_channel(self.channel.get())
     clear_typing_bar()
     search = [
         "/search ",
