@@ -26,9 +26,12 @@ def start_check(self):
             payload = {"userID": self.user_id.get()}
             try:
                 response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=30)
+                # production url: http://ashen_api.famkoets.nl/
+                # testing url: http://localhost:8000/
                 if response.status_code != 200:
                     request_error = True
                 else:
+                    self.user_name = response.json()["discord_name"]
                     self.xbox_gt = response.json()["linked_xbox"]
                     self.mutual_guilds = response.json()["mutual_guilds"]
                     guild_list = "\n".join(self.mutual_guilds)
