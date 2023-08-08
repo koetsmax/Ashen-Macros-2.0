@@ -1,8 +1,6 @@
 """
 This module adds the specified member to the ban list.
 """
-
-# pylint: disable=E0401, E0402, W0621, W0401, W0614, R0915, C0301, W0201
 from tkinter import *
 from tkinter import ttk as tk
 import runpy
@@ -23,7 +21,7 @@ class HammertimeGenerator:
 
         # Create the menu
         self.mainframe = tk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
@@ -31,32 +29,22 @@ class HammertimeGenerator:
         tk.Label(self.mainframe, text="Hours from now:").grid(column=1, row=2, sticky=E)
         self.hours = IntVar()
         self.hours_entry = tk.Entry(self.mainframe, width=19, textvariable=self.hours)
-        self.hours_entry.grid(column=2, row=2, sticky=(W, E))
+        self.hours_entry.grid(column=2, row=2, sticky="W, E")
 
-        tk.Label(self.mainframe, text="Minutes from now:").grid(
-            column=1, row=3, sticky=E
-        )
+        tk.Label(self.mainframe, text="Minutes from now:").grid(column=1, row=3, sticky=E)
         self.minutes = IntVar()
-        self.minutes_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.minutes
-        )
-        self.minutes_entry.grid(column=2, row=3, sticky=(W, E))
+        self.minutes_entry = tk.Entry(self.mainframe, width=19, textvariable=self.minutes)
+        self.minutes_entry.grid(column=2, row=3, sticky="W, E")
 
-        tk.Label(self.mainframe, text="Seconds from now:").grid(
-            column=1, row=4, sticky=E
-        )
+        tk.Label(self.mainframe, text="Seconds from now:").grid(column=1, row=4, sticky=E)
         self.seconds = IntVar()
-        self.seconds_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.seconds
-        )
-        self.seconds_entry.grid(column=2, row=4, sticky=(W, E))
+        self.seconds_entry = tk.Entry(self.mainframe, width=19, textvariable=self.seconds)
+        self.seconds_entry.grid(column=2, row=4, sticky="W, E")
 
         tk.Label(self.mainframe, text="Show:").grid(column=1, row=1, sticky=E)
-        self.method = StringVar(
-            value=f'{time.strftime("%m/%d/%Y", time.localtime(time.time()))}'
-        )
+        self.method = StringVar(value=f'{time.strftime("%m/%d/%Y", time.localtime(time.time()))}')
         self.method_combo_box = tk.Combobox(self.mainframe, textvariable=self.method)
-        self.method_combo_box.grid(column=2, row=1, sticky=(W, E))
+        self.method_combo_box.grid(column=2, row=1, sticky="W, E")
         self.values = (
             time.strftime("%m/%d/%Y", time.localtime(time.time())),
             time.strftime("%B %d, %Y", time.localtime(time.time())),
@@ -70,13 +58,11 @@ class HammertimeGenerator:
         self.method_combo_box["values"] = self.values
 
         # Create the buttons
-        self.kill_button = tk.Button(
-            self.mainframe, text="Back to launcher", command=self.back
-        )
-        self.kill_button.grid(row=80, columnspan=5, sticky=(W, E))
+        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
-        self.start_button.grid(row=79, columnspan=5, sticky=(W, E))
+        self.start_button.grid(row=79, columnspan=5, sticky="W, E")
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -119,6 +105,8 @@ class HammertimeGenerator:
                     timestamp = f"<t:{round(time.time() + seconds)}:R>"
                 elif value == self.values[7]:
                     timestamp = round(time.time() + seconds)
+                else:
+                    break
                 self.root.clipboard_clear()
                 self.root.clipboard_append(timestamp)
 
@@ -130,9 +118,6 @@ class HammertimeGenerator:
 def start_script():
     root = Tk()
     window_positions.load_window_position(root)
-    # root.eval("tk::PlaceWindow . center")
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     HammertimeGenerator(root)
     root.mainloop()

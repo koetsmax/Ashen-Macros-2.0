@@ -1,16 +1,15 @@
-# pylint: disable=E0401, E0402
 """
 This function tries to execute a discord slash command
 """
 import time
+from typing import List
 import keyboard
 
 
-def execute_command(self, command, subcommands):
+def execute_command(self, command: str, subcommands: List[str]):
     """
     This function tries to execute a discord slash command
     """
-    # parse config file
     self.config.read("settings.ini")
     self.initial_command = float(self.config["COMMANDS"]["initial_command"])
     self.follow_up = float(self.config["COMMANDS"]["follow_up"])
