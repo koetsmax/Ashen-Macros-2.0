@@ -5,6 +5,7 @@ import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
+import requests
 
 
 def elemental_commands(self, *args):
@@ -16,6 +17,9 @@ def elemental_commands(self, *args):
     clear_typing_bar()
     loghistory = ["/loghistory report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
+
+    # payload = {"userID": self.user_id.get(), "section": "elemental"}
+    # response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=10)
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
 
@@ -76,6 +80,8 @@ def tell_to_link_xbox(self):
     self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
+    self.currentstate = "Done"
+    self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
 
 
 def tell_to_verify_link_xbox(self):
@@ -91,3 +97,5 @@ def tell_to_verify_link_xbox(self):
     self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
+    self.currentstate = "Done"
+    self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
