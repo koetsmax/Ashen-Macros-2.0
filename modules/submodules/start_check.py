@@ -25,7 +25,7 @@ def start_check(self):
         if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
             payload = {"userID": self.user_id.get()}
             try:
-                response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=30)
+                response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=5)
                 # production url: http://ashen_api.famkoets.nl/
                 # testing url: http://localhost:8000/
                 if response.status_code != 200:

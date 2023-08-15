@@ -5,8 +5,9 @@ import configparser
 import logging
 import os
 import subprocess
-from tkinter import FALSE, Tk, Toplevel, ttk
+from tkinter import FALSE, Tk, Toplevel, ttk, TclError
 from typing import Callable
+import sys
 
 import requests
 from packaging import version
@@ -71,13 +72,17 @@ class Launcher:
                     self.root.destroy()
                     runAsAdmin()
 
-        except (FileNotFoundError, subprocess.CalledProcessError):
+        except (AttributeError, FileNotFoundError, subprocess.CalledProcessError):
             log.warning("Launcher folder not found")
 
-        self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky="NWES")
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        try:
+            self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
+            self.mainframe.grid(column=0, row=0, sticky="NWES")
+            self.root.columnconfigure(0, weight=1)
+            self.root.rowconfigure(0, weight=1)
+        except TclError:
+            log.error("Failed to create mainframe")
+            sys.exit()
 
         button_data = [
             ("Staffcheck script", lambda: self.start_script("Staffcheck"), 1, 1, "E, W"),
@@ -85,7 +90,7 @@ class Launcher:
             ("Add warning script", lambda: self.start_script("Add warning"), 3, 1, "E, W"),
             # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 4, 1, "E, W"),
             # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 5, 1, "E, W"),
-            # ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 6, 1, "E, W"),  # pylint: disable=line-too-long
+            ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 6, 1, "E, W"),  # pylint: disable=line-too-long
             ("Check for updates!!!", lambda: self.check_for_updates(False), 8, 1, "E, W"),
             ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
             ("Command Delay", lambda: self.delay_config(), 81, 1, "E, W"),  # pylint: disable=unnecessary-lambda
