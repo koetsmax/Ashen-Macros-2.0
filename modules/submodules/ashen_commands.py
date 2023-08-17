@@ -18,21 +18,11 @@ def ashen_commands(self):
 
     switch_channel(self.channel.get())
     clear_typing_bar()
-    search = [
-        "/search ",
-        f"member: {self.user_id.get()}",
-        f"gamertag: {self.xbox_gt}",
-    ]
+    search = ["/search ", f"member: {self.user_id.get()}", f"gamertag: {self.xbox_gt}"]
     execute_command(self, search[0], search[1:])
     self.start_button.state(["!disabled"])
-    self.start_button.config(
-        text="Continue",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
-    self.function_button.config(
-        text="Needs to remove banned friends",
-        command=lambda: needs_to_remove_friends(self),
-    )
+    self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
+    self.function_button.config(text="Needs to remove banned friends", command=lambda: needs_to_remove_friends(self))
     self.function_button.state(["!disabled"])
     self.function_button_2.config(text="Needs to verify account", command=lambda: needs_to_verify(self))
     self.function_button_2.state(["!disabled"])
@@ -58,7 +48,7 @@ def needs_to_unprivate_xbox(self):
     """
     self.reason = StringVar(value="Needs to unprivate xbox")
     self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
+    self.reason_entry.grid(columnspan=2, column=1, row=9, sticky="W, E")
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
