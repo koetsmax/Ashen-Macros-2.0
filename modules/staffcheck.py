@@ -31,6 +31,7 @@ class StaffCheck:
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
             self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
+            self.api_url = self.config["API"]["api_url"]
         except KeyError:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
@@ -39,6 +40,7 @@ class StaffCheck:
                 "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
                 "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             }
+            self.config["API"] = {"api_url": "http://ashen_api.famkoets.nl"}
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
@@ -47,6 +49,7 @@ class StaffCheck:
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
             self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
+            self.api_url = self.config["API"]["api_url"]
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
