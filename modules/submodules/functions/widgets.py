@@ -35,11 +35,12 @@ def create_label(
     sticky: str = "",
     rowspan: int = 1,
     columnspan: int = 1,
+    foreground="black",
 ) -> ttk.Label:
     """
     Creates a label widget and places it in the parent widget.
     """
-    label = ttk.Label(parent, text=text)
+    label = ttk.Label(parent, text=text, foreground=foreground)
     label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return label
 
