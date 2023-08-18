@@ -22,8 +22,9 @@ def elemental_commands(self, *args):
         self.loghistory_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
-            payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt}
+            payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
             response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5)
+            print(response.text)
             response_json = response.json()
             if response.status_code != 200:
                 request_error = True
