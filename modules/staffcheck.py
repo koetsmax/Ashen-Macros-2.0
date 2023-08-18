@@ -31,6 +31,7 @@ class StaffCheck:
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
             self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
+            self.api_url = self.config["API"]["api_url"]
         except KeyError:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
@@ -39,6 +40,7 @@ class StaffCheck:
                 "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
                 "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             }
+            self.config["API"] = {"api_url": "http://ashen_api.famkoets.nl"}
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
@@ -47,6 +49,7 @@ class StaffCheck:
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
             self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
+            self.api_url = self.config["API"]["api_url"]
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
@@ -93,15 +96,43 @@ class StaffCheck:
 
         self.kill_button = widgets.create_button(self.mainframe, "Back to launcher", self.back, 6, 1, "W, E")
 
-        self.start_button = widgets.create_button(self.mainframe, "Start check!", lambda: modules.submodules.start_check.start_check(self), 6, 2, "W, E", 1, 2)
+        self.start_button = widgets.create_button(self.mainframe, "Start check!", lambda: modules.submodules.start_check.start_check(self), 6, 2, "W, E")
 
-        self.function_button_2 = widgets.create_button(self.mainframe, "Cool Button 2", lambda: None, 7, 1, "W, E")
+        self.function_button_2 = widgets.create_button(self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E")
         self.function_button_2.state(["disabled"])
 
         self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")  # type: ignore
         self.stop_button.state(["disabled"])
 
         self.status_label = widgets.create_label(self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2)
+
+        # create the labelframes for the automatic process
+        self.loghistory_labelframe = ttk.LabelFrame(self.mainframe, text="loghistory")
+        self.loghistory_labelframe.grid(column=3, row=1, columnspan=2, rowspan=7, sticky="N, W, E, S")
+        self.loghistory_labelframe.columnconfigure(0, weight=1)
+        self.loghistory_labelframe.rowconfigure(0, weight=1)
+
+        widgets.create_label(self.loghistory_labelframe, "Account Age:", 1, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has outdated warnings:", 2, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs warning talk:", 3, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has gamertag in notes:", 4, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs to be spoken to:", 5, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs mic check:", 6, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has anti-alliance note:", 7, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Status:", 8, 1, "W, E")
+        self.loghistory_fix_issues_button = widgets.create_button(self.loghistory_labelframe, "Fix issues", lambda: modules.submodules.elemental_commands.fix_issues(self), 9, 1, "W, E", 1, 2)
+        self.loghistory_fix_issues_button.state(["disabled"])
+        self.jump_to_message_button = widgets.create_button(self.loghistory_labelframe, "Jump to message", lambda: None, 10, 1, "W, E", 1, 2)
+        self.jump_to_message_button.state(["disabled"])
+
+        self.account_age_label = widgets.create_label(self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.outdated_warnings_label = widgets.create_label(self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.needs_warning_talk_label = widgets.create_label(self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.gamertag_in_notes_label = widgets.create_label(self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.needs_to_be_spoken_to_label = widgets.create_label(self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.needs_mic_check_label = widgets.create_label(self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.anti_alliance_note_label = widgets.create_label(self.loghistory_labelframe, "N/A", 7, 2, "W, E", foreground="orange")
+        self.loghistory_status_label = widgets.create_label(self.loghistory_labelframe, "Waiting", 8, 1, "E", 1, 2, foreground="orange")
 
         build_example_message(self, 99, self.status_label)
 

@@ -1,34 +1,20 @@
-import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget
+import tkinter as tk
 
 
-def on_button_click():
-    print("Button clicked!")
+def create_label_frame():
+    labelframe = tk.LabelFrame(root, text="loghistory")
+    labelframe.pack(padx=20, pady=20, expand=True, fill="both")
+
+    label = tk.Label(labelframe, text="Widgets Inside the 'Window'")
+    label.pack(padx=10, pady=10)
+
+    button = tk.Button(labelframe, text="Click Me", command=lambda: print("Hello World!"))
+    button.pack(padx=10, pady=10)
 
 
-app = QApplication(sys.argv)
+root = tk.Tk()
+root.title("Main Window")
 
-window = QMainWindow()
-window.setWindowTitle("PyQt6 Grid Example")
+create_label_frame()
 
-# Create a central widget and set it as the main window's central widget
-central_widget = QWidget()
-window.setCentralWidget(central_widget)
-
-# Create a grid layout and set it as the layout for the central widget
-grid_layout = QGridLayout(central_widget)
-
-# Create and add widgets to the grid layout
-label1 = QLabel("Label 1")
-grid_layout.addWidget(label1, 0, 0)  # Add label1 to row 0, column 0
-
-label2 = QLabel("Label 2")
-grid_layout.addWidget(label2, 1, 0)  # Add label2 to row 1, column 0
-
-button = QPushButton("Click me!")
-button.clicked.connect(on_button_click)
-grid_layout.addWidget(button, 2, 0, 1, 2)  # Add button to row 2, column 0, spanning 1 row and 2 columns
-
-window.show()
-
-sys.exit(app.exec())
+root.mainloop()
