@@ -17,9 +17,10 @@ def elemental_commands(self, *args):
     clear_typing_bar()
     loghistory = ["/loghistory report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
+    if self.channel.get() == "#on-duty-commands":
+        payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt}
+        response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5)
 
-    # payload = {"userID": self.user_id.get(), "section": "elemental"}
-    # response = requests.post("http://ashen_api.famkoets.nl/", json=payload, timeout=10)
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
 
