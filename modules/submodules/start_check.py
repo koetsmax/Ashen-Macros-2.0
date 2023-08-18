@@ -25,6 +25,8 @@ def start_check(self):
         if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
             payload = {"userID": self.user_id.get()}
             try:
+                self.status_label.config(text="Sending API request")
+                self.mainframe.update()
                 response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=5)
                 if response.status_code != 200:
                     request_error = True
@@ -55,11 +57,13 @@ def start_check(self):
 
 def continue_check(self, request_error):
     self.status_label.config(text="Running Check", foreground="black")
+    self.mainframe.update()
     if request_error:
         self.xbox_gt = self.xbox_gt.get().strip()
         self.gt_entry_label.destroy()
         self.gt_entry.destroy()
         self.entered_gt_button.destroy()
+        self.mainframe.update()
 
     if self.xbox_gt != []:
         self.gamertag_label.config(text=self.xbox_gt)
@@ -83,6 +87,7 @@ def continue_check(self, request_error):
         self.channel_combo_box.config(state=[("disabled")])
         self.method_combo_box.config(state=[("disabled")])
         self.pre_check_button.config(state=[("disabled")])
+        self.mainframe.update()
 
         self.currentstate = None
         if "selected" in self.pre_check_button.state():
@@ -102,23 +107,35 @@ def continue_to_next(self):
     self.function_button.state(["disabled"])
     self.function_button_2.state(["disabled"])
     self.function_button.config(text="Cool Button", command=None)
-    self.function_button_2.config(text="Cool Button 2", command=None)
+    self.function_button_2.config(text="Re-run last check", command=None)
     self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
     exempted_methods = ["Purge Commands", "All Commands"]
     if self.method.get() not in exempted_methods or self.currentstate == "Done":
         if self.currentstate == "Done":
+            previous_user_id = self.user_id.get()
+            self.function_button_2.config(text="Re-run last check", command=lambda: self.user_id.set(previous_user_id))
             self.user_id.set("")
             self.status_label.config(text="Waiting for ID", foreground="black")
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
+            self.account_age_label.config(text="N/A", foreground="orange")
+            self.outdated_warnings_label.config(text="N/A", foreground="orange")
+            self.needs_warning_talk_label.config(text="N/A", foreground="orange")
+            self.gamertag_in_notes_label.config(text="N/A", foreground="orange")
+            self.needs_to_be_spoken_to_label.config(text="N/A", foreground="orange")
+            self.needs_mic_check_label.config(text="N/A", foreground="orange")
+            self.anti_alliance_note_label.config(text="N/A", foreground="orange")
+            self.loghistory_status_label.config(text="Waiting", foreground="orange")
+            self.loghistory_fix_issues_button.state(["disabled"])
+            self.jump_to_message_button.state(["disabled"])
+            self.function_button_2.state(["!disabled"])
+
         try:
             self.mutual_guilds_label.destroy()
         except AttributeError:
             pass
 
-        self.function_button.state(["disabled"])
-        self.function_button_2.state(["disabled"])
         self.start_button.state(["!disabled"])
         self.kill_button.state(["!disabled"])
         try:
