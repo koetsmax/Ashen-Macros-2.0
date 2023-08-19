@@ -1,11 +1,13 @@
 """
 This module executes all elemental commands.
 """
-import modules.submodules.start_check
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
-from .functions.execute_command import execute_command
 import requests
+
+import modules.submodules.start_check
+
+from .functions.clear_typing_bar import clear_typing_bar
+from .functions.execute_command import execute_command
+from .functions.switch_channel import switch_channel
 
 
 def elemental_commands(self, *args):
