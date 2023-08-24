@@ -26,11 +26,11 @@ def elemental_commands(self, *args):
         try:
             payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
             response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5)
-            print(response.text)
-            response_json = response.json()
+
             if response.status_code != 200:
                 request_error = True
             else:
+                response_json = response.json()
                 self.account_age_label.config(text=f"{response_json['account_age']} Days", foreground="red" if response_json["account_age"] < 60 else "green")
                 self.outdated_warnings_label.config(text=f"{response_json['has_outdated_warnings']} ({response_json['number_outdated_warnings']})", foreground="red" if response_json["has_outdated_warnings"] else "green")
                 self.needs_warning_talk_label.config(text=f"{response_json['needs_warning_talk']}", foreground="red" if response_json["needs_warning_talk"] else "green")
