@@ -2,7 +2,6 @@
 Creates the launcher window and checks for updates.
 """
 import configparser
-import logging
 import os
 import subprocess
 from tkinter import FALSE, Tk, Toplevel, ttk, TclError
@@ -21,10 +20,6 @@ from modules import staffcheck
 from modules.submodules.functions import widgets
 from modules.submodules.functions import window_positions
 from modules import warning
-
-# Configure the logger
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler()])  # pylint: disable=line-too-long
-log = logging.getLogger(__name__)
 
 
 class Launcher:
@@ -62,18 +57,18 @@ class Launcher:
 
             # Check if full control permissions are present for Everyone
             if not "Everyone:(OI)(CI)(F)" in output:
-                log.debug("current permissions: %s", output)
+                print("current permissions: %s", output)
 
                 if isUserAdmin():
                     subprocess.run(["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"], check=True)  # pylint: disable=line-too-long
-                    log.debug("Permissions updated to 777")
+                    print("Permissions updated to 777")
                 else:
                     # Re-run the program with admin rights
                     self.root.destroy()
                     runAsAdmin()
 
         except (AttributeError, FileNotFoundError, subprocess.CalledProcessError):
-            log.warning("Launcher folder not found")
+            print("Launcher folder not found")
 
         try:
             self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
@@ -81,7 +76,7 @@ class Launcher:
             self.root.columnconfigure(0, weight=1)
             self.root.rowconfigure(0, weight=1)
         except TclError:
-            log.error("Failed to create mainframe")
+            print("Failed to create mainframe")
             sys.exit()
 
         button_data = [
@@ -155,7 +150,7 @@ class Launcher:
         """
         request = requests.get("https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15)  # pylint: disable=line-too-long
         if request.status_code != 200:
-            log.error("Failed to check for updates. Error code: %s", request.status_code)
+            print("Failed to check for updates. Error code: %s", request.status_code)
             return lambda: None
         request_dictionary = request.json()
         with open("version", "r", encoding="UTF-8") as versionfile:

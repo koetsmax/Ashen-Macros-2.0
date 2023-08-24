@@ -56,7 +56,7 @@ def not_good_to_check(self):
     except AttributeError:
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-        self.reason_entry.grid(columnspan=2, column=1, row=8, sticky="W, E")
+        self.reason_entry.grid(columnspan=2, column=1, row=9, sticky="W, E")
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
     self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
