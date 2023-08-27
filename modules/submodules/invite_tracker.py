@@ -22,3 +22,11 @@ def invite_tracker(self):
 
     self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
     self.start_button.state(["!disabled"])
+
+
+def check_loghistory(self):
+    pass
+
+
+def check_invited_users(self):
+    pass
