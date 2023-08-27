@@ -18,7 +18,7 @@ def elemental_commands(self, *args):
     self.currentstate = "ElementalCommands"
     switch_channel(self.channel.get())
     clear_typing_bar()
-    loghistory = ["/loghistory report", self.user_id.get()]
+    loghistory = ["/user_report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
     if self.channel.get() == "#on-duty-commands":
         self.loghistory_status_label.config(text="Sending API request", foreground="orange")
@@ -89,7 +89,7 @@ def add_note(self):
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    noteadd = ["/notes new", self.user_id.get(), f"GT: {self.xbox_gt}"]
+    noteadd = ["/add_note", self.user_id.get(), f"GT: {self.xbox_gt}"]
     execute_command(self, noteadd[0], noteadd[1:])
     self.function_button.state(["disabled"])
     self.kill_button.state(["!disabled"])
@@ -103,7 +103,7 @@ def check_notes_page(self):
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    notescheck = ["/notes list", self.user_id.get(), f"page_number: {self.notespage}"]
+    notescheck = ["/list_notes", self.user_id.get(), f"page_number: {self.notespage}"]
     clear_typing_bar()
     execute_command(self, notescheck[0], notescheck[1:])
     self.notespage += 1

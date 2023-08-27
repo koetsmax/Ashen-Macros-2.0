@@ -118,10 +118,10 @@ class Warning:
             elif self.reason.get() == "Alt+F4 warning":
                 reason = "**Rule #9:** You must gracefully leave the game, Use `LEAVE GAME` *NOT* ALT+F4 or force killing your game. Failure to do so will lock new crew members out of the ship for 10 minutes."
         if self.nodm.get() != 1:
-            add_warn = ["/warn", self.user_id.get(), f"reason: {reason}"]
+            add_warn = ["/warn", self.user_id.get(), {reason}]
             execute_command(self, add_warn[0], add_warn[1:])
         else:
-            add_warn = ["/warn", self.user_id.get(), f"reason: {reason}", "no_dm: Yes"]
+            add_warn = ["/warn", self.user_id.get(), {reason}, "no_dm: Yes"]
             execute_command(self, add_warn[0], add_warn[1:])
 
     def stop(self):
@@ -141,7 +141,7 @@ class Warning:
             clear_typing_bar()
             switch_channel(self.channel.get())
             clear_typing_bar()
-            loghistory = ["/loghistory report", self.user_id.get()]
+            loghistory = ["/user_report", self.user_id.get()]
             execute_command(self, loghistory[0], loghistory[1:])
             self.start_button.config(text="Add warning", command=self.add_warning)
             self.stop_button = tk.Button(self.mainframe, text="Stop", command=self.stop)
