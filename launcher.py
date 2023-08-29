@@ -135,9 +135,9 @@ class Launcher:
         widgets.create_label(updatewindow, text, 1, 1, "E")
 
         if update_is_available:
-            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update(), 2, 1, "E")
+            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update(), 2, 1, "E")  # pylint: disable=unnecessary-lambda
         else:
-            widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy(), 2, 1, "W")
+            widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy(), 2, 1, "W")  # pylint: disable=unnecessary-lambda
 
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)

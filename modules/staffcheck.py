@@ -108,31 +108,29 @@ class StaffCheck:
 
         # create the LabelFrame for the loghistory automation
         self.loghistory_labelframe = ttk.LabelFrame(self.mainframe, text="User Report")
-        self.loghistory_labelframe.grid(column=3, row=1, columnspan=2, rowspan=7, sticky="N, W, E, S")
+        self.loghistory_labelframe.grid(column=3, row=1, columnspan=2, rowspan=6, sticky="N, W, E, S")
         self.loghistory_labelframe.columnconfigure(0, weight=1)
         self.loghistory_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.loghistory_labelframe, "Account Age:", 1, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Has outdated warnings:", 2, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Needs warning talk:", 3, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Has gamertag in notes:", 4, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Needs to be spoken to:", 5, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Needs mic check:", 6, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Has anti-alliance note:", 7, 1, "W, E")
-        widgets.create_label(self.loghistory_labelframe, "Status:", 8, 1, "W, E")
-        self.loghistory_fix_issues_button = widgets.create_button(self.loghistory_labelframe, "Fix issues", lambda: modules.submodules.elemental_commands.fix_issues(self), 9, 1, "W, E", 1, 2)
+        widgets.create_label(self.loghistory_labelframe, "Needs warning talk:", 2, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has gamertag in notes:", 3, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs to be spoken to:", 4, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs mic check:", 5, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has anti-alliance note:", 6, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Status:", 7, 1, "W, E")
+        self.loghistory_fix_issues_button = widgets.create_button(self.loghistory_labelframe, "Fix issues", lambda: modules.submodules.elemental_commands.fix_issues(self), 8, 1, "W, E", 1, 2)
         self.loghistory_fix_issues_button.state(["disabled"])
-        self.jump_to_message_button = widgets.create_button(self.loghistory_labelframe, "Jump to message", lambda: None, 10, 1, "W, E", 1, 2)
+        self.jump_to_message_button = widgets.create_button(self.loghistory_labelframe, "Jump to message", lambda: None, 9, 1, "W, E", 1, 2)
         self.jump_to_message_button.state(["disabled"])
 
         self.account_age_label = widgets.create_label(self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
-        self.outdated_warnings_label = widgets.create_label(self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
-        self.needs_warning_talk_label = widgets.create_label(self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
-        self.gamertag_in_notes_label = widgets.create_label(self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
-        self.needs_to_be_spoken_to_label = widgets.create_label(self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
-        self.needs_mic_check_label = widgets.create_label(self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
-        self.anti_alliance_note_label = widgets.create_label(self.loghistory_labelframe, "N/A", 7, 2, "W, E", foreground="orange")
-        self.loghistory_status_label = widgets.create_label(self.loghistory_labelframe, "Waiting", 8, 1, "E", 1, 2, foreground="orange")
+        self.needs_warning_talk_label = widgets.create_label(self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.gamertag_in_notes_label = widgets.create_label(self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.needs_to_be_spoken_to_label = widgets.create_label(self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.needs_mic_check_label = widgets.create_label(self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.anti_alliance_note_label = widgets.create_label(self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.loghistory_status_label = widgets.create_label(self.loghistory_labelframe, "Waiting", 7, 1, "E", 1, 2, foreground="orange")
 
         # create the LabelFrame for the invite tracker automation
         self.invite_tracker_labelframe = ttk.LabelFrame(self.mainframe, text="Invite Tracker")
@@ -141,7 +139,7 @@ class StaffCheck:
         self.invite_tracker_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.invite_tracker_labelframe, "Invited by:", 1, 1, "W, E")
-        widgets.create_label(self.invite_tracker_labelframe, "num people invited:", 2, 1, "W, E")
+        widgets.create_label(self.invite_tracker_labelframe, "total people invited:", 2, 1, "W, E")
         widgets.create_label(self.invite_tracker_labelframe, "Status:", 3, 1, "W, E")
         self.invited_by_loghistory_button = widgets.create_button(self.invite_tracker_labelframe, "loghistory on inviter", lambda: modules.submodules.invite_tracker.check_loghistory(self), 4, 1, "W, E", 1, 2)
         self.invited_by_loghistory_button.state(["disabled"])
@@ -158,8 +156,8 @@ class StaffCheck:
         self.sot_official_labelframe.columnconfigure(0, weight=1)
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
-        widgets.create_label(self.sot_official_labelframe, "num messages sent:", 1, 1, "W, E")
-        widgets.create_label(self.sot_official_labelframe, "num messages contain alliance:", 2, 1, "W, E")
+        widgets.create_label(self.sot_official_labelframe, "total messages sent:", 1, 1, "W, E")
+        widgets.create_label(self.sot_official_labelframe, "messages with alliance:", 2, 1, "W, E")
 
         build_example_message(self, 99, self.status_label)
 
