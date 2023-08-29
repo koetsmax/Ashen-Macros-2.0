@@ -120,7 +120,6 @@ def continue_to_next(self):
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
             self.account_age_label.config(text="N/A", foreground="orange")
-            self.outdated_warnings_label.config(text="N/A", foreground="orange")
             self.needs_warning_talk_label.config(text="N/A", foreground="orange")
             self.gamertag_in_notes_label.config(text="N/A", foreground="orange")
             self.needs_to_be_spoken_to_label.config(text="N/A", foreground="orange")

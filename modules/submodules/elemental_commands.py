@@ -32,7 +32,6 @@ def elemental_commands(self, *args):
             else:
                 response_json = response.json()
                 self.account_age_label.config(text=f"{response_json['account_age']} Days", foreground="red" if response_json["account_age"] < 60 else "green")
-                self.outdated_warnings_label.config(text=f"{response_json['has_outdated_warnings']} ({response_json['number_outdated_warnings']})", foreground="red" if response_json["has_outdated_warnings"] else "green")
                 self.needs_warning_talk_label.config(text=f"{response_json['needs_warning_talk']}", foreground="red" if response_json["needs_warning_talk"] else "green")
                 self.gamertag_in_notes_label.config(text=f"{response_json['gamertag_in_notes']}", foreground="green" if response_json["gamertag_in_notes"] else "red")
                 self.needs_to_be_spoken_to_label.config(text=f"{response_json['needs_to_be_spoken_to']}", foreground="red" if response_json["needs_to_be_spoken_to"] else "green")
@@ -43,7 +42,6 @@ def elemental_commands(self, *args):
 
                 issues = {
                     "Account Age": response_json["account_age"] < 60,
-                    "Outdated Warnings": response_json["has_outdated_warnings"],
                     "Needs Warning Talk": response_json["needs_warning_talk"],
                     "Gamertag in Notes": not response_json["gamertag_in_notes"],
                     "Needs to be Spoken To": response_json["needs_to_be_spoken_to"],
