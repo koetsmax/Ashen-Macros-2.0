@@ -134,30 +134,43 @@ class StaffCheck:
 
         # create the LabelFrame for the invite tracker automation
         self.invite_tracker_labelframe = ttk.LabelFrame(self.mainframe, text="Invite Tracker")
-        self.invite_tracker_labelframe.grid(column=5, row=1, columnspan=2, rowspan=4, sticky="N, W, E, S")
+        self.invite_tracker_labelframe.grid(column=5, row=1, columnspan=3, rowspan=4, sticky="N, W, E, S")
         self.invite_tracker_labelframe.columnconfigure(0, weight=1)
         self.invite_tracker_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.invite_tracker_labelframe, "Invited by:", 1, 1, "W, E")
-        widgets.create_label(self.invite_tracker_labelframe, "total people invited:", 2, 1, "W, E")
-        widgets.create_label(self.invite_tracker_labelframe, "Status:", 3, 1, "W, E")
-        self.invited_by_loghistory_button = widgets.create_button(self.invite_tracker_labelframe, "loghistory on inviter", lambda: modules.submodules.invite_tracker.check_loghistory(self), 4, 1, "W, E", 1, 2)
+        widgets.create_label(self.invite_tracker_labelframe, "Has joined ashen:", 2, 1, "W, E")
+        widgets.create_label(self.invite_tracker_labelframe, "Total people invited:", 3, 1, "W, E")
+        widgets.create_label(self.invite_tracker_labelframe, "Status:", 4, 1, "W, E")
+        self.invited_by_loghistory_button = widgets.create_button(self.invite_tracker_labelframe, "loghistory on inviters", lambda: modules.submodules.invite_tracker.check_loghistory(self), 5, 1, "W, E", 1, 2)
         self.invited_by_loghistory_button.state(["disabled"])
-        self.invited_users_button = widgets.create_button(self.invite_tracker_labelframe, "loghistory on invited users", lambda: modules.submodules.invite_tracker.check_invited_users(self), 5, 1, "W, E", 1, 2)
-        self.invited_users_button.state(["disabled"])
+        self.invited_users_loghistory_button = widgets.create_button(self.invite_tracker_labelframe, "loghistory on invitees", lambda: modules.submodules.invite_tracker.check_invited_users(self), 6, 1, "W, E", 1, 2)
+        self.invited_users_loghistory_button.state(["disabled"])
 
-        self.invited_by_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
-        self.num_people_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
-        self.invite_tracker_status_label = widgets.create_label(self.invite_tracker_labelframe, "Waiting", 3, 1, "E", 1, 2, foreground="orange")
+        self.invited_by_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange")
+        self.times_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A time(s)", 2, 2, "W, E", foreground="orange")
+        self.num_people_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.invite_tracker_status_label = widgets.create_label(self.invite_tracker_labelframe, "Waiting", 4, 2, "W, E", foreground="orange")
 
         # create the LabelFrame for checking sot official
         self.sot_official_labelframe = ttk.LabelFrame(self.mainframe, text="SOT Official")
-        self.sot_official_labelframe.grid(column=5, row=5, columnspan=2, rowspan=3, sticky="N, W, E, S")
+        self.sot_official_labelframe.grid(column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S")
         self.sot_official_labelframe.columnconfigure(0, weight=1)
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
-        widgets.create_label(self.sot_official_labelframe, "total messages sent:", 1, 1, "W, E")
-        widgets.create_label(self.sot_official_labelframe, "messages with alliance:", 2, 1, "W, E")
+        widgets.create_label(self.sot_official_labelframe, "Total messages sent:", 1, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "messages with alliance:", 2, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "messages with hourglass:", 3, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "messages with bad words:", 4, 1, "W, E")
+        widgets.create_label(self.sot_official_labelframe, "Status:", 5, 1, "W")
+        self.check_for_yourself_button = widgets.create_button(self.sot_official_labelframe, "Check for yourself", lambda: modules.submodules.sot_official.old_check(self), 6, 1, "W, E", 1, 2)
+        self.check_for_yourself_button.state(["disabled"])
+
+        self.total_messages_label = widgets.create_label(self.sot_official_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.messages_with_alliance_label = widgets.create_label(self.sot_official_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.messages_with_hourglass_label = widgets.create_label(self.sot_official_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.messages_with_bad_words_label = widgets.create_label(self.sot_official_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.sot_official_status_label = widgets.create_label(self.sot_official_labelframe, "Waiting", 5, 1, "E", 1, 2, foreground="orange")
 
         build_example_message(self, 99, self.status_label)
 
