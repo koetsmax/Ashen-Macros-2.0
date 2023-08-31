@@ -119,6 +119,7 @@ def continue_to_next(self):
             self.status_label.config(text="Waiting for ID", foreground="black")
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
+
             self.account_age_label.config(text="N/A", foreground="orange")
             self.needs_warning_talk_label.config(text="N/A", foreground="orange")
             self.gamertag_in_notes_label.config(text="N/A", foreground="orange")
@@ -128,6 +129,21 @@ def continue_to_next(self):
             self.loghistory_status_label.config(text="Waiting", foreground="orange")
             self.loghistory_fix_issues_button.state(["disabled"])
             self.jump_to_message_button.state(["disabled"])
+
+            self.invited_by_label.config(text="N/A", foreground="orange")
+            self.times_invited_label.config(text="N/A time(s)", foreground="orange")
+            self.num_people_invited_label.config(text="N/A", foreground="orange")
+            self.invite_tracker_status_label.config(text="Waiting", foreground="orange")
+            self.invited_by_loghistory_button.state(["disabled"])
+            self.invited_users_loghistory_button.state(["disabled"])
+
+            self.total_messages_label.config(text="N/A", foreground="orange")
+            self.messages_with_alliance_label.config(text="N/A", foreground="orange")
+            self.messages_with_hourglass_label.config(text="N/A", foreground="orange")
+            self.messages_with_bad_words_label.config(text="N/A", foreground="orange")
+            self.sot_official_status_label.config(text="N/A", foreground="orange")
+            self.check_for_yourself_button.state(["disabled"])
+
             self.function_button_2.state(["!disabled"])
 
         try:
@@ -188,6 +204,9 @@ def determine_method(self):
     This function determines which method to use
     """
     if self.method.get() == "All Commands":
+        modules.submodules.invite_tracker.api_request(self)
+        modules.submodules.sot_official.api_request(self)
+
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
         for child in self.mainframe.winfo_children():
