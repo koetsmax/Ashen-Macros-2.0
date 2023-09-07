@@ -27,7 +27,8 @@ def start_check(self):
             try:
                 self.status_label.config(text="Sending API request")
                 self.mainframe.update()
-                response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=5)
+                response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=5, verify=False)
+
                 if response.status_code != 200:
                     request_error = True
                 else:
@@ -36,8 +37,9 @@ def start_check(self):
                     self.mutual_guilds = response.json()["mutual_guilds"]
                     guild_list = "\n".join(self.mutual_guilds)
                     self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as e:
                 request_error = True
+                print(e)
             if not request_error:
                 continue_check(self, request_error)
             else:
