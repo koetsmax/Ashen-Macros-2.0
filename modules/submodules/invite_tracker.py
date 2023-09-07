@@ -59,7 +59,7 @@ def api_request(self):
     self.mainframe.update()
     try:
         payload = {"userID": self.user_id.get()}
-        response = requests.post(f"{self.api_url}/invite", json=payload, timeout=5)
+        response = requests.post(f"{self.api_url}/invite", json=payload, timeout=5, verify=False)
 
         if response.status_code != 200:
             request_error = True

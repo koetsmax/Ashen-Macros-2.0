@@ -32,6 +32,11 @@ class StaffCheck:
             self.unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
             self.verify_message = self.config["STAFFCHECK"]["verify_message"]
             self.api_url = self.config["API"]["api_url"]
+            if "https" not in self.api_url and self.api_url != "https://localhost:8000":
+                self.api_url = "https://ashen_api.famkoets.nl"
+                self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
+                with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                    self.config.write(configfile)
         except KeyError:
             self.config["STAFFCHECK"] = {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",

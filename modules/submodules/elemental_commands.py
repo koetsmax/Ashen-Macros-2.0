@@ -25,7 +25,7 @@ def elemental_commands(self, *args):
         self.mainframe.update()
         try:
             payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
-            response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5)
+            response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5, verify=False)
 
             if response.status_code != 200:
                 request_error = True
