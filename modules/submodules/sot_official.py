@@ -3,7 +3,6 @@ This modulechecks if the user has sent any messages in the official sea of thiev
 """
 import keyboard
 import requests
-
 import modules.submodules.start_check
 
 from .functions.clear_typing_bar import clear_typing_bar
@@ -68,6 +67,8 @@ def api_request(self):
             request_error = True
         elif response.json()["error"] == "User not found!":
             self.sot_official_status_label.config(text="Not in server", foreground="red")
+        elif response.json()["error"] == "No messages":
+            self.sot_official_status_label.config(text="No messages", foreground="red")
         else:
             response_json = response.json()
             print(response_json)
