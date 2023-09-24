@@ -14,6 +14,8 @@ def sot_official(self):
     This function checks if the user has sent any messages in the official sea of thieves server
     """
     self.currentstate = "SOTOfficial"
+    if self.method.get() == "SOT Official":
+        api_request(self)
     # switch_channel("#official-swag")
     # clear_typing_bar()
     # keyboard.press_and_release("ctrl+f")
