@@ -18,6 +18,8 @@ def invite_tracker(self):
     This function checks how a user was invited to the server.
     """
     self.currentstate = "InviteTracker"
+    if self.method.get() == "Invite Tracker":
+        api_request(self)
     # switch_channel("#invite-tracker")
     # clear_typing_bar()
     # keyboard.press_and_release("ctrl+f")
