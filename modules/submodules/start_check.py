@@ -12,6 +12,7 @@ import modules.submodules.functions.widgets as widgets
 import modules.submodules.invite_tracker
 import modules.submodules.pre_check
 import modules.submodules.sot_official
+import threading
 
 
 def start_check(self):
@@ -201,13 +202,32 @@ def continue_to_next(self):
             modules.submodules.start_check.continue_to_next(self)
 
 
+def make_api_requests(self):
+    try:
+        if self.method.get() == "All Commands":
+            modules.submodules.invite_tracker.api_request(self)
+            modules.submodules.sot_official.api_request(self)
+        # Add more API requests as needed
+
+    except Exception as e:
+        print(f"API Request Error: {e}")
+
+
+# Create a function to start API requests in a separate thread
+def start_api_requests_thread(self):
+    api_thread = threading.Thread(target=make_api_requests, args=(self,))
+    api_thread.start()
+
+
 def determine_method(self):
     """
     This function determines which method to use
     """
     if self.method.get() == "All Commands":
-        modules.submodules.invite_tracker.api_request(self)
-        modules.submodules.sot_official.api_request(self)
+        # modules.submodules.invite_tracker.api_request(self)
+        # modules.submodules.sot_official.api_request(self)
+        api_thread = threading.Thread(target=make_api_requests, args=(self,))
+        api_thread.start()
 
         self.reason = StringVar(value="Reason for Not Good To Check")
         self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
