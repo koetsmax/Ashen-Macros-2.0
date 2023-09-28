@@ -59,11 +59,11 @@ def old_check(self):
 
 def api_request(self):
     request_error = False
-    self.sot_official_status_label.config(text="Sending", foreground="orange")
+    self.sot_official_status_label.config(text="Sent...", foreground="orange")
     self.mainframe.update()
     try:
         payload = {"userID": self.user_id.get()}
-        response = requests.post(f"{self.api_url}/sotofficial", json=payload, timeout=5, verify=False)
+        response = requests.post(f"{self.api_url}/sotofficial", json=payload, timeout=30, verify=False)
 
         if response.status_code != 200:
             request_error = True
