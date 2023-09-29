@@ -28,7 +28,7 @@ def start_check(self):
             try:
                 self.status_label.config(text="Sending API request")
                 self.mainframe.update()
-                response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=5, verify=False)
+                response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=10, verify=False)
 
                 if response.status_code != 200:
                     request_error = True
@@ -139,6 +139,17 @@ def continue_to_next(self):
             self.invite_tracker_status_label.config(text="Waiting", foreground="orange")
             self.invited_by_loghistory_button.state(["disabled"])
             self.invited_users_loghistory_button.state(["disabled"])
+
+            self.gamertag_exists_label.config(text="N/A", foreground="orange")
+            self.total_friends_label.config(text="N/A", foreground="orange")
+            # self.ban_ratio_label.config(text="N/A", foreground="orange")
+            self.total_matches_label.config(text="N/A", foreground="orange")
+            self.partial_matches_label.config(text="N/A", foreground="orange")
+            self.exact_matches_label.config(text="N/A", foreground="orange")
+            self.alts_found_label.config(text="N/A", foreground="orange")
+            self.search_status_label.config(text="Waiting", foreground="orange")
+            self.jump_to_message_search_button.state(["disabled"])
+            self.fix_issues_search_button.state(["disabled"])
 
             self.total_messages_label.config(text="N/A", foreground="orange")
             self.messages_with_alliance_label.config(text="N/A", foreground="orange")
