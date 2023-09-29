@@ -53,7 +53,7 @@ def elemental_commands(self, *args):
                 # Add the issues to the list
                 self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
-                if self.loghistory_issues:
+                if self.loghistory_issues and self.xbox_gt.get() != "abcdefghij" and self.xbox_gt.get() != []:
                     # self.loghistory_fix_issues_button.state(["!disabled"])
                     self.fix_issues()
 
