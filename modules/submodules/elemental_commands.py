@@ -54,7 +54,8 @@ def elemental_commands(self, *args):
                 self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
                 if self.loghistory_issues:
-                    self.loghistory_fix_issues_button.state(["!disabled"])
+                    # self.loghistory_fix_issues_button.state(["!disabled"])
+                    self.fix_issues()
 
         except (requests.exceptions.ConnectionError, TypeError):
             request_error = True
@@ -69,10 +70,11 @@ def elemental_commands(self, *args):
 
     # self.notespage = 2
     if not args:
-        self.function_button.config(text="Add GT to Notes", command=lambda: add_note(self))
+        # self.function_button.config(text="Add GT to Notes", command=lambda: add_note(self))
         # self.kill_button.config(text=f"Check notes page {self.notespage}", command=lambda: check_notes_page(self))
-        self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
-        self.start_button.state(["!disabled"])
+        # self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
+        # self.start_button.state(["!disabled"])
+        modules.submodules.start_check.continue_to_next(self)
     else:
         self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
         self.kill_button.config(text="Tell to verify + link xbox", command=lambda: tell_to_verify_link_xbox(self))
