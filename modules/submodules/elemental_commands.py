@@ -26,7 +26,7 @@ def elemental_commands(self, *args):
         try:
             #! still perform the request even if the user has no gamertag, so we can run the loghistory API
             payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
-            response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=5, verify=False)
+            response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=10, verify=False)
 
             if response.status_code != 200:
                 request_error = True
@@ -51,9 +51,9 @@ def elemental_commands(self, *args):
                 }
 
                 # Add the issues to the list
-                self.issues = [issue for issue, has_issue in issues.items() if has_issue]
-                self.loghistory_status_label.config(text=f"{len(self.issues)} issue(s) found", foreground="red" if self.issues else "green")
-                if self.issues:
+                self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
+                self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
+                if self.loghistory_issues:
                     self.loghistory_fix_issues_button.state(["!disabled"])
 
         except (requests.exceptions.ConnectionError, TypeError):
@@ -67,7 +67,7 @@ def elemental_commands(self, *args):
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
 
-    self.notespage = 2
+    # self.notespage = 2
     if not args:
         self.function_button.config(text="Add GT to Notes", command=lambda: add_note(self))
         # self.kill_button.config(text=f"Check notes page {self.notespage}", command=lambda: check_notes_page(self))
@@ -147,11 +147,11 @@ def tell_to_verify_link_xbox(self):
 
 
 def fix_issues(self):
-    if "Gamertag in Notes" in self.issues:
+    if "Gamertag in Notes" in self.loghistory_issues:
         add_note(self)
-        self.issues.remove("Gamertag in Notes")
+        self.loghistory_issues.remove("Gamertag in Notes")
         self.gamertag_in_notes_label.config(text="True", foreground="green")
 
-    self.loghistory_status_label.config(text=f"{len(self.issues)} issue(s) found", foreground="red" if self.issues else "green")
-    if not self.issues:
+    self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
+    if not self.loghistory_issues:
         self.loghistory_fix_issues_button.state(["disabled"])
