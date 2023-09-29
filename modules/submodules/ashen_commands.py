@@ -54,7 +54,8 @@ def ashen_commands(self):
                     "Total Matches": int(response_json["total_matches"]) > 0,
                     "Partial Matches": int(response_json["partial_matches"]) > 0,
                     "Exact Matches": int(response_json["total_bans"]) > 0,
-                    "Alts Found": response_json["alts_found"],
+                    "Alts Found": response_json["alts_found"] is not False,
+                    "Has Verified": not response_json["has_verified"],
                 }
 
                 # Add the issues to the list
