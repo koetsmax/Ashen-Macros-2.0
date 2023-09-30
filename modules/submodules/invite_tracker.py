@@ -20,7 +20,7 @@ def invite_tracker(self):
     self.currentstate = "InviteTracker"
     if self.method.get() == "Invite Tracker":
         api_request(self)
-    # switch_channel("#invite-tracker")
+    # switch_channel(self, "#invite-tracker")
     # clear_typing_bar()
     # keyboard.press_and_release("ctrl+f")
     # keyboard.press_and_release("ctrl+a")
@@ -34,7 +34,7 @@ def invite_tracker(self):
 
 
 def check_loghistory(self):
-    switch_channel(self.channel.get())
+    switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.inviters_ids:
         command = ["/user_report", _id]
@@ -45,7 +45,7 @@ def check_loghistory(self):
 
 
 def check_invited_users(self):
-    switch_channel(self.channel.get())
+    switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.invitees_ids:
         command = ["/user_report", _id]
@@ -90,7 +90,7 @@ def api_request(self):
                 self.invitees_ids = response_json["invitees_ids"]
                 self.invited_users_loghistory_button.state(["!disabled"])
 
-    except (requests.exceptions.ConnectionError, TypeError):
+    except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
 
     if request_error:

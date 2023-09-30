@@ -31,7 +31,7 @@ def unprivate_xbox(self):
     This function opens a modmail for the user to unprivate their Xbox
     """
     clear_typing_bar()
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     create_mm = ["/create ", f"{self.user_id.get()}"]
     execute_command(self, create_mm[0], create_mm[1:])
     time.sleep(6)
@@ -42,7 +42,7 @@ def unprivate_xbox(self):
     execute_command(self, unprivate_recall[0], unprivate_recall[1:])
 
     time.sleep(3)
-    switch_channel("#on-duty-chat", "arg")
+    switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar()
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
     built_unprivate_xbox_message = built_unprivate_xbox_message.replace("userID", f"<@{self.user_id.get()}>")
@@ -60,7 +60,7 @@ def join_awr(self):
     This function executes a command to notify the user to join the AWR
     """
     clear_typing_bar()
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     joinawr = ["/joinawr ", f"{self.user_id.get()}"]
     execute_command(self, joinawr[0], joinawr[1:])
     built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
@@ -76,7 +76,7 @@ def verify_account(self):
     This function executes a command to notify the user to verify their account
     """
     clear_typing_bar()
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     verifyaccount = ["/verify ", f"{self.user_id.get()}"]
     execute_command(self, verifyaccount[0], verifyaccount[1:])
     built_verify_message = self.config["STAFFCHECK"]["verify_message"]
