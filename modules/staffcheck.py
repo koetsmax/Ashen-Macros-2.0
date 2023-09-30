@@ -1,15 +1,16 @@
 """
 This module creates the GUI for the staff check module.
 """
-from typing import Union
 import configparser
 import runpy
-from tkinter import FALSE, StringVar, Tk, Toplevel, ttk, Menu, BooleanVar
+import threading
+from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
+from typing import Union
 
 import launcher  # pylint: disable=unused-import
+import modules.submodules.functions.widgets as widgets
 import modules.submodules.functions.window_positions as window_positions
 import modules.submodules.start_check
-import modules.submodules.functions.widgets as widgets
 
 from .submodules.build_example_message import build_example_message
 
@@ -23,6 +24,7 @@ class StaffCheck:
 
     def __init__(self, root):
         self.root = root
+        self.keyboard_lock = threading.Lock()
         self.config = configparser.ConfigParser()
         try:
             self.config.read("settings.ini")
