@@ -21,41 +21,44 @@ def start_check(self):
     """
     request_error = False
     try:
-        self.user_id.set(self.user_id.get().strip())
-        lengths = [17, 18, 19]
-        if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
-            payload = {"userID": self.user_id.get()}
-            try:
-                self.status_label.config(text="Sending API request")
-                self.mainframe.update()
-                response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=10, verify=False)
-
-                if response.status_code != 200:
-                    request_error = True
-                else:
-                    self.user_name = response.json()["discord_name"]
-                    self.xbox_gt = response.json()["linked_xbox"]
-                    self.mutual_guilds = response.json()["mutual_guilds"]
-                    guild_list = "\n".join(self.mutual_guilds)
-                    self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
-            except requests.exceptions.ConnectionError as e:
-                request_error = True
-                print(e)
-            if not request_error:
-                continue_check(self, request_error)
-            else:
-                self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
-                self.xbox_gt = StringVar()
-                self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
-                self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
-                self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
-                self.gt_entry.focus()
-                for child in self.mainframe.winfo_children():
-                    child.grid_configure(padx=5, pady=5)
-        else:
-            self.status_label.config(text=f"ID is an incorrect length at {len(self.user_id.get())} characters", foreground="Red")
+        int(self.user_id.get().strip())
     except ValueError:
         self.status_label.config(text="ID must be a number", foreground="Red")
+        return
+
+    self.user_id.set(self.user_id.get().strip())
+    lengths = [17, 18, 19]
+    if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
+        payload = {"userID": self.user_id.get()}
+        try:
+            self.status_label.config(text="Sending API request")
+            self.mainframe.update()
+            response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=10, verify=False)
+
+            if response.status_code != 200:
+                request_error = True
+            else:
+                self.user_name = response.json()["discord_name"]
+                self.xbox_gt = response.json()["linked_xbox"]
+                self.mutual_guilds = response.json()["mutual_guilds"]
+                guild_list = "\n".join(self.mutual_guilds)
+                self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
+            request_error = True
+            print(exc)
+        if not request_error:
+            continue_check(self, request_error)
+        else:
+            self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
+            self.xbox_gt = StringVar()
+            self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
+            self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
+            self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
+            self.gt_entry.focus()
+            for child in self.mainframe.winfo_children():
+                child.grid_configure(padx=5, pady=5)
+    else:
+        self.status_label.config(text=f"ID is an incorrect length at {len(self.user_id.get())} characters", foreground="Red")
 
 
 def continue_check(self, request_error):
@@ -143,6 +146,7 @@ def continue_to_next(self):
             self.gamertag_exists_label.config(text="N/A", foreground="orange")
             self.total_friends_label.config(text="N/A", foreground="orange")
             # self.ban_ratio_label.config(text="N/A", foreground="orange")
+            self.completion_label.config(text="N/A", foreground="orange")
             self.total_matches_label.config(text="N/A", foreground="orange")
             self.partial_matches_label.config(text="N/A", foreground="orange")
             self.exact_matches_label.config(text="N/A", foreground="orange")
@@ -235,8 +239,6 @@ def determine_method(self):
     This function determines which method to use
     """
     if self.method.get() == "All Commands":
-        # modules.submodules.invite_tracker.api_request(self)
-        # modules.submodules.sot_official.api_request(self)
         api_thread = threading.Thread(target=make_api_requests, args=(self,))
         api_thread.start()
 
