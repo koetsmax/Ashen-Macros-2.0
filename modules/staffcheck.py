@@ -157,7 +157,7 @@ class StaffCheck:
         self.invited_by_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 1, 2, "W, E", 1, 2, foreground="orange")
         self.times_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
         self.num_people_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
-        self.invite_tracker_status_label = widgets.create_label(self.invite_tracker_labelframe, "Waiting", 4, 2, "E", foreground="orange")
+        self.invite_tracker_status_label = widgets.create_label(self.invite_tracker_labelframe, "Waiting", 4, 1, "E", 1, 2, foreground="orange")
 
         # Search Command
         self.search_labelframe = ttk.LabelFrame(self.mainframe, text="Search")
@@ -197,9 +197,9 @@ class StaffCheck:
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.sot_official_labelframe, "Total messages sent:", 1, 1, "W")
-        widgets.create_label(self.sot_official_labelframe, "with alliance:", 2, 1, "W")
-        widgets.create_label(self.sot_official_labelframe, "with hourglass:", 3, 1, "W")
-        widgets.create_label(self.sot_official_labelframe, "with bad words:", 4, 1, "W, E")
+        widgets.create_label(self.sot_official_labelframe, "Messages with alliance:", 2, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "Messages with hourglass:", 3, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "Messages with bad words:", 4, 1, "W, E")
         widgets.create_label(self.sot_official_labelframe, "Status:", 5, 1, "W")
         self.check_for_yourself_button = widgets.create_button(self.sot_official_labelframe, "Check for yourself", lambda: modules.submodules.sot_official.old_check(self), 6, 1, "W, E", 1, 2)
         self.check_for_yourself_button.state(["disabled"])
