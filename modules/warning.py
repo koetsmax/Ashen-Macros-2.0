@@ -9,6 +9,7 @@ from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import runpy
 import launcher
 import modules.submodules.functions.window_positions as window_positions
+import threading
 
 
 class Warning:
@@ -17,6 +18,7 @@ class Warning:
     """
 
     def __init__(self, root):
+        self.keyboard_lock = threading.Lock()
         self.root = root
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
@@ -139,7 +141,7 @@ class Warning:
         # check if the user wants to check the loghistory
         if self.check.get() == 1:
             clear_typing_bar()
-            switch_channel(self.channel.get())
+            switch_channel(self, self.channel.get())
             clear_typing_bar()
             loghistory = ["/user_report", self.user_id.get()]
             execute_command(self, loghistory[0], loghistory[1:])
@@ -149,7 +151,7 @@ class Warning:
             self.stop_button.state(["!disabled"])
         else:
             clear_typing_bar()
-            switch_channel(self.channel.get())
+            switch_channel(self, self.channel.get())
             clear_typing_bar()
             self.add_warning()
 

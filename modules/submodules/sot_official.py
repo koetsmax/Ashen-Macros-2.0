@@ -16,13 +16,6 @@ def sot_official(self):
     self.currentstate = "SOTOfficial"
     if self.method.get() == "SOT Official":
         api_request(self)
-    # switch_channel("#official-swag")
-    # clear_typing_bar()
-    # keyboard.press_and_release("ctrl+f")
-    # keyboard.press_and_release("ctrl+a")
-    # keyboard.press_and_release("backspace")
-    # keyboard.write(f"from: {self.user_id.get()}")
-    # keyboard.press_and_release("enter")
 
     # self.function_button.config(text="Narrow Search Results", command=lambda: narrow_results(self))
     # self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
@@ -31,23 +24,23 @@ def sot_official(self):
     modules.submodules.start_check.continue_to_next(self)
 
 
-def narrow_results(self):
-    """
-    This function narrows the search results if there are too many messages to check
-    """
-    self.function_button.state(["disabled"])
-    self.start_button.state(["disabled"])
-    clear_typing_bar()
-    keyboard.press_and_release("ctrl+f")
-    keyboard.press_and_release("ctrl+a")
-    keyboard.press_and_release("backspace")
-    keyboard.write(f"from: {self.user_id.get()} alliance")
-    keyboard.press_and_release("enter")
-    self.start_button.state(["!disabled"])
+# def narrow_results(self):
+#     """
+#     This function narrows the search results if there are too many messages to check
+#     """
+#     self.function_button.state(["disabled"])
+#     self.start_button.state(["disabled"])
+#     clear_typing_bar()
+#     keyboard.press_and_release("ctrl+f")
+#     keyboard.press_and_release("ctrl+a")
+#     keyboard.press_and_release("backspace")
+#     keyboard.write(f"from: {self.user_id.get()} alliance")
+#     keyboard.press_and_release("enter")
+#     self.start_button.state(["!disabled"])
 
 
 def old_check(self):
-    switch_channel("#official-swag")
+    switch_channel(self, "#official-swag")
     clear_typing_bar()
     keyboard.press_and_release("ctrl+f")
     keyboard.press_and_release("ctrl+a")
@@ -68,7 +61,7 @@ def api_request(self):
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] == "User not found!":
-            self.sot_official_status_label.config(text="Not in server", foreground="red")
+            self.sot_official_status_label.config(text="User not found", foreground="red")
         elif response.json()["error"] == "No messages":
             self.sot_official_status_label.config(text="No messages", foreground="red")
         else:
@@ -83,7 +76,7 @@ def api_request(self):
 
             self.check_for_yourself_button.state(["!disabled"])
 
-    except (requests.exceptions.ConnectionError, TypeError):
+    except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
 
     if request_error:

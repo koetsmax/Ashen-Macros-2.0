@@ -31,7 +31,7 @@ def good_to_check(self):
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
     built_good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
     built_good_to_check_message = built_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
@@ -47,7 +47,7 @@ def not_good_to_check(self):
     """
     self.currentstate = "CheckMessage"
     self.function_button.config(text="Don't Post Message", command=lambda: modules.submodules.start_check.continue_to_next(self))
-    switch_channel("#on-duty-chat")
+    switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
