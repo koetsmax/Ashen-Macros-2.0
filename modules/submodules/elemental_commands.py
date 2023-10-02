@@ -21,7 +21,7 @@ def elemental_commands(self, *args):
     clear_typing_bar()
     loghistory = ["/user_report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
-    self.start_api_requests_thread()
+    start_elemental_api_requests_thread(self)
 
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
@@ -109,19 +109,19 @@ def tell_to_verify_link_xbox(self):
 def make_api_request(self):
     try:
         if self.method.get() == "All Commands":
-            self.api_request()
+            elemental_api_request(self)
 
     except Exception as e:
         print(f"API Request Error: {e}")
 
 
 # Create a function to start API requests in a separate thread
-def start_api_requests_thread(self):
+def start_elemental_api_requests_thread(self):
     api_thread = threading.Thread(target=make_api_request, args=(self,))
     api_thread.start()
 
 
-def api_request(self):
+def elemental_api_request(self):
     request_error = False
     if self.channel.get() == "#on-duty-commands":
         self.loghistory_status_label.config(text="Sending API request", foreground="orange")
@@ -157,8 +157,7 @@ def api_request(self):
                 self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
                 if self.loghistory_issues and self.xbox_gt.get() != "" and self.xbox_gt.get() != []:
-                    # self.loghistory_fix_issues_button.state(["!disabled"])
-                    self.fix_issues()
+                    self.loghistory_fix_issues_button.state(["!disabled"])
 
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
