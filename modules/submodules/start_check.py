@@ -228,12 +228,6 @@ def make_api_requests(self):
         print(f"API Request Error: {e}")
 
 
-# Create a function to start API requests in a separate thread
-def start_api_requests_thread(self):
-    api_thread = threading.Thread(target=make_api_requests, args=(self,))
-    api_thread.start()
-
-
 def determine_method(self):
     """
     This function determines which method to use
