@@ -33,7 +33,7 @@ def start_check(self):
         try:
             self.status_label.config(text="Sending API request")
             self.mainframe.update()
-            response = requests.post(f"{self.api_url}/staffcheck", json=payload, timeout=10, verify=False)
+            response = requests.post(f"{self.api_url}/staffcheck", json=payload, verify=False)
 
             if response.status_code != 200:
                 request_error = True
