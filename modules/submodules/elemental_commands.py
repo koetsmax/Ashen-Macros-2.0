@@ -129,7 +129,7 @@ def elemental_api_request(self):
         try:
             #! still perform the request even if the user has no gamertag, so we can run the loghistory API
             payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
-            response = requests.post(f"{self.api_url}/elemental", json=payload, timeout=10, verify=False)
+            response = requests.post(f"{self.api_url}/elemental", json=payload, verify=False)
 
             if response.status_code != 200:
                 request_error = True
