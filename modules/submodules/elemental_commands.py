@@ -156,7 +156,7 @@ def elemental_api_request(self):
                 # Add the issues to the list
                 self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(text=f"{len(self.loghistory_issues)} issue(s) found", foreground="red" if self.loghistory_issues else "green")
-                if self.loghistory_issues and self.xbox_gt.get() != "" and self.xbox_gt.get() != []:
+                if self.loghistory_issues:
                     self.loghistory_fix_issues_button.state(["!disabled"])
 
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
