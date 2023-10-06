@@ -121,7 +121,7 @@ def ashen_api_request(self):
                     "Total Matches": int(response_json["total_matches"]) > 0,
                     "Partial Matches": int(response_json["partial_matches"]) > 0,
                     "Exact Matches": int(response_json["exact_matches"]) > 0,
-                    "Alts Found": response_json["alts_found"] is not False,
+                    "Alts Found": response_json["alts_found"] != "0",
                     "Has Verified": not response_json["has_verified"],
                 }
 
