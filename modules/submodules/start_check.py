@@ -137,7 +137,7 @@ def continue_to_next(self):
             self.jump_to_message_button.state(["disabled"])
 
             self.invited_by_label.config(text="N/A", foreground="orange")
-            self.times_invited_label.config(text="N/A time(s)", foreground="orange")
+            self.times_invited_label.config(text="N/A", foreground="orange")
             self.num_people_invited_label.config(text="N/A", foreground="orange")
             self.invite_tracker_status_label.config(text="Waiting", foreground="orange")
             self.invited_by_loghistory_button.state(["disabled"])
