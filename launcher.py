@@ -11,7 +11,7 @@ import sys
 import requests
 from packaging import version
 from pyuac import isUserAdmin, runAsAdmin
-
+import threading
 from modules import add_to_ban_list
 from modules import fill_new_fleet
 from modules import hammertime_generator
@@ -20,6 +20,7 @@ from modules import staffcheck
 from modules.submodules.functions import widgets
 from modules.submodules.functions import window_positions
 from modules import warning
+from modules import queue
 
 
 class Launcher:
@@ -38,13 +39,16 @@ class Launcher:
             self.config.read("settings.ini")
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
+            self.api_url = self.config["API"]["api_url"]
         except KeyError:
             self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
+            self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
             with open("settings.ini", "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
             self.config.read("settings.ini")
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
+            self.api_url = self.config["API"]["api_url"]
         self.root = _root
         self.root.title("Launcher")
         self.root.option_add("*tearOff", FALSE)
@@ -82,10 +86,11 @@ class Launcher:
         button_data = [
             ("Staffcheck script", lambda: self.start_script("Staffcheck"), 1, 1, "E, W"),
             ("Add to ban list script", lambda: self.start_script("Add to ban list"), 2, 1, "E, W"),
-            ("Add warning script", lambda: self.start_script("Add warning"), 3, 1, "E, W"),
-            # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 4, 1, "E, W"),
-            # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 5, 1, "E, W"),
-            ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 6, 1, "E, W"),  # pylint: disable=line-too-long
+            ("Queue script", lambda: self.start_script("Queue"), 3, 1, "E, W"),
+            ("Add warning script", lambda: self.start_script("Add warning"), 4, 1, "E, W"),
+            # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 5, 1, "E, W"),
+            # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 6, 1, "E, W"),
+            ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 7, 1, "E, W"),  # pylint: disable=line-too-long
             ("Check for updates!!!", lambda: self.check_for_updates(False), 8, 1, "E, W"),
             ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
             ("Command Delay", lambda: self.delay_config(), 81, 1, "E, W"),  # pylint: disable=unnecessary-lambda
@@ -94,10 +99,13 @@ class Launcher:
         for label, command, row, column, position in button_data:
             widgets.create_button(self.mainframe, label.strip(), command, row, column, position)
 
-        widgets.create_label(self.mainframe, f"Version: {local_version}", 82, 1, "E")
+        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")
+        widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=25, pady=5)
+
+        self.api_request()
 
         self.check_for_updates(True)
 
@@ -111,6 +119,7 @@ class Launcher:
         script_actions = {
             "Staffcheck": staffcheck.start_script,
             "Add warning": warning.start_script,
+            "Queue": queue.start_script,
             "Rename fleet": rename_fleet.start_script,
             "Fill new fleet": fill_new_fleet.start_script,
             "Add to ban list": add_to_ban_list.start_script,
@@ -200,6 +209,28 @@ class Launcher:
         # pylint enable=line-too-long
         widgets.CreateSettingsWIndow(self.root, config)
         return lambda: None
+
+    def connection_api_request(self):
+        request_error = False
+        self.api_label.config(text="Sent...", foreground="orange")
+        try:
+            response = requests.get(f"{self.api_url}/connection", verify=False)
+
+            if response.status_code != 200:
+                request_error = True
+            else:
+                self.api_label.config(text="Connected", foreground="green")
+
+        except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
+            request_error = True
+
+        if request_error:
+            self.api_label.config(text="Not Connected", foreground="red")
+        self.mainframe.update()
+
+    def api_request(self):
+        api_thread = threading.Thread(target=self.connection_api_request)
+        api_thread.start()
 
 
 if __name__ == "__main__":
