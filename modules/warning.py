@@ -10,6 +10,7 @@ import runpy
 import launcher
 import modules.submodules.functions.window_positions as window_positions
 import threading
+import configparser
 
 
 class Warning:
@@ -20,6 +21,8 @@ class Warning:
     def __init__(self, root):
         self.keyboard_lock = threading.Lock()
         self.root = root
+        self.config = configparser.ConfigParser()
+        self.config.read("settings.ini")
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 

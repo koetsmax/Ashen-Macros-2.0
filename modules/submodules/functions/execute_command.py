@@ -17,6 +17,7 @@ def execute_command(self, command: str, subcommands: List[str]):
         keyboard.write(command)
         time.sleep(self.initial_command)
         keyboard.press_and_release("tab")
+        time.sleep(self.follow_up)
         for subcommand in subcommands:
             keyboard.write(subcommand)
             time.sleep(self.follow_up)
