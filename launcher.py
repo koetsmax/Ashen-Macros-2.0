@@ -8,10 +8,11 @@ from tkinter import FALSE, Tk, Toplevel, ttk, TclError
 from typing import Callable
 import sys
 
+import threading
 import requests
 from packaging import version
 from pyuac import isUserAdmin, runAsAdmin
-import threading
+
 from modules import add_to_ban_list
 from modules import fill_new_fleet
 from modules import hammertime_generator
@@ -99,7 +100,7 @@ class Launcher:
         for label, command, row, column, position in button_data:
             widgets.create_button(self.mainframe, label.strip(), command, row, column, position)
 
-        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")
+        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")  # pylint: disable=line-too-long
         widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
@@ -113,8 +114,8 @@ class Launcher:
         """
         Starts a specified script.
         """
-        window_positions.save_window_position(root)
-        root.destroy()
+        window_positions.save_window_position(self.root)
+        self.root.destroy()
 
         script_actions = {
             "Staffcheck": staffcheck.start_script,
@@ -139,7 +140,7 @@ class Launcher:
         Creates the update window.
         """
         updatewindow = Toplevel()
-        root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
+        self.root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
         updatewindow.title("Update available")
         widgets.create_label(updatewindow, text, 1, 1, "E")
 
@@ -211,10 +212,13 @@ class Launcher:
         return lambda: None
 
     def connection_api_request(self):
+        """
+        Test the API connection
+        """
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(f"{self.api_url}/connection", verify=False)
+            response = requests.get(f"{self.api_url}/connection", verify=False, timeout=3)
 
             if response.status_code != 200:
                 request_error = True
@@ -229,6 +233,9 @@ class Launcher:
         self.mainframe.update()
 
     def api_request(self):
+        """
+        Make the api request for the connection test
+        """
         api_thread = threading.Thread(target=self.connection_api_request)
         api_thread.start()
 
