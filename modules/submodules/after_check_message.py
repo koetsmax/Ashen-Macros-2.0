@@ -77,7 +77,7 @@ def verify_account(self):
     """
     clear_typing_bar()
     switch_channel(self, "#on-duty-chat")
-    verifyaccount = ["/verify ", f"{self.user_id.get()}"]
+    verifyaccount = ["/verify", self.user_id.get()]
     execute_command(self, verifyaccount[0], verifyaccount[1:])
     built_verify_message = self.config["STAFFCHECK"]["verify_message"]
     built_verify_message = built_verify_message.replace("userID", f"<@{self.user_id.get()}>")
