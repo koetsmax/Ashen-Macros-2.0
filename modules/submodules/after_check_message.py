@@ -61,7 +61,7 @@ def join_awr(self):
     """
     clear_typing_bar()
     switch_channel(self, "#on-duty-chat")
-    joinawr = ["/joinawr ", f"{self.user_id.get()}"]
+    joinawr = ["/joinawr", f"{self.user_id.get()}"]
     execute_command(self, joinawr[0], joinawr[1:])
     built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
     built_join_awr_message = built_join_awr_message.replace("userID", f"<@{self.user_id.get()}>")
