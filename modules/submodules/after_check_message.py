@@ -45,10 +45,11 @@ def unprivate_xbox(self):
     switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar()
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
-    built_unprivate_xbox_message = built_unprivate_xbox_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_unprivate_xbox_message = built_unprivate_xbox_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-    keyboard.write(built_unprivate_xbox_message)
-    keyboard.press_and_release("enter")
+    if built_unprivate_xbox_message.lower() != "delete":
+        built_unprivate_xbox_message = built_unprivate_xbox_message.replace("userID", f"<@{self.user_id.get()}>")
+        built_unprivate_xbox_message = built_unprivate_xbox_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        keyboard.write(built_unprivate_xbox_message)
+        keyboard.press_and_release("enter")
     time.sleep(2)
     pyautogui.hotkey("alt", "up")
     time.sleep(2)
@@ -64,10 +65,11 @@ def join_awr(self):
     joinawr = ["/joinawr", f"{self.user_id.get()}"]
     execute_command(self, joinawr[0], joinawr[1:])
     built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-    built_join_awr_message = built_join_awr_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_join_awr_message = built_join_awr_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-    keyboard.write(built_join_awr_message)
-    keyboard.press_and_release("enter")
+    if built_join_awr_message.lower() != "delete":
+        built_join_awr_message = built_join_awr_message.replace("userID", f"<@{self.user_id.get()}>")
+        built_join_awr_message = built_join_awr_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        keyboard.write(built_join_awr_message)
+        keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
 
 
@@ -80,8 +82,9 @@ def verify_account(self):
     verifyaccount = ["/verify", self.user_id.get()]
     execute_command(self, verifyaccount[0], verifyaccount[1:])
     built_verify_message = self.config["STAFFCHECK"]["verify_message"]
-    built_verify_message = built_verify_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_verify_message = built_verify_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-    keyboard.write(built_verify_message)
-    keyboard.press_and_release("enter")
+    if built_verify_message.lower() != "delete":
+        built_verify_message = built_verify_message.replace("userID", f"<@{self.user_id.get()}>")
+        built_verify_message = built_verify_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        keyboard.write(built_verify_message)
+        keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
