@@ -1,6 +1,7 @@
 """
 This module handles everything after the check message has been sent
 """
+
 import time
 import keyboard
 import pyautogui
