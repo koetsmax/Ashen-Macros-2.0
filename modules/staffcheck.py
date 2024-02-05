@@ -1,6 +1,7 @@
 """
 This module creates the GUI for the staff check module.
 """
+
 import configparser
 import runpy
 import threading
@@ -235,7 +236,7 @@ class StaffCheck:
         """
         CustomizeWindow(
             "join_awr_message",
-            "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp",
+            "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
             2,
             "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
             self.start_button,
@@ -249,7 +250,7 @@ class StaffCheck:
         """
         CustomizeWindow(
             "unprivate_xbox_message",
-            "userID = Discord ID\nTime = automatic hammertime timestamp",
+            "userID = Discord ID\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
             3,
             "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             self.start_button,
@@ -263,7 +264,7 @@ class StaffCheck:
         """
         CustomizeWindow(
             "verify_message",
-            "userID = Discord ID\nTime = automatic hammertime timestamp",
+            "userID = Discord ID\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
             4,
             "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             self.start_button,
