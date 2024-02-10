@@ -1,6 +1,7 @@
 """
 This module executes all elemental commands.
 """
+
 import threading
 
 import requests
@@ -85,7 +86,7 @@ def tell_to_link_xbox(self):
     self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
-    self.currentstate = "Done"
+    self.currentstate = "SOTOfficial"
     self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
 
 
@@ -102,7 +103,7 @@ def tell_to_verify_link_xbox(self):
     self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
-    self.currentstate = "Done"
+    self.currentstate = "SOTOfficial"
     self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
 
 
