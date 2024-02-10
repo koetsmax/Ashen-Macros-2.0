@@ -33,7 +33,7 @@ def unprivate_xbox(self):
     """
     clear_typing_bar()
     switch_channel(self, "#on-duty-chat")
-    create_mm = ["/create ", f"{self.user_id.get()}"]
+    create_mm = ["/create", f"{self.user_id.get()}"]
     execute_command(self, create_mm[0], create_mm[1:])
     time.sleep(6)
     pyautogui.hotkey("alt", "up")
