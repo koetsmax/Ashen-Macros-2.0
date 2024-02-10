@@ -1,6 +1,7 @@
 """
 Creates the launcher window and checks for updates.
 """
+
 import configparser
 import os
 import subprocess
@@ -87,7 +88,7 @@ class Launcher:
         button_data = [
             ("Staffcheck script", lambda: self.start_script("Staffcheck"), 1, 1, "E, W"),
             ("Add to ban list script", lambda: self.start_script("Add to ban list"), 2, 1, "E, W"),
-            ("Queue script", lambda: self.start_script("Queue"), 3, 1, "E, W"),
+            ("Queue monitor", lambda: self.start_script("Queue"), 3, 1, "E, W"),
             ("Add warning script", lambda: self.start_script("Add warning"), 4, 1, "E, W"),
             # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 5, 1, "E, W"),
             # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 6, 1, "E, W"),
