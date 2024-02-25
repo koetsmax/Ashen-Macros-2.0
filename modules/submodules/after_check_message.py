@@ -39,7 +39,7 @@ def unprivate_xbox(self):
     pyautogui.hotkey("alt", "up")
     time.sleep(2)
 
-    unprivate_recall = ["/message-store recall ", "UnPrivate Xbox", "copyable: True"]
+    unprivate_recall = ["/message-store recall", "UnPrivate Xbox", "copyable: True"]
     execute_command(self, unprivate_recall[0], unprivate_recall[1:])
 
     time.sleep(3)
