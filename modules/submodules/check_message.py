@@ -2,6 +2,7 @@
 This module is the last module in the staff check process.
 It is responsible for sending whether or not the user is good to check.
 """
+
 from tkinter import *
 from tkinter import ttk as tk
 import keyboard
@@ -70,7 +71,7 @@ def build_not_good_to_check(self):
     """
     built_not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
     built_not_good_to_check_message = built_not_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}")
     built_not_good_to_check_message = built_not_good_to_check_message.replace("Reason", f"{self.reason.get()}")
     clear_typing_bar()
     keyboard.write(built_not_good_to_check_message)
