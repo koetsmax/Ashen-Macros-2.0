@@ -2,6 +2,7 @@
 This modules handles all of the ashen commands
 """
 
+import datetime
 import threading
 from tkinter import *
 from tkinter import ttk as tk
@@ -20,6 +21,9 @@ def ashen_commands(self):
     """
     This function makes changes to the GUI and applies commands to the buttons
     """
+    # create timestmap forced to UTC+0
+    self.timestamp = datetime.datetime.now(datetime.UTC).timestamp()
+    print(self.timestamp)
     self.currentstate = "AshenCommands"
     # switch_channel(self, self.channel.get())
     # clear_typing_bar()
@@ -94,7 +98,7 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
-            payload = {"userID": self.user_id.get()}
+            payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
             response = requests.post(f"{self.api_url}/search", json=payload, verify=False)
 
             if response.status_code != 200:
