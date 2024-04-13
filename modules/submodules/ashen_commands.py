@@ -1,6 +1,8 @@
 """
 This modules handles all of the ashen commands
 """
+
+import datetime
 import threading
 from tkinter import *
 from tkinter import ttk as tk
@@ -10,7 +12,7 @@ import requests
 import modules.submodules.start_check
 
 from .check_message import not_good_to_check  # pylint: disable=relative-beyond-top-level
-from .functions.clear_typing_bar import clear_typing_bar
+
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
 
@@ -19,6 +21,9 @@ def ashen_commands(self):
     """
     This function makes changes to the GUI and applies commands to the buttons
     """
+    # create timestmap forced to UTC+0
+    self.timestamp = datetime.datetime.now(datetime.UTC).timestamp()
+    print(self.timestamp)
     self.currentstate = "AshenCommands"
     # switch_channel(self, self.channel.get())
     # clear_typing_bar()
@@ -93,7 +98,7 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
-            payload = {"userID": self.user_id.get()}
+            payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
             response = requests.post(f"{self.api_url}/search", json=payload, verify=False)
 
             if response.status_code != 200:
@@ -102,6 +107,8 @@ def ashen_api_request(self):
                 self.search_status_label.config(text="User not found", foreground="red")
             elif response.json()["error"] == "Xbox API error!":
                 self.search_status_label.config(text="Xbox API error", foreground="red")
+            elif response.json()["error"] == "No command found!":
+                self.search_status_label.config(text="Command not found!", foreground="red")
             else:
                 response_json = response.json()
                 self.gamertag_exists_label.config(text=f"{response_json['gamertag_exists']}", foreground="green" if response_json["gamertag_exists"] else "red")
