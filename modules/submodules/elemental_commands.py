@@ -2,8 +2,8 @@
 This module executes all elemental commands.
 """
 
-import threading
 import datetime
+import threading
 
 import requests
 
