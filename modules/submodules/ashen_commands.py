@@ -12,7 +12,7 @@ import requests
 import modules.submodules.start_check
 
 from .check_message import not_good_to_check  # pylint: disable=relative-beyond-top-level
-from .functions.clear_typing_bar import clear_typing_bar
+
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
 
