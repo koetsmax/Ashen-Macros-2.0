@@ -3,6 +3,7 @@ This module executes all elemental commands.
 """
 
 import threading
+import datetime
 
 import requests
 
@@ -17,6 +18,9 @@ def elemental_commands(self, *args):
     """
     This function executes all elemental commands.
     """
+    # create timestmap forced to UTC+0
+    self.timestamp = datetime.datetime.now(datetime.UTC).timestamp()
+    print(self.timestamp)
     self.currentstate = "ElementalCommands"
     switch_channel(self, self.channel.get())
     clear_typing_bar()
@@ -129,7 +133,7 @@ def elemental_api_request(self):
         self.mainframe.update()
         try:
             #! still perform the request even if the user has no gamertag, so we can run the loghistory API
-            payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij"}
+            payload = {"userID": self.user_id.get(), "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij", "timestamp": self.timestamp}
             response = requests.post(f"{self.api_url}/elemental", json=payload, verify=False)
 
             if response.status_code != 200:
