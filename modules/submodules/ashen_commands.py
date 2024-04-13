@@ -1,6 +1,7 @@
 """
 This modules handles all of the ashen commands
 """
+
 import threading
 from tkinter import *
 from tkinter import ttk as tk
@@ -102,6 +103,8 @@ def ashen_api_request(self):
                 self.search_status_label.config(text="User not found", foreground="red")
             elif response.json()["error"] == "Xbox API error!":
                 self.search_status_label.config(text="Xbox API error", foreground="red")
+            elif response.json()["error"] == "No command found!":
+                self.search_status_label.config(text="Command not found!", foreground="red")
             else:
                 response_json = response.json()
                 self.gamertag_exists_label.config(text=f"{response_json['gamertag_exists']}", foreground="green" if response_json["gamertag_exists"] else "red")
