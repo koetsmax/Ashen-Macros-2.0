@@ -1,6 +1,7 @@
 """
 This module initiates the staffcheck process and determines which method to use
 """
+
 from tkinter import DISABLED, NORMAL, StringVar, TclError
 
 import requests
