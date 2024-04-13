@@ -134,6 +134,8 @@ def elemental_api_request(self):
 
             if response.status_code != 200:
                 request_error = True
+            elif response.json()["error"] == "No command found!":
+                self.loghistory_status_label.config(text="Command not found!", foreground="red")
             else:
                 response_json = response.json()
                 self.account_age_label.config(text=f"{response_json['account_age']} Days", foreground="red" if response_json["account_age"] < 60 else "green")
