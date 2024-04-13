@@ -1,6 +1,7 @@
 """
 This module adds a warning to the specified member.
 """
+
 from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.switch_channel import switch_channel
@@ -46,10 +47,10 @@ class Warning:
 
         # create the combo box
         tk.Label(self.mainframe, text="Preset warning:").grid(column=1, row=2, sticky=E)
-        self.reason = StringVar(value="leave warning (rule 5)")
+        self.reason = StringVar(value="leave warning (rule 3)")
         self.reason_combo_box = tk.Combobox(self.mainframe, textvariable=self.reason)
         self.reason_combo_box.grid(column=2, row=2, sticky="W, E")
-        self.values = ("leave warning (rule 5)", "Alt+F4 warning")
+        self.values = ("leave warning (rule 3)", "Alt+F4 warning")
         self.reason_combo_box["values"] = self.values
 
         # Create the labels and entry boxes
@@ -118,10 +119,10 @@ class Warning:
         if self.custom_reason.get() != "":
             reason = self.custom_reason.get()
         else:
-            if self.reason.get() == "leave warning (rule 5)":
-                reason = "**Rule #5:** You must give a warning before leaving a ship by using `!leave` 10 minutes before you plan to leave the ship. Leaving significantly before or after the 10 minutes is not acceptable."
+            if self.reason.get() == "leave warning (rule 3)":
+                reason = "**Rule #3:** You must give a warning before leaving a ship by using !leave 10 minutes before you plan to leave the ship. Leaving significantly before or after the 10 minutes is not acceptable, however, you are allowed to leave earlier if a replacement is already on your ship."
             elif self.reason.get() == "Alt+F4 warning":
-                reason = "**Rule #9:** You must gracefully leave the game, Use `LEAVE GAME` *NOT* ALT+F4 or force killing your game. Failure to do so will lock new crew members out of the ship for 10 minutes."
+                reason = "**Rule #4:** When leaving the game, ensure to exit gracefully by using the LEAVE GAME option. It is strictly prohibited to use ALT+F4 or force kill your game. Failure to comply will result in new crew members being locked out of the ship for 10 minutes."
         if self.nodm.get() != 1:
             add_warn = ["/warn", self.user_id.get(), {reason}]
             execute_command(self, add_warn[0], add_warn[1:])

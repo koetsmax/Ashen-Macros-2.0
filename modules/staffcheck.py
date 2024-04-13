@@ -88,7 +88,7 @@ class StaffCheck:
 
         widgets.create_label(self.mainframe, "Channel:", 3, 1, "E")
         self.channel = StringVar(value="#on-duty-commands")
-        channel_options = ["#staff-commands", "#on-duty-commands", "#captain-commands", "#admin-commands"]
+        channel_options = ["#staff-commands", "#on-duty-commands", "#lieutenant-commands", "#captain-commands", "#admin-commands"]
         self.channel_combo_box = widgets.create_listbox(self.mainframe, channel_options, self.channel, 3, 2, "W, E")
 
         widgets.create_label(self.mainframe, "Method:", 4, 1, "E")
