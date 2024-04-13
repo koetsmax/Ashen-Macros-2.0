@@ -224,7 +224,10 @@ class Launcher:
             if response.status_code != 200:
                 request_error = True
             else:
-                self.api_label.config(text="Connected", foreground="green")
+                try:
+                    self.api_label.config(text="Connected", foreground="green")
+                except TclError:
+                    print("Failed to update label")
 
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
