@@ -2,6 +2,7 @@
 This module adds a warning to the specified member.
 """
 
+import os
 from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.switch_channel import switch_channel
@@ -23,7 +24,7 @@ class Warning:
         self.keyboard_lock = threading.Lock()
         self.root = root
         self.config = configparser.ConfigParser()
-        self.config.read("settings.ini")
+        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 

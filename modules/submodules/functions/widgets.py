@@ -2,6 +2,7 @@
 This is a helper module for creating widgets.
 """
 
+import os
 from tkinter import ttk
 import tkinter as tk
 from typing import List, Callable, Union
@@ -103,7 +104,7 @@ class CreateSettingsWIndow:
 
     def __init__(self, root: Union[tk.Toplevel, ttk.Frame], _config: List[str]):
         self.config = configparser.ConfigParser()
-        self.config.read("settings.ini")
+        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
 
         # extract config from list
         window_title = _config[0]
@@ -155,7 +156,7 @@ class CreateSettingsWIndow:
         """
         Saves the changes made in the settings window.
         """
-        with open("settings.ini", "w", encoding="UTF-8") as configfile:
+        with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
             try:
                 self.config[self.settings][self.variables[0]] = self.entry1.get()
                 try:
@@ -170,7 +171,7 @@ class CreateSettingsWIndow:
         """
         Resets the settings to default.
         """
-        with open("settings.ini", "w", encoding="UTF-8") as configfile:
+        with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
             self.variable1.set(self.defaults[0])
             self.config[self.settings][self.variables[0]] = self.defaults[0]
 

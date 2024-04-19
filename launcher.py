@@ -35,21 +35,33 @@ class Launcher:
     def __init__(self, _root):
         self.keyboard_lock = threading.Lock()
         self.config = configparser.ConfigParser()
-        with open("version", "r", encoding="UTF-8") as versionfile:
-            local_version = versionfile.read().strip()
+        # create the directory in the users documents folder
+        try:
+            os.mkdir(os.path.expanduser("~/Documents/Ashen Macros"))
+        except FileExistsError:
+            pass
+
+        try:
+            with open("_internal/version", "r", encoding="UTF-8") as versionfile:
+                local_version = versionfile.read().strip()
+        except FileNotFoundError:
+            with open("version", "r", encoding="UTF-8") as versionfile:
+                local_version = versionfile.read().strip()
+        if local_version is None:
+            local_version = "0.0.0"
 
         try:
             # parse config file
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
             self.api_url = self.config["API"]["api_url"]
         except KeyError:
             self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
             self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
             self.api_url = self.config["API"]["api_url"]
@@ -182,8 +194,14 @@ class Launcher:
             print("Failed to check for updates. Error code: %s", request.status_code)
             return lambda: None
         request_dictionary = request.json()
-        with open("version", "r", encoding="UTF-8") as versionfile:
-            local_version = versionfile.read()
+        try:
+            with open("_internal/version", "r", encoding="UTF-8") as versionfile:
+                local_version = versionfile.read().strip()
+        except FileNotFoundError:
+            with open("version", "r", encoding="UTF-8") as versionfile:
+                local_version = versionfile.read().strip()
+        if local_version is None:
+            local_version = "0.0.0"
         self.online_version = request_dictionary["name"]
         if version.parse(local_version) < version.parse(self.online_version):
             if isUserAdmin():
@@ -236,7 +254,7 @@ class Launcher:
         """
         try:
             assert force_new_token is False
-            with open("token", "r", encoding="UTF-8") as tokenfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8") as tokenfile:
                 token = tokenfile.read().strip()
                 assert len(token) == 64
 
@@ -244,7 +262,7 @@ class Launcher:
             print("Token not found or invalid. Creating new token...")
             # generate a random token
             token = os.urandom(32).hex()
-            with open("token", "w", encoding="UTF-8") as tokenfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "w", encoding="UTF-8") as tokenfile:
                 tokenfile.write(token)
 
         # validate if the token is correct and known.

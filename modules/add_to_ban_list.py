@@ -1,10 +1,12 @@
 """
 This module adds the specified member to the ban list.
 """
+
 import configparser
 import re
 import runpy
 import time
+import os
 import webbrowser
 from tkinter import Menu, StringVar, Tk, FALSE, ttk
 
@@ -25,13 +27,13 @@ class AddToBanList:
         self.config = configparser.ConfigParser()
         try:
             # parse config file
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
         except KeyError:
             self.config["ADD_TO_BAN_LIST"] = {"delay": "15"}
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
 
         self.root = root

@@ -1,6 +1,8 @@
 """
 This function tries to execute a discord slash command
 """
+
+import os
 import time
 from typing import List
 import keyboard
@@ -11,7 +13,7 @@ def execute_command(self, command: str, subcommands: List[str]):
     This function tries to execute a discord slash command
     """
     with self.keyboard_lock:
-        self.config.read("settings.ini")
+        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
         self.initial_command = float(self.config["COMMANDS"]["initial_command"])
         self.follow_up = float(self.config["COMMANDS"]["follow_up"])
         keyboard.write(command)
