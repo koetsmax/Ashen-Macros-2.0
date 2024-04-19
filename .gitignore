@@ -6,6 +6,7 @@ pyproject.toml
 settings.ini
 Installforge project.ifp
 Ashen.Macro.Installer.exe
+token
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

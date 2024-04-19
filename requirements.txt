@@ -4,3 +4,5 @@ packaging
 requests
 pyuac
 pyautogui
+packaging
+python-socketio
