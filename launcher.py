@@ -226,14 +226,17 @@ class Launcher:
             else:
                 try:
                     self.api_label.config(text="Connected", foreground="green")
-                except TclError:
-                    print("Failed to update label")
+                except Exception as e:  # pylint: disable=broad-except
+                    print("Failed to update label: %s", e)
 
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
 
         if request_error:
-            self.api_label.config(text="Not Connected", foreground="red")
+            try:
+                self.api_label.config(text="Not Connected", foreground="red")
+            except Exception as e:  # pylint: disable=broad-except
+                print("Failed to update label: %s", e)
         self.mainframe.update()
 
     def api_request(self):
