@@ -2,6 +2,7 @@
 This module adds the option for the user to link their macro and discord account.
 """
 
+import os
 import time
 import keyboard
 import sys
@@ -15,7 +16,7 @@ def start_verification(self):
     """
     self.verify_button.state(["disabled"])
     time.sleep(3)
-    with open("token", "r", encoding="UTF-8") as tokenfile:
+    with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8") as tokenfile:
         token = tokenfile.read().strip()
 
     enc_token = token.encode("utf-8")

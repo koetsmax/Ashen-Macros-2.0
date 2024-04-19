@@ -7,6 +7,7 @@ import runpy
 import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
 from typing import Union
+import os
 
 import launcher  # pylint: disable=unused-import
 import modules.submodules.functions.widgets as widgets
@@ -28,7 +29,7 @@ class StaffCheck:
         self.keyboard_lock = threading.Lock()
         self.config = configparser.ConfigParser()
         try:
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
             self.not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
@@ -38,7 +39,7 @@ class StaffCheck:
             if "https" not in self.api_url and self.api_url != "https://localhost:8000":
                 self.api_url = "https://ashen_api.famkoets.nl"
                 self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
-                with open("settings.ini", "w", encoding="UTF-8") as configfile:
+                with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                     self.config.write(configfile)
         except KeyError:
             self.config["STAFFCHECK"] = {
@@ -49,9 +50,9 @@ class StaffCheck:
                 "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
             }
             self.config["API"] = {"api_url": "http://ashen_api.famkoets.nl"}
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                 self.config.write(configfile)
-            self.config.read("settings.ini")
+            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
             self.not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
             self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
@@ -289,7 +290,7 @@ class CustomizeWindow:
 
     def __init__(self, type_: str, explanation: str, id_: int, default: str, start_button: ttk.Button, mainframe: Union[Toplevel, ttk.Frame], status_label: ttk.Label):
         def save_changes(self):
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                 try:
                     self.example_label.destroy()
                     self.config["STAFFCHECK"][type_] = self.message.get()
@@ -300,7 +301,7 @@ class CustomizeWindow:
                 build_example_message(self, 99, status_label)
 
         def reset_to_default(self):
-            with open("settings.ini", "w", encoding="UTF-8") as configfile:
+            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
                 self.example_label.destroy()
                 self.config["STAFFCHECK"][type_] = default
                 self.config.write(configfile)
@@ -310,7 +311,7 @@ class CustomizeWindow:
         self.mainframe = mainframe
         self.start_button = start_button
         self.config = configparser.ConfigParser()
-        self.config.read("settings.ini")
+        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
         self.customize_window = Toplevel()
         self.customize_window.title("Customize")
 
