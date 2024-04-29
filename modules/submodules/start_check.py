@@ -126,6 +126,11 @@ def continue_to_next(self):
             self.status_label.config(text="Waiting for ID", foreground="black")
             self.gamertag_label.config(text="Unknown")
             self.stop_button.state(["disabled"])
+            try:
+                self.reason.set("")
+                self.reason_entry.destroy()
+            except AttributeError:
+                pass
 
             self.account_age_label.config(text="N/A", foreground="orange")
             self.needs_warning_talk_label.config(text="N/A", foreground="orange")
@@ -233,14 +238,13 @@ def determine_method(self):
     """
     This function determines which method to use
     """
+    self.reason = StringVar(value="Reason for Not Good To Check")
+    self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
+    for child in self.mainframe.winfo_children():
+        child.grid_configure(padx=5, pady=5)
     if self.method.get() == "All Commands":
         api_thread = threading.Thread(target=make_api_requests, args=(self,))
         api_thread.start()
-
-        self.reason = StringVar(value="Reason for Not Good To Check")
-        self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
-        for child in self.mainframe.winfo_children():
-            child.grid_configure(padx=5, pady=5)
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Purge Commands":
         modules.submodules.elemental_commands.elemental_commands(self)

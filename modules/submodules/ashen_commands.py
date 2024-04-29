@@ -46,10 +46,6 @@ def needs_to_remove_friends(self):
     This function notes the member as not good to check if they have to remove banned friends
     """
     self.reason = StringVar(value="Needs to remove banned friends:")
-    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=9, sticky="W, E")
-    for child in self.mainframe.winfo_children():
-        child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
 
 
@@ -58,10 +54,6 @@ def needs_to_unprivate_xbox(self):
     This function notes the member as not good to check if they have to unprivate their Xbox
     """
     self.reason = StringVar(value="Needs to unprivate xbox")
-    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=9, sticky="W, E")
-    for child in self.mainframe.winfo_children():
-        child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
 
 
@@ -70,10 +62,6 @@ def needs_to_verify(self):
     This function notes the member as not good to check if they have to verify their account
     """
     self.reason = StringVar(value="Needs to verify account")
-    self.reason_entry = tk.Entry(self.mainframe, textvariable=self.reason)
-    self.reason_entry.grid(columnspan=2, column=1, row=9, sticky="W, E")
-    for child in self.mainframe.winfo_children():
-        child.grid_configure(padx=5, pady=5)
     not_good_to_check(self)
 
 
