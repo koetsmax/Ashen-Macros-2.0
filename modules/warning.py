@@ -121,9 +121,9 @@ class Warning:
             reason = self.custom_reason.get()
         else:
             if self.reason.get() == "leave warning (rule 3)":
-                reason = "**Rule #3:** You must give a warning before leaving a ship by using !leave 10 minutes before you plan to leave the ship. Leaving significantly before or after the 10 minutes is not acceptable, however, you are allowed to leave earlier if a replacement is already on your ship."
+                reason = "Rule #3: You must give a warning before leaving a ship by using !leave 10 minutes before you plan to leave the ship. Leaving significantly before or after the 10 minutes is not acceptable, however, you are allowed to leave earlier if a replacement is already on your ship."
             elif self.reason.get() == "Alt+F4 warning":
-                reason = "**Rule #4:** When leaving the game, ensure to exit gracefully by using the LEAVE GAME option. It is strictly prohibited to use ALT+F4 or force kill your game. Failure to comply will result in new crew members being locked out of the ship for 10 minutes."
+                reason = "Rule #4: When leaving the game, ensure to exit gracefully by using the LEAVE GAME option. It is strictly prohibited to use ALT+F4 or force kill your game. Failure to comply will result in new crew members being locked out of the ship for 10 minutes."
         if self.nodm.get() != 1:
             add_warn = ["/warn", self.user_id.get(), {reason}]
             execute_command(self, add_warn[0], add_warn[1:])
