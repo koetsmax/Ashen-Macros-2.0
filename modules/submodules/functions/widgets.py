@@ -2,11 +2,10 @@
 This is a helper module for creating widgets.
 """
 
-import os
 from tkinter import ttk
 import tkinter as tk
 from typing import List, Callable, Union
-import configparser
+from .settings import read_config, set_custom_value  # pylint: disable=relative-beyond-top-level
 
 
 def create_button(
@@ -24,9 +23,7 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return button
 
 
@@ -44,9 +41,7 @@ def create_label(
     Creates a label widget and places it in the parent widget.
     """
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return label
 
 
@@ -107,8 +102,7 @@ class CreateSettingsWindow:
     """
 
     def __init__(self, root: Union[tk.Toplevel, ttk.Frame], _config: List[str]):
-        self.config = configparser.ConfigParser()
-        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
+        config = read_config()
 
         # extract config from list
         window_title = _config[0]
@@ -125,14 +119,10 @@ class CreateSettingsWindow:
         print(self.settings)
         print(self.var1)
 
-        self.variable1 = tk.StringVar(
-            value=self.config[self.settings][self.variables[0]]
-        )
+        self.variable1 = tk.StringVar(value=config[self.variables[0]])
         print(self.variable1, self.variable1.get())
         try:
-            self.variable2 = tk.StringVar(
-                value=self.config[self.settings][self.variables[1]]
-            )
+            self.variable2 = tk.StringVar(value=config[self.variables[1]])
         except (IndexError, AttributeError):
             pass
 
@@ -178,37 +168,20 @@ class CreateSettingsWindow:
         """
         Saves the changes made in the settings window.
         """
-        with open(
-            os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-            "w",
-            encoding="UTF-8",
-        ) as configfile:
-            try:
-                self.config[self.settings][self.variables[0]] = self.entry1.get()
-                try:
-                    self.config[self.settings][self.variables[1]] = self.entry2.get()
-                except (IndexError, AttributeError):
-                    pass
-            except AttributeError:
-                pass
-            self.config.write(configfile)
+        set_custom_value(self.settings, self.variables[0], self.entry1.get())
+        try:
+            set_custom_value(self.settings, self.variables[0], self.entry2.get())
+        except (IndexError, AttributeError):
+            pass
 
     def reset_to_default(self):
         """
         Resets the settings to default.
         """
-        with open(
-            os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-            "w",
-            encoding="UTF-8",
-        ) as configfile:
-            self.variable1.set(self.defaults[0])
-            self.config[self.settings][self.variables[0]] = self.defaults[0]
-
-            try:
-                self.variable2.set(self.defaults[1])
-                self.config[self.settings][self.variables[1]] = self.defaults[1]
-            except (IndexError, AttributeError):
-                pass
-
-            self.config.write(configfile)
+        self.variable1.set(self.defaults[0])
+        set_custom_value(self.settings, self.variables[0], self.defaults[0])
+        try:
+            self.variable2.set(self.defaults[1])
+            set_custom_value(self.settings, self.variables[0], self.defaults[1])
+        except (IndexError, AttributeError):
+            pass
