@@ -24,7 +24,9 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    button.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return button
 
 
@@ -42,7 +44,9 @@ def create_label(
     Creates a label widget and places it in the parent widget.
     """
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    label.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return label
 
 
@@ -121,10 +125,14 @@ class CreateSettingsWIndow:
         print(self.settings)
         print(self.var1)
 
-        self.variable1 = tk.StringVar(value=self.config[self.settings][self.variables[0]])
+        self.variable1 = tk.StringVar(
+            value=self.config[self.settings][self.variables[0]]
+        )
         print(self.variable1, self.variable1.get())
         try:
-            self.variable2 = tk.StringVar(value=self.config[self.settings][self.variables[1]])
+            self.variable2 = tk.StringVar(
+                value=self.config[self.settings][self.variables[1]]
+            )
         except (IndexError, AttributeError):
             pass
 
@@ -144,19 +152,37 @@ class CreateSettingsWIndow:
             pass
 
         # Create the buttons
-        create_button(settings_window, "Save Changes", lambda: self.save_changes(), 7, 1, "W")  # pylint: disable=W0108, line-too-long
-        create_button(settings_window, "Reset To Default", lambda: self.reset_to_default(), 7, 1, "E")  # pylint: disable=W0108, line-too-long
+        create_button(
+            settings_window,
+            "Save Changes",
+            lambda: self.save_changes(),  # pylint: disable=unnecessary-lambda
+            7,
+            1,
+            "W",
+        )
+        create_button(
+            settings_window,
+            "Reset To Default",
+            lambda: self.reset_to_default(),  # pylint: disable=unnecessary-lambda
+            7,
+            1,
+            "E",
+        )
 
         for child in settings_window.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-        root.eval(f"tk::PlaceWindow {str(settings_window)} center")  # type: ignore
+        root.eval(f"tk::PlaceWindow {str(settings_window)} center")
 
     def save_changes(self):
         """
         Saves the changes made in the settings window.
         """
-        with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
+        with open(
+            os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
+            "w",
+            encoding="UTF-8",
+        ) as configfile:
             try:
                 self.config[self.settings][self.variables[0]] = self.entry1.get()
                 try:
@@ -171,7 +197,11 @@ class CreateSettingsWIndow:
         """
         Resets the settings to default.
         """
-        with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
+        with open(
+            os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
+            "w",
+            encoding="UTF-8",
+        ) as configfile:
             self.variable1.set(self.defaults[0])
             self.config[self.settings][self.variables[0]] = self.defaults[0]
 
