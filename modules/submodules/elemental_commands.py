@@ -170,7 +170,7 @@ def elemental_api_request(self):
             }
             config = read_config()
             response = requests.post(
-                f"{config["api_url"]}/elemental", json=payload, verify=False, timeout=20
+                f"{config["api_url"]}/elemental", json=payload, verify=False, timeout=120
             )
 
             if response.status_code != 200:

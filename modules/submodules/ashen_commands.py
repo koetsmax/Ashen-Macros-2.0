@@ -111,7 +111,7 @@ def ashen_api_request(self):
             payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
             config = read_config()
             response = requests.post(
-                f"{config["api_url"]}/search", json=payload, verify=False, timeout=20
+                f"{config["api_url"]}/search", json=payload, verify=False, timeout=120
             )
 
             if response.status_code != 200:
