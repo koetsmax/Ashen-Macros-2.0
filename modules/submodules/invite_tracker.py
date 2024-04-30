@@ -26,6 +26,9 @@ def invite_tracker(self):
 
 
 def check_loghistory(self):
+    """
+    This function checks the log history of the user who invited the member
+    """
     switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.inviters_ids:
@@ -37,6 +40,9 @@ def check_loghistory(self):
 
 
 def check_invited_users(self):
+    """
+    This function checks the log history of the users who were invited by the member
+    """
     switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.invitees_ids:
@@ -48,12 +54,15 @@ def check_invited_users(self):
 
 
 def api_request(self):
+    """
+    This function makes the API request
+    """
     request_error = False
     self.invite_tracker_status_label.config(text="Sending", foreground="orange")
     self.mainframe.update()
     try:
         payload = {"userID": self.user_id.get()}
-        response = requests.post(f"{self.api_url}/invite", json=payload, verify=False)
+        response = requests.post(f"{self.api_url}/invite", json=payload, verify=False, timeout=20)
 
         if response.status_code != 200:
             request_error = True
