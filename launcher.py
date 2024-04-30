@@ -59,7 +59,9 @@ class Launcher:
         except KeyError:
             self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
             self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
-            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
+            with open(
+                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8"
+            ) as configfile:
                 self.config.write(configfile)
             self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.initial_command = self.config["COMMANDS"]["initial_command"]
@@ -76,7 +78,9 @@ class Launcher:
 
         try:
             directory_path = "../launcher"
-            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)  # pylint: disable=line-too-long
+            result = subprocess.run(
+                ["icacls", directory_path], capture_output=True, text=True, check=True
+            )  # pylint: disable=line-too-long
             output = result.stdout.strip()
 
             # Check if full control permissions are present for Everyone
@@ -84,7 +88,9 @@ class Launcher:
                 print("current permissions: %s", output)
 
                 if isUserAdmin():
-                    subprocess.run(["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"], check=True)  # pylint: disable=line-too-long
+                    subprocess.run(
+                        ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"], check=True
+                    )  # pylint: disable=line-too-long
                     print("Permissions updated to 777")
                 else:
                     # Re-run the program with admin rights
@@ -104,16 +110,60 @@ class Launcher:
             sys.exit()
 
         button_data = [
-            ("Staffcheck script", lambda: self.start_script("Staffcheck"), 3, 1, "E, W"),
-            ("Add to ban list script", lambda: self.start_script("Add to ban list"), 4, 1, "E, W"),
-            ("Queue monitor", lambda: self.start_script("Queue"), 5, 1, "E, W"),
-            ("Add warning script", lambda: self.start_script("Add warning"), 6, 1, "E, W"),
+            (
+                "Staffcheck script",
+                lambda: self.start_script("Staffcheck"),  # pylint: disable=unnecessary-lambda
+                3,
+                1,
+                "E, W",
+            ),
+            (
+                "Add to ban list script",
+                lambda: self.start_script("Add to ban list"),  # pylint: disable=unnecessary-lambda
+                4,
+                1,
+                "E, W",
+            ),
+            (
+                "Queue monitor",
+                lambda: self.start_script("Queue"),  # pylint: disable=unnecessary-lambda
+                5,
+                1,
+                "E, W",
+            ),
+            (
+                "Add warning script",
+                lambda: self.start_script("Add warning"),  # pylint: disable=unnecessary-lambda
+                6,
+                1,
+                "E, W",
+            ),
             # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 7, 1, "E, W"),
             # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 8, 1, "E, W"),
-            ("Timestamp generator", lambda: self.start_script("Timestamp generator"), 9, 1, "E, W"),  # pylint: disable=line-too-long
-            ("Check for updates!!!", lambda: self.check_for_updates(False), 10, 1, "E, W"),
+            (
+                "Timestamp generator",
+                lambda: self.start_script(  # pylint: disable=unnecessary-lambda
+                    "Timestamp generator"
+                ),
+                9,
+                1,
+                "E, W",
+            ),
+            (
+                "Check for updates!!!",
+                lambda: self.check_for_updates(False),  # pylint: disable=unnecessary-lambda
+                10,
+                1,
+                "E, W",
+            ),
             ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
-            ("Command Delay", lambda: self.delay_config(), 81, 1, "E, W"),  # pylint: disable=unnecessary-lambda
+            (
+                "Command Delay",
+                lambda: self.delay_config(),  # pylint: disable=unnecessary-lambda
+                81,
+                1,
+                "E, W",
+            ),
         ]
 
         for label, command, row, column, position in button_data:
@@ -128,10 +178,21 @@ class Launcher:
                 text = f"Welcome back, {username}"
             widgets.create_label(self.mainframe, text, 1, 1, "W, E")
         else:
-            self.verify_button = widgets.create_button(self.mainframe, "Verify (Do not touch your pc!)", lambda: start_verification(self), 2, 1, "E, W")
-            self.verify_label = widgets.create_label(self.mainframe, "Please verify your account", 1, 1, "W, E")
+            self.verify_button = widgets.create_button(
+                self.mainframe,
+                "Verify (Do not touch your pc!)",
+                lambda: start_verification(self),
+                2,
+                1,
+                "E, W",
+            )
+            self.verify_label = widgets.create_label(
+                self.mainframe, "Please verify your account", 1, 1, "W, E"
+            )
 
-        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")  # pylint: disable=line-too-long
+        self.api_label = widgets.create_label(
+            self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange"
+        )  # pylint: disable=line-too-long
         widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
@@ -176,9 +237,23 @@ class Launcher:
         widgets.create_label(updatewindow, text, 1, 1, "E")
 
         if update_is_available:
-            widgets.create_button(updatewindow, "Yes", lambda: self.commence_update(), 2, 1, "E")  # pylint: disable=unnecessary-lambda
+            widgets.create_button(
+                updatewindow,
+                "Yes",
+                lambda: self.commence_update(),  # pylint: disable=unnecessary-lambda
+                2,
+                1,
+                "E",
+            )
         else:
-            widgets.create_button(updatewindow, "Okay", lambda: updatewindow.destroy(), 2, 1, "W")  # pylint: disable=unnecessary-lambda
+            widgets.create_button(
+                updatewindow,
+                "Okay",
+                lambda: updatewindow.destroy(),  # pylint: disable=unnecessary-lambda
+                2,
+                1,
+                "W",
+            )
 
         for child in updatewindow.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -189,7 +264,9 @@ class Launcher:
         """
         Checks for updates.
         """
-        request = requests.get("https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15)  # pylint: disable=line-too-long
+        request = requests.get(
+            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15
+        )  # pylint: disable=line-too-long
         if request.status_code != 200:
             print("Failed to check for updates. Error code: %s", request.status_code)
             return lambda: None
@@ -205,7 +282,9 @@ class Launcher:
         self.online_version = request_dictionary["name"]
         if version.parse(local_version) < version.parse(self.online_version):
             if isUserAdmin():
-                self.update_window("There is an update available.\nWould you like to download it?", True)  # pylint: disable=line-too-long
+                self.update_window(
+                    "There is an update available.\nWould you like to download it?", True
+                )  # pylint: disable=line-too-long
             else:
                 self.root.destroy()
                 runAsAdmin()
@@ -254,7 +333,9 @@ class Launcher:
         """
         try:
             assert force_new_token is False
-            with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8") as tokenfile:
+            with open(
+                os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
+            ) as tokenfile:
                 token = tokenfile.read().strip()
                 assert len(token) == 64
 
@@ -262,7 +343,9 @@ class Launcher:
             print("Token not found or invalid. Creating new token...")
             # generate a random token
             token = os.urandom(32).hex()
-            with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "w", encoding="UTF-8") as tokenfile:
+            with open(
+                os.path.expanduser("~/Documents/Ashen Macros/token"), "w", encoding="UTF-8"
+            ) as tokenfile:
                 tokenfile.write(token)
 
         # validate if the token is correct and known.
@@ -271,7 +354,9 @@ class Launcher:
         enc_token = enc_token.hex()
         try:
             payload = {"token": enc_token}
-            response = requests.post(f"{self.api_url}/validate_token", json=payload, verify=False, timeout=3)
+            response = requests.post(
+                f"{self.api_url}/validate_token", json=payload, verify=False, timeout=3
+            )
 
             if response.status_code != 200:
                 print("Failed to validate token. Error code: %s", response.status_code)
