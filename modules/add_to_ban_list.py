@@ -31,7 +31,9 @@ class AddToBanList:
             self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
         except KeyError:
             self.config["ADD_TO_BAN_LIST"] = {"delay": "15"}
-            with open(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8") as configfile:
+            with open(
+                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8"
+            ) as configfile:
                 self.config.write(configfile)
             self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
             self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
@@ -60,9 +62,19 @@ class AddToBanList:
         widgets.create_label(self.mainframe, "Entire Ban Entry as in AoA:", 1, 1, "W, E")
 
         self.requiem_ban = StringVar()
-        self.requiem_ban_entry = widgets.create_entry(self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2)  # pylint: disable=line-too-long
+        self.requiem_ban_entry = widgets.create_entry(
+            self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2
+        )  # pylint: disable=line-too-long
 
-        widgets.create_label(self.mainframe, "Allows multiple bans. The macro automatically seperates it into multiple entries.", 2, 1, "W, E", 1, 6)  # pylint: disable=line-too-long
+        widgets.create_label(
+            self.mainframe,
+            "Allows multiple bans. The macro automatically seperates it into multiple entries.",
+            2,
+            1,
+            "W, E",
+            1,
+            6,
+        )  # pylint: disable=line-too-long
 
         self.discord_id = StringVar()
         self.discord_name = StringVar()
@@ -72,27 +84,46 @@ class AddToBanList:
         self.reason = StringVar()
 
         widgets.create_label(self.mainframe, "Discord ID:", 3, 1, "E")
-        self.user_id_entry = widgets.create_entry(self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2)  # pylint: disable=line-too-long
+        self.user_id_entry = widgets.create_entry(
+            self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2
+        )  # pylint: disable=line-too-long
 
         widgets.create_label(self.mainframe, "Discord Name:", 4, 1, "E")
-        self.discord_name_entry = widgets.create_entry(self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2)  # pylint: disable=line-too-long
+        self.discord_name_entry = widgets.create_entry(
+            self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2
+        )  # pylint: disable=line-too-long
 
         widgets.create_label(self.mainframe, "Xbox Gamertag:", 5, 1, "E")
-        self.xbox_gamertag_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2)  # pylint: disable=line-too-long
+        self.xbox_gamertag_entry = widgets.create_entry(
+            self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2
+        )  # pylint: disable=line-too-long
 
         widgets.create_label(self.mainframe, "Xbox ID:", 6, 1, "E")
-        self.xbox_id_entry = widgets.create_entry(self.mainframe, self.xbox_id, 6, 2, "W, E", 30, 2)  # pylint: disable=line-too-long
+        self.xbox_id_entry = widgets.create_entry(
+            self.mainframe, self.xbox_id, 6, 2, "W, E", 30, 2
+        )  # pylint: disable=line-too-long
 
         widgets.create_label(self.mainframe, "Server:", 7, 1, "E")
         method_options = ["Athena's Vanguard", "Obsidian", "Sea of Grogs"]
-        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.server, 7, 2, "W, E", 2)  # pylint: disable=line-too-long
+        self.method_combo_box = widgets.create_listbox(
+            self.mainframe, method_options, self.server, 7, 2, "W, E", 2
+        )  # pylint: disable=line-too-long
 
         widgets.create_label(self.mainframe, "Reason:", 8, 1, "E")
         self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 8, 2, "W, E", 30, 2)
 
         widgets.create_button(self.mainframe, "Back to launcher", self.back, 9, 1, "W, E")
-        widgets.create_button(self.mainframe, "Add Requiem ban", lambda: self.start_requiem(self.requiem_ban.get()), 9, 2, "W, E")  # pylint: disable=line-too-long
-        widgets.create_button(self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E")  # pylint: disable=line-too-long
+        widgets.create_button(
+            self.mainframe,
+            "Add Requiem ban",
+            lambda: self.start_requiem(self.requiem_ban.get()),
+            9,
+            2,
+            "W, E",
+        )  # pylint: disable=line-too-long
+        widgets.create_button(
+            self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E"
+        )  # pylint: disable=line-too-long
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -131,7 +162,14 @@ class AddToBanList:
         keyboard.press_and_release("ctrl + down")
         time.sleep(2)
 
-        fields = [self.discord_name, self.discord_id, self.xbox_gt, self.xbox_id, self.server, self.reason]  # pylint: disable=line-too-long
+        fields = [
+            self.discord_name,
+            self.discord_id,
+            self.xbox_gt,
+            self.xbox_id,
+            self.server,
+            self.reason,
+        ]  # pylint: disable=line-too-long
 
         for field in fields:
             for value in field.get().split(","):
@@ -189,7 +227,11 @@ class AddToBanList:
             gamertag = "N/A"
             discord_tag = "N/A"
             xuid = "N/A"
-            gamertag = parts[0].split(":")[1].strip() if parts[0].split(":")[1].strip().count("?") < 3 else "N/A"  # pylint: disable=line-too-long
+            gamertag = (
+                parts[0].split(":")[1].strip()
+                if parts[0].split(":")[1].strip().count("?") < 3
+                else "N/A"
+            )  # pylint: disable=line-too-long
             for i, part in enumerate(parts):
                 if i == 2:
                     discord_tag = part.strip() if part.strip().count("?") < 3 else "N/A"
