@@ -243,9 +243,8 @@ def make_api_requests(self):
     Make the api requests to the bot to get the data from sea of thieves official and the invite tracker
     """
     try:
-        if self.method.get() == "All Commands":
-            modules.submodules.invite_tracker.api_request(self)
-            modules.submodules.sot_official.api_request(self)
+        modules.submodules.invite_tracker.api_request(self)
+        modules.submodules.sot_official.api_request(self)
         # Add more API requests as needed
 
     except Exception as e:
@@ -260,6 +259,7 @@ def determine_method(self):
     self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
     for child in self.mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
+
     if self.method.get() == "All Commands":
         api_thread = threading.Thread(target=make_api_requests, args=(self,))
         api_thread.start()
