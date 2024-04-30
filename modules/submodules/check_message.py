@@ -5,9 +5,12 @@ It is responsible for sending whether or not the user is good to check.
 
 import keyboard
 import modules.submodules.start_check
-from .after_check_message import after_check_message  # pylint: disable=relative-beyond-top-level
+from .after_check_message import (  # pylint: disable=relative-beyond-top-level
+    after_check_message,
+)
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
+from .functions.settings import read_config  # pylint: disable=relative-beyond-top-level
 
 
 def check_message(self):
@@ -20,7 +23,9 @@ def check_message(self):
         text="Don't Post Message",
         command=lambda: modules.submodules.start_check.continue_to_next(self),
     )
-    self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
+    self.kill_button.config(
+        text="Not Good to Check", command=lambda: not_good_to_check(self)
+    )
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
@@ -35,11 +40,15 @@ def good_to_check(self):
     self.start_button.state(["disabled"])
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
-    built_good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
+
+    config = read_config()
+    built_good_to_check_message = config["good_to_check_message"]
     built_good_to_check_message = built_good_to_check_message.replace(
         "userID", f"<@{self.user_id.get()}>"
     )
-    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
+    built_good_to_check_message = built_good_to_check_message.replace(
+        "xboxGT", f"{self.xbox_gt}"
+    )
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
@@ -59,7 +68,9 @@ def not_good_to_check(self):
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
     self.function_button_2.state(["disabled"])
-    self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
+    self.start_button.config(
+        text="Confirm Reason", command=lambda: build_not_good_to_check(self)
+    )
     self.start_button.state(["!disabled"])
 
 
@@ -67,7 +78,8 @@ def build_not_good_to_check(self):
     """
     This function builds the message to send to the on-duty chat if the user is not good to check
     """
-    built_not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
+    config = read_config()
+    built_not_good_to_check_message = config["not_good_to_check_message"]
     built_not_good_to_check_message = built_not_good_to_check_message.replace(
         "userID", f"<@{self.user_id.get()}>"
     )

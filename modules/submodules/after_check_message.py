@@ -9,6 +9,9 @@ import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.execute_command import execute_command
+from .functions.settings import (  # pylint: disable=relative-beyond-top-level
+    read_config,
+)
 
 
 def after_check_message(self):
@@ -23,7 +26,9 @@ def after_check_message(self):
     self.kill_button.config(
         text="Open modmail to unprivate Xbox", command=lambda: unprivate_xbox(self)
     )
-    self.start_button.config(text="Needs to join the AWR", command=lambda: join_awr(self))
+    self.start_button.config(
+        text="Needs to join the AWR", command=lambda: join_awr(self)
+    )
     self.function_button_2.config(
         text="Needs to verify account", command=lambda: verify_account(self)
     )
@@ -43,13 +48,19 @@ def unprivate_xbox(self):
     pyautogui.hotkey("alt", "up")
     time.sleep(2)
 
-    unprivate_recall = ["/message-store recall", "(Global) Unprivate Xbox", "copyable: True"]
+    unprivate_recall = [
+        "/message-store recall",
+        "(Global) Unprivate Xbox",
+        "copyable: True",
+    ]
     execute_command(self, unprivate_recall[0], unprivate_recall[1:])
 
     time.sleep(3)
     switch_channel(self, "#on-duty-chat", "arg")
     clear_typing_bar()
-    built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
+
+    config = read_config()
+    built_unprivate_xbox_message = config["unprivate_xbox_message"]
     if built_unprivate_xbox_message.lower() != "delete":
         built_unprivate_xbox_message = built_unprivate_xbox_message.replace(
             "userID", f"<@{self.user_id.get()}>"
@@ -73,7 +84,9 @@ def join_awr(self):
     switch_channel(self, "#on-duty-chat")
     joinawr = ["/joinawr", f"{self.user_id.get()}"]
     execute_command(self, joinawr[0], joinawr[1:])
-    built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
+
+    config = read_config()
+    built_join_awr_message = config["join_awr_message"]
     if built_join_awr_message.lower() != "delete":
         built_join_awr_message = built_join_awr_message.replace(
             "userID", f"<@{self.user_id.get()}>"
@@ -94,9 +107,13 @@ def verify_account(self):
     switch_channel(self, "#on-duty-chat")
     verifyaccount = ["/verify", self.user_id.get()]
     execute_command(self, verifyaccount[0], verifyaccount[1:])
-    built_verify_message = self.config["STAFFCHECK"]["verify_message"]
+
+    config = read_config()
+    built_verify_message = config["verify_message"]
     if built_verify_message.lower() != "delete":
-        built_verify_message = built_verify_message.replace("userID", f"<@{self.user_id.get()}>")
+        built_verify_message = built_verify_message.replace(
+            "userID", f"<@{self.user_id.get()}>"
+        )
         built_verify_message = built_verify_message.replace(
             "Time", f"<t:{round(time.time() + 600)}:R>"
         )
