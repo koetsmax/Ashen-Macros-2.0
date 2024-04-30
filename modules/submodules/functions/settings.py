@@ -53,6 +53,7 @@ def _set_default_values(config):
             "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
         },
+        "COMMANDS": {"initial_command": "2", "follow_up": "0.4"},
         "API": {"api_url": "http://ashen_api.famkoets.nl"},
     }
 
