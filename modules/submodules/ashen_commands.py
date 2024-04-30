@@ -13,6 +13,7 @@ import modules.submodules.start_check
 
 from .check_message import not_good_to_check  # pylint: disable=relative-beyond-top-level
 
+from .functions.clear_typing_bar import clear_typing_bar
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
 
@@ -25,8 +26,9 @@ def ashen_commands(self):
     self.timestamp = datetime.datetime.now(datetime.UTC).timestamp()
     print(self.timestamp)
     self.currentstate = "AshenCommands"
-    # switch_channel(self, self.channel.get())
-    # clear_typing_bar()
+    if self.method.get() == "Ashen Commands":
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
     search = ["/search ", f"member: {self.user_id.get()}", f"gamertag: {self.xbox_gt}"]
     execute_command(self, search[0], search[1:])
     start_ashen_api_requests_thread(self)
