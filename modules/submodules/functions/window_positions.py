@@ -3,7 +3,10 @@ This module is responsible for saving and loading the window position
 """
 
 import os
-from .settings import read_config, set_custom_value  # pylint: disable=relative-beyond-top-level
+from .settings import (  # pylint: disable=relative-beyond-top-level
+    read_config,
+    set_custom_value,
+)
 
 
 def save_window_position(window, *args):
@@ -26,5 +29,4 @@ def load_window_position(window):
     Loads the window position from a file.
     """
     config = read_config()
-    if "WINDOW" in config:
-        window.geometry(f"+{config['x_offset']}+{config['y_offset']}")
+    window.geometry(f"+{config['x_offset']}+{config['y_offset']}")
