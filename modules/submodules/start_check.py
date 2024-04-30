@@ -4,6 +4,7 @@ This module initiates the staffcheck process and determines which method to use
 
 from tkinter import DISABLED, NORMAL, StringVar, TclError
 
+import threading
 import requests
 
 import modules.submodules.ashen_commands
@@ -13,7 +14,6 @@ import modules.submodules.functions.widgets as widgets
 import modules.submodules.invite_tracker
 import modules.submodules.pre_check
 import modules.submodules.sot_official
-import threading
 
 
 def validate_user_id(self) -> bool:
@@ -51,7 +51,9 @@ def start_check(self):
     try:
         self.status_label.config(text="Sending API request")
         self.mainframe.update()
-        response = requests.post(f"{self.api_url}/staffcheck", json=payload, verify=False)
+        response = requests.post(
+            f"{self.api_url}/staffcheck", json=payload, verify=False, timeout=20
+        )
 
         if response.status_code != 200:
             request_error = True
@@ -60,24 +62,33 @@ def start_check(self):
             self.xbox_gt = response.json()["linked_xbox"]
             self.mutual_guilds = response.json()["mutual_guilds"]
             guild_list = "\n".join(self.mutual_guilds)
-            self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
+            self.mutual_guilds_label = widgets.create_label(
+                self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2
+            )
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
         request_error = True
         print(exc)
     if not request_error:
         continue_check(self, request_error)
     else:
-        self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
+        self.status_label.config(
+            text="Error when trying to get GT. Enter GT manually instead!", foreground="Red"
+        )
         self.xbox_gt = StringVar()
         self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
         self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
-        self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
+        self.entered_gt_button = widgets.create_button(
+            self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W"
+        )
         self.gt_entry.focus()
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
 
 def continue_check(self, request_error):
+    """
+    This function continues the check process
+    """
     self.status_label.config(text="Running Check", foreground="black")
     self.mainframe.update()
     if request_error:
@@ -126,7 +137,9 @@ def reset_ui(self):
     This function resets the UI to its default state
     """
     previous_user_id = self.user_id.get()
-    self.function_button_2.config(text="Re-run last check", command=lambda: self.user_id.set(previous_user_id))
+    self.function_button_2.config(
+        text="Re-run last check", command=lambda: self.user_id.set(previous_user_id)
+    )
     self.user_id.set("")
     self.status_label.config(text="Waiting for ID", foreground="black")
     self.gamertag_label.config(text="Unknown")
@@ -257,14 +270,15 @@ def continue_to_next(self):
 
 def make_api_requests(self):
     """
-    Make the api requests to the bot to get the data from sea of thieves official and the invite tracker
+    Make the api requests to the bot to get the data
+    from sea of thieves official and the invite tracker
     """
     try:
         modules.submodules.invite_tracker.api_request(self)
         modules.submodules.sot_official.api_request(self)
         # Add more API requests as needed
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"API Request Error: {e}")
 
 
