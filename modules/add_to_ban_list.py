@@ -2,19 +2,18 @@
 This module adds the specified member to the ban list.
 """
 
-import configparser
 import re
 import runpy
 import time
-import os
 import webbrowser
 from tkinter import Menu, StringVar, Tk, FALSE, ttk
 
 import keyboard
 
 import launcher  # pylint: disable=unused-import
-import modules.submodules.functions.widgets as widgets
-import modules.submodules.functions.window_positions as window_positions
+from modules.submodules.functions import settings
+from modules.submodules.functions import widgets
+from modules.submodules.functions import window_positions
 
 
 class AddToBanList:
@@ -24,25 +23,7 @@ class AddToBanList:
 
     def __init__(self, root):
         # read the delay from the INI file
-        self.config = configparser.ConfigParser()
-        try:
-            # parse config file
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-            )
-            self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
-        except KeyError:
-            self.config["ADD_TO_BAN_LIST"] = {"delay": "15"}
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                "w",
-                encoding="UTF-8",
-            ) as configfile:
-                self.config.write(configfile)
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-            )
-            self.delay = float(self.config["ADD_TO_BAN_LIST"]["delay"])
+        self.delay = settings.read_config()
 
         self.root = root
         self.root.title("Add To Ban List")
@@ -65,14 +46,10 @@ class AddToBanList:
 
         # create the labels and entry boxes
 
-        widgets.create_label(
-            self.mainframe, "Entire Ban Entry as in AoA:", 1, 1, "W, E"
-        )
+        widgets.create_label(self.mainframe, "Entire Ban Entry as in AoA:", 1, 1, "W, E")
 
         self.requiem_ban = StringVar()
-        self.requiem_ban_entry = widgets.create_entry(
-            self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2
-        )
+        self.requiem_ban_entry = widgets.create_entry(self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2)
 
         widgets.create_label(
             self.mainframe,
@@ -92,39 +69,25 @@ class AddToBanList:
         self.reason = StringVar()
 
         widgets.create_label(self.mainframe, "Discord ID:", 3, 1, "E")
-        self.user_id_entry = widgets.create_entry(
-            self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2
-        )
+        self.user_id_entry = widgets.create_entry(self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2)
 
         widgets.create_label(self.mainframe, "Discord Name:", 4, 1, "E")
-        self.discord_name_entry = widgets.create_entry(
-            self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2
-        )
+        self.discord_name_entry = widgets.create_entry(self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2)
 
         widgets.create_label(self.mainframe, "Xbox Gamertag:", 5, 1, "E")
-        self.xbox_gamertag_entry = widgets.create_entry(
-            self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2
-        )
+        self.xbox_gamertag_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2)
 
         widgets.create_label(self.mainframe, "Xbox ID:", 6, 1, "E")
-        self.xbox_id_entry = widgets.create_entry(
-            self.mainframe, self.xbox_id, 6, 2, "W, E", 30, 2
-        )
+        self.xbox_id_entry = widgets.create_entry(self.mainframe, self.xbox_id, 6, 2, "W, E", 30, 2)
 
         widgets.create_label(self.mainframe, "Server:", 7, 1, "E")
         method_options = ["Athena's Vanguard", "Obsidian", "Sea of Grogs"]
-        self.method_combo_box = widgets.create_listbox(
-            self.mainframe, method_options, self.server, 7, 2, "W, E", 2
-        )
+        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.server, 7, 2, "W, E", 2)
 
         widgets.create_label(self.mainframe, "Reason:", 8, 1, "E")
-        self.reason_entry = widgets.create_entry(
-            self.mainframe, self.reason, 8, 2, "W, E", 30, 2
-        )
+        self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 8, 2, "W, E", 30, 2)
 
-        widgets.create_button(
-            self.mainframe, "Back to launcher", self.back, 9, 1, "W, E"
-        )
+        widgets.create_button(self.mainframe, "Back to launcher", self.back, 9, 1, "W, E")
         widgets.create_button(
             self.mainframe,
             "Add Requiem ban",
@@ -133,9 +96,7 @@ class AddToBanList:
             2,
             "W, E",
         )
-        widgets.create_button(
-            self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E"
-        )
+        widgets.create_button(self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E")
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -152,7 +113,7 @@ class AddToBanList:
             ["delay"],
             ["15"],
         ]
-        widgets.CreateSettingsWIndow(self.root, config)
+        widgets.CreateSettingsWindow(self.root, config)
 
     def back(self):
         """
@@ -239,11 +200,7 @@ class AddToBanList:
             gamertag = "N/A"
             discord_tag = "N/A"
             xuid = "N/A"
-            gamertag = (
-                parts[0].split(":")[1].strip()
-                if parts[0].split(":")[1].strip().count("?") < 3
-                else "N/A"
-            )
+            gamertag = parts[0].split(":")[1].strip() if parts[0].split(":")[1].strip().count("?") < 3 else "N/A"
             for i, part in enumerate(parts):
                 if i == 2:
                     discord_tag = part.strip() if part.strip().count("?") < 3 else "N/A"
@@ -291,8 +248,6 @@ def start_script():
     root = Tk()
     window_positions.load_window_position(root)
 
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddToBanList(root)
     root.mainloop()
