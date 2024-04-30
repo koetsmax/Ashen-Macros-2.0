@@ -54,6 +54,7 @@ def _set_default_values(config):
             "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
         },
         "COMMANDS": {"initial_command": "2", "follow_up": "0.4"},
+        "ADD_TO_BAN_LIST": {"delay": "15"},
         "API": {"api_url": "http://ashen_api.famkoets.nl"},
     }
 
