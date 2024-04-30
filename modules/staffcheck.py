@@ -22,65 +22,66 @@ class StaffCheck:
     This class is the main class of the program, initializing the GUI and the other modules.
     """
 
-    def __init__(self, root):
-        self.root = root
-        self.keyboard_lock = threading.Lock()
+    def read_config(self):
+        """
+        Read the config file.
+        """
         self.config = configparser.ConfigParser()
-        try:
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+        self._read_config_file()
+        self._set_default_values()
+
+    def _read_config_file(self):
+        config_file_path = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+        self.config.read(config_file_path)
+        self._read_config_values()
+
+    def _read_config_values(self):
+        section = "STAFFCHECK"
+        if section in self.config:
+            self.good_to_check_message = self.config[section].get(
+                "good_to_check_message", ""
             )
-            self.good_to_check_message = self.config["STAFFCHECK"][
-                "good_to_check_message"
-            ]
-            self.not_good_to_check_message = self.config["STAFFCHECK"][
-                "not_good_to_check_message"
-            ]
-            self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-            self.unprivate_xbox_message = self.config["STAFFCHECK"][
-                "unprivate_xbox_message"
-            ]
-            self.verify_message = self.config["STAFFCHECK"]["verify_message"]
-            self.api_url = self.config["API"]["api_url"]
-            if "https" not in self.api_url and self.api_url != "https://localhost:8000":
-                self.api_url = "https://ashen_api.famkoets.nl"
-                self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
-                with open(
-                    os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                    "w",
-                    encoding="UTF-8",
-                ) as configfile:
-                    self.config.write(configfile)
-        except KeyError:
-            self.config["STAFFCHECK"] = {
+            self.not_good_to_check_message = self.config[section].get(
+                "not_good_to_check_message", ""
+            )
+            self.join_awr_message = self.config[section].get("join_awr_message", "")
+            self.unprivate_xbox_message = self.config[section].get(
+                "unprivate_xbox_message", ""
+            )
+            self.verify_message = self.config[section].get("verify_message", "")
+
+        section = "API"
+        if section in self.config:
+            self.api_url = self.config[section].get("api_url", "")
+
+    def _set_default_values(self):
+        default_config = {
+            "STAFFCHECK": {
                 "good_to_check_message": "userID Good to check -- GT: xboxGT",
                 "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
                 "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
                 "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
                 "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
-            }
-            self.config["API"] = {"api_url": "http://ashen_api.famkoets.nl"}
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                "w",
-                encoding="UTF-8",
-            ) as configfile:
-                self.config.write(configfile)
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-            )
-            self.good_to_check_message = self.config["STAFFCHECK"][
-                "good_to_check_message"
-            ]
-            self.not_good_to_check_message = self.config["STAFFCHECK"][
-                "not_good_to_check_message"
-            ]
-            self.join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-            self.unprivate_xbox_message = self.config["STAFFCHECK"][
-                "unprivate_xbox_message"
-            ]
-            self.verify_message = self.config["STAFFCHECK"]["verify_message"]
-            self.api_url = self.config["API"]["api_url"]
+            },
+            "API": {"api_url": "http://ashen_api.famkoets.nl"},
+        }
+
+        for section, options in default_config.items():
+            if section not in self.config:
+                self.config[section] = options
+                self._write_config_file()
+
+    def _write_config_file(self):
+        config_file_path = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+        with open(config_file_path, "w", encoding="UTF-8") as configfile:
+            self.config.write(configfile)
+
+    def __init__(self, root):
+        self.root = root
+        self.keyboard_lock = threading.Lock()
+
+        self.read_config()
+
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
