@@ -52,7 +52,9 @@ class Launcher:
 
         try:
             # parse config file
-            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
+            self.config.read(
+                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+            )
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
             self.api_url = self.config["API"]["api_url"]
@@ -60,10 +62,14 @@ class Launcher:
             self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
             self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
             with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"), "w", encoding="UTF-8"
+                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
+                "w",
+                encoding="UTF-8",
             ) as configfile:
                 self.config.write(configfile)
-            self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
+            self.config.read(
+                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+            )
             self.initial_command = self.config["COMMANDS"]["initial_command"]
             self.follow_up = self.config["COMMANDS"]["follow_up"]
             self.api_url = self.config["API"]["api_url"]
@@ -80,7 +86,7 @@ class Launcher:
             directory_path = "../launcher"
             result = subprocess.run(
                 ["icacls", directory_path], capture_output=True, text=True, check=True
-            )  # pylint: disable=line-too-long
+            )
             output = result.stdout.strip()
 
             # Check if full control permissions are present for Everyone
@@ -89,8 +95,9 @@ class Launcher:
 
                 if isUserAdmin():
                     subprocess.run(
-                        ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"], check=True
-                    )  # pylint: disable=line-too-long
+                        ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"],
+                        check=True,
+                    )
                     print("Permissions updated to 777")
                 else:
                     # Re-run the program with admin rights
@@ -112,28 +119,36 @@ class Launcher:
         button_data = [
             (
                 "Staffcheck script",
-                lambda: self.start_script("Staffcheck"),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script(
+                    "Staffcheck"
+                ),  # pylint: disable=unnecessary-lambda
                 3,
                 1,
                 "E, W",
             ),
             (
                 "Add to ban list script",
-                lambda: self.start_script("Add to ban list"),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script(
+                    "Add to ban list"
+                ),  # pylint: disable=unnecessary-lambda
                 4,
                 1,
                 "E, W",
             ),
             (
                 "Queue monitor",
-                lambda: self.start_script("Queue"),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script(
+                    "Queue"
+                ),  # pylint: disable=unnecessary-lambda
                 5,
                 1,
                 "E, W",
             ),
             (
                 "Add warning script",
-                lambda: self.start_script("Add warning"),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script(
+                    "Add warning"
+                ),  # pylint: disable=unnecessary-lambda
                 6,
                 1,
                 "E, W",
@@ -151,7 +166,9 @@ class Launcher:
             ),
             (
                 "Check for updates!!!",
-                lambda: self.check_for_updates(False),  # pylint: disable=unnecessary-lambda
+                lambda: self.check_for_updates(
+                    False
+                ),  # pylint: disable=unnecessary-lambda
                 10,
                 1,
                 "E, W",
@@ -168,7 +185,9 @@ class Launcher:
 
         for label, command, row, column, position in button_data:
             if valid_login:
-                widgets.create_button(self.mainframe, label.strip(), command, row, column, position)
+                widgets.create_button(
+                    self.mainframe, label.strip(), command, row, column, position
+                )
 
         if valid_login:
             # Replace the button with a label saying welcome back, username
@@ -192,7 +211,7 @@ class Launcher:
 
         self.api_label = widgets.create_label(
             self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange"
-        )  # pylint: disable=line-too-long
+        )
         widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
@@ -265,8 +284,9 @@ class Launcher:
         Checks for updates.
         """
         request = requests.get(
-            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest", timeout=15
-        )  # pylint: disable=line-too-long
+            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
+            timeout=15,
+        )
         if request.status_code != 200:
             print("Failed to check for updates. Error code: %s", request.status_code)
             return lambda: None
@@ -283,14 +303,23 @@ class Launcher:
         if version.parse(local_version) < version.parse(self.online_version):
             if isUserAdmin():
                 self.update_window(
-                    "There is an update available.\nWould you like to download it?", True
-                )  # pylint: disable=line-too-long
+                    "There is an update available.\nWould you like to download it?",
+                    True,
+                )
             else:
                 self.root.destroy()
                 runAsAdmin()
-        elif version.parse(local_version) == version.parse(self.online_version) and not silent:
-            self.update_window("You are currently on the most up-to-date version.", False)
-        elif version.parse(local_version) > version.parse(self.online_version) and not silent:
+        elif (
+            version.parse(local_version) == version.parse(self.online_version)
+            and not silent
+        ):
+            self.update_window(
+                "You are currently on the most up-to-date version.", False
+            )
+        elif (
+            version.parse(local_version) > version.parse(self.online_version)
+            and not silent
+        ):
             self.update_window("You are currently on the dev version", False)
 
         return lambda: None
@@ -299,7 +328,7 @@ class Launcher:
         """
         Commences the update.
         """
-        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"  # pylint: disable=line-too-long
+        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
@@ -310,7 +339,7 @@ class Launcher:
         """
         Creates the delay config window.
         """
-        # pylint: disable=line-too-long
+
         config = [
             "Customize Delay",
             """
@@ -334,7 +363,9 @@ class Launcher:
         try:
             assert force_new_token is False
             with open(
-                os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
+                os.path.expanduser("~/Documents/Ashen Macros/token"),
+                "r",
+                encoding="UTF-8",
             ) as tokenfile:
                 token = tokenfile.read().strip()
                 assert len(token) == 64
@@ -344,7 +375,9 @@ class Launcher:
             # generate a random token
             token = os.urandom(32).hex()
             with open(
-                os.path.expanduser("~/Documents/Ashen Macros/token"), "w", encoding="UTF-8"
+                os.path.expanduser("~/Documents/Ashen Macros/token"),
+                "w",
+                encoding="UTF-8",
             ) as tokenfile:
                 tokenfile.write(token)
 
@@ -386,7 +419,9 @@ class Launcher:
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(f"{self.api_url}/connection", verify=False, timeout=3)
+            response = requests.get(
+                f"{self.api_url}/connection", verify=False, timeout=3
+            )
 
             if response.status_code != 200:
                 request_error = True
@@ -396,7 +431,11 @@ class Launcher:
                 except Exception as e:  # pylint: disable=broad-except
                     print("Failed to update label: %s", e)
 
-        except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
+        except (
+            requests.exceptions.ConnectionError,
+            TypeError,
+            requests.exceptions.ReadTimeout,
+        ):
             request_error = True
 
         if request_error:
@@ -417,6 +456,8 @@ class Launcher:
 if __name__ == "__main__":
     root = Tk()
     window_positions.load_window_position(root)
-    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     Launcher(root)
     root.mainloop()
