@@ -4,7 +4,7 @@ This module builds the customizable messages and checks if they are valid.
 
 import tkinter as tk
 
-import modules.submodules.functions.widgets as widgets
+from modules.submodules.functions import widgets
 
 
 def build_example_message(self, id_: int, status_label: tk.Label):
@@ -24,11 +24,19 @@ def build_example_message(self, id_: int, status_label: tk.Label):
         self.start_button.state(["disabled"])
         status_label.config(text="Error! Bad Good to Check message!", foreground="Red")
 
-    if not "userID" in not_good_to_check_message or not "xboxGT" in not_good_to_check_message or not "Reason" in not_good_to_check_message:  # pylint: disable=line-too-long
+    if (
+        not "userID" in not_good_to_check_message
+        or not "xboxGT" in not_good_to_check_message
+        or not "Reason" in not_good_to_check_message
+    ):  # pylint: disable=line-too-long
         self.start_button.state(["disabled"])
         status_label.config(text="Error! Bad Not Good to Check message!", foreground="Red")
 
-    if not "userID" in join_awr_message or not "<#702904587027480607>" in join_awr_message or not "Time" in join_awr_message:  # pylint: disable=line-too-long
+    if (
+        not "userID" in join_awr_message
+        or not "<#702904587027480607>" in join_awr_message
+        or not "Time" in join_awr_message
+    ):  # pylint: disable=line-too-long
         if join_awr_message.lower() != "delete":
             self.start_button.state(["disabled"])
             status_label.config(text="Error! Bad Join AWR message!", foreground="Red")
@@ -55,7 +63,9 @@ def build_example_message(self, id_: int, status_label: tk.Label):
     elif id_ == 2:
         join_awr_example_string = join_awr_message
         join_awr_example_string = join_awr_example_string.replace("userID", "@Max")
-        join_awr_example_string = join_awr_example_string.replace("<#702904587027480607>", "Alliance Waiting Room")  # pylint: disable=line-too-long
+        join_awr_example_string = join_awr_example_string.replace(
+            "<#702904587027480607>", "Alliance Waiting Room"
+        )  # pylint: disable=line-too-long
         final_string = join_awr_example_string.replace("Time", "in 10 minutes")
     elif id_ == 3:
         unprivate_xbox_example_string = unprivate_xbox_message
