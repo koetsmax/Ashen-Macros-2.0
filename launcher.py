@@ -303,7 +303,10 @@ class Launcher:
         """
         Commences the update.
         """
-        url = f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/{self.online_version}/Ashen.Macro.installer.exe"
+        url = (
+            "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/"
+            + f"{self.online_version}/Ashen.Macro.installer.exe"
+        )
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
