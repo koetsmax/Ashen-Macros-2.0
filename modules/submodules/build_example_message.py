@@ -63,7 +63,7 @@ def build_example_message(self, id_: int, status_label: tk.Label):
         not_good_example_string = not_good_to_check_message
         not_good_example_string = not_good_example_string.replace("userID", "@Max")
         not_good_example_string = not_good_example_string.replace(
-            "xboxGT", "M A X10815"
+            "xboxGT", "Fleet Admin"
         )
         final_string = not_good_example_string.replace(
             "Reason", "Needs to remove banned friends"
