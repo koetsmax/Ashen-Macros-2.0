@@ -21,6 +21,7 @@ def start_check(self):
     This function validates the user input and sets the currentstate to the appropriate value
     """
     request_error = False
+
     try:
         int(self.user_id.get().strip())
     except ValueError:
@@ -224,6 +225,9 @@ def continue_to_next(self):
 
 
 def make_api_requests(self):
+    """
+    Make the api requests to the bot to get the data from sea of thieves official and the invite tracker
+    """
     try:
         if self.method.get() == "All Commands":
             modules.submodules.invite_tracker.api_request(self)
