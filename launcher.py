@@ -2,7 +2,6 @@
 Creates the launcher window and checks for updates.
 """
 
-import configparser
 import os
 import subprocess
 from tkinter import FALSE, Tk, Toplevel, ttk, TclError
@@ -19,6 +18,7 @@ from modules import fill_new_fleet
 from modules import hammertime_generator
 from modules import rename_fleet
 from modules import staffcheck
+from modules.submodules.functions import settings
 from modules.submodules.verification import start_verification
 from modules.submodules.functions import widgets
 from modules.submodules.functions import window_positions
@@ -34,8 +34,7 @@ class Launcher:
     # Create the launcher window
     def __init__(self, _root):
         self.keyboard_lock = threading.Lock()
-        self.config = configparser.ConfigParser()
-        # create the directory in the users documents folder
+        # create a directory in the users documents folder
         try:
             os.mkdir(os.path.expanduser("~/Documents/Ashen Macros"))
         except FileExistsError:
@@ -49,30 +48,6 @@ class Launcher:
                 local_version = versionfile.read().strip()
         if local_version is None:
             local_version = "0.0.0"
-
-        try:
-            # parse config file
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-            )
-            self.initial_command = self.config["COMMANDS"]["initial_command"]
-            self.follow_up = self.config["COMMANDS"]["follow_up"]
-            self.api_url = self.config["API"]["api_url"]
-        except KeyError:
-            self.config["COMMANDS"] = {"initial_command": "2", "follow_up": "0.4"}
-            self.config["API"] = {"api_url": "https://ashen_api.famkoets.nl"}
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                "w",
-                encoding="UTF-8",
-            ) as configfile:
-                self.config.write(configfile)
-            self.config.read(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-            )
-            self.initial_command = self.config["COMMANDS"]["initial_command"]
-            self.follow_up = self.config["COMMANDS"]["follow_up"]
-            self.api_url = self.config["API"]["api_url"]
 
         valid_login, username = self.check_login(False)
         print(f"Valid login: {valid_login}")
@@ -353,7 +328,7 @@ class Launcher:
             ["2", "0.4"],
         ]
         # pylint enable=line-too-long
-        widgets.CreateSettingsWIndow(self.root, config)
+        widgets.CreateSettingsWindow(self.root, config)
         return lambda: None
 
     def check_login(self, force_new_token) -> bool:
@@ -386,9 +361,10 @@ class Launcher:
         enc_token = token.encode("utf-8")
         enc_token = enc_token.hex()
         try:
+            api_url = settings.read_config()["api_url"]
             payload = {"token": enc_token}
             response = requests.post(
-                f"{self.api_url}/validate_token", json=payload, verify=False, timeout=3
+                f"{api_url}/validate_token", json=payload, verify=False, timeout=3
             )
 
             if response.status_code != 200:
@@ -416,12 +392,11 @@ class Launcher:
         """
         Test the API connection
         """
+        api_url = settings.read_config()["api_url"]
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(
-                f"{self.api_url}/connection", verify=False, timeout=3
-            )
+            response = requests.get(f"{api_url}/connection", verify=False, timeout=3)
 
             if response.status_code != 200:
                 request_error = True
