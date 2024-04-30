@@ -1,6 +1,7 @@
 """
 This module adds the specified member to the ban list.
 """
+
 from tkinter import *
 from tkinter import ttk as tk
 import runpy
@@ -31,18 +32,28 @@ class HammertimeGenerator:
         self.hours_entry = tk.Entry(self.mainframe, width=19, textvariable=self.hours)
         self.hours_entry.grid(column=2, row=2, sticky="W, E")
 
-        tk.Label(self.mainframe, text="Minutes from now:").grid(column=1, row=3, sticky=E)
+        tk.Label(self.mainframe, text="Minutes from now:").grid(
+            column=1, row=3, sticky=E
+        )
         self.minutes = IntVar()
-        self.minutes_entry = tk.Entry(self.mainframe, width=19, textvariable=self.minutes)
+        self.minutes_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.minutes
+        )
         self.minutes_entry.grid(column=2, row=3, sticky="W, E")
 
-        tk.Label(self.mainframe, text="Seconds from now:").grid(column=1, row=4, sticky=E)
+        tk.Label(self.mainframe, text="Seconds from now:").grid(
+            column=1, row=4, sticky=E
+        )
         self.seconds = IntVar()
-        self.seconds_entry = tk.Entry(self.mainframe, width=19, textvariable=self.seconds)
+        self.seconds_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.seconds
+        )
         self.seconds_entry.grid(column=2, row=4, sticky="W, E")
 
         tk.Label(self.mainframe, text="Show:").grid(column=1, row=1, sticky=E)
-        self.method = StringVar(value=f'{time.strftime("%m/%d/%Y", time.localtime(time.time()))}')
+        self.method = StringVar(
+            value=f'{time.strftime("%m/%d/%Y", time.localtime(time.time()))}'
+        )
         self.method_combo_box = tk.Combobox(self.mainframe, textvariable=self.method)
         self.method_combo_box.grid(column=2, row=1, sticky="W, E")
         self.values = (
@@ -58,7 +69,9 @@ class HammertimeGenerator:
         self.method_combo_box["values"] = self.values
 
         # Create the buttons
-        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button = tk.Button(
+            self.mainframe, text="Back to launcher", command=self.back
+        )
         self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
@@ -118,6 +131,8 @@ class HammertimeGenerator:
 def start_script():
     root = Tk()
     window_positions.load_window_position(root)
-    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     HammertimeGenerator(root)
     root.mainloop()
