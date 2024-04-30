@@ -15,7 +15,7 @@ import threading
 import configparser
 
 
-class Warning:
+class AddWarning:
     """
     This class creates the window where the user can fill out all the details about the member they want to warn.
     """
@@ -57,7 +57,9 @@ class Warning:
         # Create the labels and entry boxes
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=3, sticky=E)
         self.user_id = StringVar()
-        self.user_id_entry = tk.Entry(self.mainframe, width=19, textvariable=self.user_id)
+        self.user_id_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.user_id
+        )
         self.user_id_entry.grid(column=2, row=3, sticky="W, E")
 
         tk.Label(
@@ -65,7 +67,9 @@ class Warning:
             text="Custom Reason:",
         ).grid(column=1, row=4, sticky=E)
         self.custom_reason = StringVar()
-        self.custom_reason_entry = tk.Entry(self.mainframe, width=19, textvariable=self.custom_reason)
+        self.custom_reason_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.custom_reason
+        )
         self.custom_reason_entry.grid(column=2, row=4, sticky="W, E")
 
         # create a checkbox for loghistory
@@ -92,7 +96,9 @@ class Warning:
         self.nodm_checkbox.grid(columnspan=2, column=1, row=6, sticky=W)
 
         # Create the buttons
-        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button = tk.Button(
+            self.mainframe, text="Back to launcher", command=self.back
+        )
         self.kill_button.grid(row=81, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
@@ -165,6 +171,8 @@ def start_script():
     root = Tk()
     window_positions.load_window_position(root)
 
-    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
-    Warning(root)
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
+    AddWarning(root)
     root.mainloop()
