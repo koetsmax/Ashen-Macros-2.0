@@ -16,51 +16,65 @@ import modules.submodules.sot_official
 import threading
 
 
+def validate_user_id(self) -> bool:
+    """
+    This function validates the user input
+    """
+    self.user_id.set(self.user_id.get().strip())
+
+    # Check if the user id is a number
+    if not isinstance(self.user_id.get(), str) or not self.user_id.get().isdigit():
+        self.status_label.config(text="ID must be a number", foreground="Red")
+        return False
+
+    # Check if the user id is the correct length
+    lengths = [17, 18, 19]
+    if len(self.user_id.get()) in lengths:
+        return True
+
+    self.status_label.config(
+        text=f"ID is an incorrect length at {len(self.user_id.get())} characters",
+        foreground="Red",
+    )
+    return False
+
+
 def start_check(self):
     """
-    This function validates the user input and sets the currentstate to the appropriate value
+    This function sets the currentstate to the appropriate value
     """
-    request_error = False
-
-    try:
-        int(self.user_id.get().strip())
-    except ValueError:
-        self.status_label.config(text="ID must be a number", foreground="Red")
+    if not validate_user_id(self):
         return
 
-    self.user_id.set(self.user_id.get().strip())
-    lengths = [17, 18, 19]
-    if int(self.user_id.get()) and len(self.user_id.get()) in lengths:
-        payload = {"userID": self.user_id.get()}
-        try:
-            self.status_label.config(text="Sending API request")
-            self.mainframe.update()
-            response = requests.post(f"{self.api_url}/staffcheck", json=payload, verify=False)
+    request_error = False
+    payload = {"userID": self.user_id.get()}
+    try:
+        self.status_label.config(text="Sending API request")
+        self.mainframe.update()
+        response = requests.post(f"{self.api_url}/staffcheck", json=payload, verify=False)
 
-            if response.status_code != 200:
-                request_error = True
-            else:
-                self.user_name = response.json()["discord_name"]
-                self.xbox_gt = response.json()["linked_xbox"]
-                self.mutual_guilds = response.json()["mutual_guilds"]
-                guild_list = "\n".join(self.mutual_guilds)
-                self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
-        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
+        if response.status_code != 200:
             request_error = True
-            print(exc)
-        if not request_error:
-            continue_check(self, request_error)
         else:
-            self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
-            self.xbox_gt = StringVar()
-            self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
-            self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
-            self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
-            self.gt_entry.focus()
-            for child in self.mainframe.winfo_children():
-                child.grid_configure(padx=5, pady=5)
+            self.user_name = response.json()["discord_name"]
+            self.xbox_gt = response.json()["linked_xbox"]
+            self.mutual_guilds = response.json()["mutual_guilds"]
+            guild_list = "\n".join(self.mutual_guilds)
+            self.mutual_guilds_label = widgets.create_label(self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
+        request_error = True
+        print(exc)
+    if not request_error:
+        continue_check(self, request_error)
     else:
-        self.status_label.config(text=f"ID is an incorrect length at {len(self.user_id.get())} characters", foreground="Red")
+        self.status_label.config(text="Error when trying to get GT. Enter GT manually instead!", foreground="Red")
+        self.xbox_gt = StringVar()
+        self.gt_entry_label = widgets.create_label(self.mainframe, "Enter GT:", 9, 1, "E")
+        self.gt_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 9, 2, "W", 30)
+        self.entered_gt_button = widgets.create_button(self.mainframe, "Entered GT", lambda: continue_check(self, request_error), 10, 2, "W")
+        self.gt_entry.focus()
+        for child in self.mainframe.winfo_children():
+            child.grid_configure(padx=5, pady=5)
 
 
 def continue_check(self, request_error):
