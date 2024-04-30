@@ -14,8 +14,8 @@ def execute_command(self, command: str, subcommands: List[str]):
     """
     with self.keyboard_lock:
         config = read_config()
-        initial_command = config["initial_command"]
-        follow_up = config["follow_up"]
+        initial_command = float(config["initial_command"])
+        follow_up = float(config["follow_up"])
         keyboard.write(command)
         time.sleep(initial_command)
         keyboard.press_and_release("tab")
