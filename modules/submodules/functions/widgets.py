@@ -101,7 +101,7 @@ def create_checkbox(
     return checkbox
 
 
-class CreateSettingsWIndow:
+class CreateSettingsWindow:
     """
     Creates a window for settings.
     """
