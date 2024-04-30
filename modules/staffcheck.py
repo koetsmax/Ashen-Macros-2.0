@@ -69,7 +69,12 @@ class StaffCheck:
         for section, options in default_config.items():
             if section not in self.config:
                 self.config[section] = options
-                self._write_config_file()
+            else:
+                for option, value in options.items():
+                    if option not in self.config[section]:
+                        self.config[section][option] = value
+
+        self._write_config_file()
 
     def _write_config_file(self):
         config_file_path = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
