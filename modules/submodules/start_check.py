@@ -121,6 +121,117 @@ def continue_check(self, request_error):
         modules.submodules.elemental_commands.elemental_commands(self, 1)
 
 
+def reset_ui(self):
+    """
+    This function resets the UI to its default state
+    """
+    previous_user_id = self.user_id.get()
+    self.function_button_2.config(text="Re-run last check", command=lambda: self.user_id.set(previous_user_id))
+    self.user_id.set("")
+    self.status_label.config(text="Waiting for ID", foreground="black")
+    self.gamertag_label.config(text="Unknown")
+    self.stop_button.state(["disabled"])
+    try:
+        self.reason.set("")
+        self.reason_entry.destroy()
+    except AttributeError:
+        pass
+
+    self.account_age_label.config(text="N/A", foreground="orange")
+    self.needs_warning_talk_label.config(text="N/A", foreground="orange")
+    self.gamertag_in_notes_label.config(text="N/A", foreground="orange")
+    self.needs_to_be_spoken_to_label.config(text="N/A", foreground="orange")
+    self.needs_mic_check_label.config(text="N/A", foreground="orange")
+    self.anti_alliance_note_label.config(text="N/A", foreground="orange")
+    self.loghistory_status_label.config(text="Waiting", foreground="orange")
+    self.loghistory_fix_issues_button.state(["disabled"])
+    self.jump_to_message_button.state(["disabled"])
+
+    self.invited_by_label.config(text="N/A", foreground="orange")
+    self.times_invited_label.config(text="N/A", foreground="orange")
+    self.num_people_invited_label.config(text="N/A", foreground="orange")
+    self.invite_tracker_status_label.config(text="Waiting", foreground="orange")
+    self.invited_by_loghistory_button.state(["disabled"])
+    self.invited_users_loghistory_button.state(["disabled"])
+
+    self.gamertag_exists_label.config(text="N/A", foreground="orange")
+    self.total_friends_label.config(text="N/A", foreground="orange")
+    # self.ban_ratio_label.config(text="N/A", foreground="orange")
+    self.completion_label.config(text="N/A", foreground="orange")
+    self.total_matches_label.config(text="N/A", foreground="orange")
+    self.partial_matches_label.config(text="N/A", foreground="orange")
+    self.exact_matches_label.config(text="N/A", foreground="orange")
+    self.alts_found_label.config(text="N/A", foreground="orange")
+    self.search_status_label.config(text="Waiting", foreground="orange")
+    self.jump_to_message_search_button.state(["disabled"])
+    self.fix_issues_search_button.state(["disabled"])
+
+    self.total_messages_label.config(text="N/A", foreground="orange")
+    self.messages_with_alliance_label.config(text="N/A", foreground="orange")
+    self.messages_with_hourglass_label.config(text="N/A", foreground="orange")
+    self.messages_with_bad_words_label.config(text="N/A", foreground="orange")
+    self.sot_official_status_label.config(text="N/A", foreground="orange")
+    self.check_for_yourself_button.state(["disabled"])
+
+    self.function_button_2.state(["!disabled"])
+
+    try:
+        self.mutual_guilds_label.destroy()
+    except AttributeError:
+        pass
+
+    self.start_button.state(["!disabled"])
+    self.kill_button.state(["!disabled"])
+    try:
+        self.save_button.state(["!disabled"])
+    except (AttributeError, TclError):
+        pass
+    try:
+        self.reset_button.state(["!disabled"])
+    except (AttributeError, TclError):
+        pass
+    try:
+        self.reason_entry.destroy()
+    except AttributeError:
+        pass
+    self.menu_customize.entryconfigure("Good to check message", state=NORMAL)
+    self.menu_customize.entryconfigure("Not good to check message", state=NORMAL)
+    self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
+    self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
+    self.user_id_entry.config(state=[("!disabled")])
+    self.channel_combo_box.config(state=[("!disabled")])
+    self.method_combo_box.config(state=[("!disabled")])
+    self.pre_check_button.config(state=[("!disabled")])
+
+
+def perform_next_command(self):
+    """
+    This function determines which section of the macro to run next
+    """
+    method = self.method.get()
+    current_state = self.currentstate
+
+    if method == "All Commands":
+        if current_state == "PreCheck":
+            modules.submodules.elemental_commands.elemental_commands(self)
+        elif current_state == "ElementalCommands":
+            modules.submodules.ashen_commands.ashen_commands(self)
+        elif current_state == "AshenCommands":
+            modules.submodules.invite_tracker.invite_tracker(self)
+        elif current_state == "InviteTracker":
+            modules.submodules.sot_official.sot_official(self)
+        elif current_state == "SOTOfficial":
+            modules.submodules.check_message.check_message(self)
+
+    elif method == "Purge Commands":
+        if current_state == "PreCheck":
+            modules.submodules.elemental_commands.elemental_commands(self)
+        elif current_state == "ElementalCommands":
+            modules.submodules.ashen_commands.ashen_commands(self)
+        elif current_state == "AshenCommands":
+            modules.submodules.check_message.check_message(self)
+
+
 def continue_to_next(self):
     """
     This function makes the program continue to the next step
@@ -132,110 +243,16 @@ def continue_to_next(self):
     self.function_button_2.config(text="Re-run last check", command=None)
     self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
-    exempted_methods = ["Purge Commands", "All Commands"]
-    if self.method.get() not in exempted_methods or self.currentstate == "Done":
-        if self.currentstate == "Done":
-            previous_user_id = self.user_id.get()
-            self.function_button_2.config(text="Re-run last check", command=lambda: self.user_id.set(previous_user_id))
-            self.user_id.set("")
-            self.status_label.config(text="Waiting for ID", foreground="black")
-            self.gamertag_label.config(text="Unknown")
-            self.stop_button.state(["disabled"])
-            try:
-                self.reason.set("")
-                self.reason_entry.destroy()
-            except AttributeError:
-                pass
 
-            self.account_age_label.config(text="N/A", foreground="orange")
-            self.needs_warning_talk_label.config(text="N/A", foreground="orange")
-            self.gamertag_in_notes_label.config(text="N/A", foreground="orange")
-            self.needs_to_be_spoken_to_label.config(text="N/A", foreground="orange")
-            self.needs_mic_check_label.config(text="N/A", foreground="orange")
-            self.anti_alliance_note_label.config(text="N/A", foreground="orange")
-            self.loghistory_status_label.config(text="Waiting", foreground="orange")
-            self.loghistory_fix_issues_button.state(["disabled"])
-            self.jump_to_message_button.state(["disabled"])
+    if self.currentstate == "Done":
+        reset_ui(self)
+        return
 
-            self.invited_by_label.config(text="N/A", foreground="orange")
-            self.times_invited_label.config(text="N/A", foreground="orange")
-            self.num_people_invited_label.config(text="N/A", foreground="orange")
-            self.invite_tracker_status_label.config(text="Waiting", foreground="orange")
-            self.invited_by_loghistory_button.state(["disabled"])
-            self.invited_users_loghistory_button.state(["disabled"])
-
-            self.gamertag_exists_label.config(text="N/A", foreground="orange")
-            self.total_friends_label.config(text="N/A", foreground="orange")
-            # self.ban_ratio_label.config(text="N/A", foreground="orange")
-            self.completion_label.config(text="N/A", foreground="orange")
-            self.total_matches_label.config(text="N/A", foreground="orange")
-            self.partial_matches_label.config(text="N/A", foreground="orange")
-            self.exact_matches_label.config(text="N/A", foreground="orange")
-            self.alts_found_label.config(text="N/A", foreground="orange")
-            self.search_status_label.config(text="Waiting", foreground="orange")
-            self.jump_to_message_search_button.state(["disabled"])
-            self.fix_issues_search_button.state(["disabled"])
-
-            self.total_messages_label.config(text="N/A", foreground="orange")
-            self.messages_with_alliance_label.config(text="N/A", foreground="orange")
-            self.messages_with_hourglass_label.config(text="N/A", foreground="orange")
-            self.messages_with_bad_words_label.config(text="N/A", foreground="orange")
-            self.sot_official_status_label.config(text="N/A", foreground="orange")
-            self.check_for_yourself_button.state(["disabled"])
-
-            self.function_button_2.state(["!disabled"])
-
-        try:
-            self.mutual_guilds_label.destroy()
-        except AttributeError:
-            pass
-
-        self.start_button.state(["!disabled"])
-        self.kill_button.state(["!disabled"])
-        try:
-            self.save_button.state(["!disabled"])
-        except (AttributeError, TclError):
-            pass
-        try:
-            self.reset_button.state(["!disabled"])
-        except (AttributeError, TclError):
-            pass
-        try:
-            self.reason_entry.destroy()
-        except AttributeError:
-            pass
-        self.menu_customize.entryconfigure("Good to check message", state=NORMAL)
-        self.menu_customize.entryconfigure("Not good to check message", state=NORMAL)
-        self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
-        self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
-        self.user_id_entry.config(state=[("!disabled")])
-        self.channel_combo_box.config(state=[("!disabled")])
-        self.method_combo_box.config(state=[("!disabled")])
-        self.pre_check_button.config(state=[("!disabled")])
-    elif self.method.get() == "All Commands":
-        if self.currentstate == "PreCheck":
-            modules.submodules.elemental_commands.elemental_commands(self)
-        elif self.currentstate == "ElementalCommands":
-            modules.submodules.ashen_commands.ashen_commands(self)
-        elif self.currentstate == "AshenCommands":
-            modules.submodules.invite_tracker.invite_tracker(self)
-        elif self.currentstate == "InviteTracker":
-            modules.submodules.sot_official.sot_official(self)
-        elif self.currentstate == "SOTOfficial":
-            modules.submodules.check_message.check_message(self)
-        elif self.currentstate == "CheckMessage":
-            self.currentstate = "Done"
-            modules.submodules.start_check.continue_to_next(self)
-    elif self.method.get() == "Purge Commands":
-        if self.currentstate == "PreCheck":
-            modules.submodules.elemental_commands.elemental_commands(self)
-        elif self.currentstate == "ElementalCommands":
-            modules.submodules.ashen_commands.ashen_commands(self)
-        elif self.currentstate == "AshenCommands":
-            modules.submodules.check_message.check_message(self)
-        elif self.currentstate == "CheckMessage":
-            self.currentstate = "Done"
-            modules.submodules.start_check.continue_to_next(self)
+    if self.method.get() not in ["Purge Commands", "All Commands"]:
+        self.currentstate = "Done"
+        continue_to_next(self)
+    else:
+        perform_next_command(self)
 
 
 def make_api_requests(self):
