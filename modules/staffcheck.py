@@ -2,19 +2,17 @@
 This module creates the GUI for the staff check module.
 """
 
-import configparser
 import runpy
 import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
 from typing import Union
-import os
 
 import launcher  # pylint: disable=unused-import
-import modules.submodules.functions.widgets as widgets
-import modules.submodules.functions.window_positions as window_positions
-import modules.submodules.start_check
-
+from modules.submodules.functions import widgets
+from modules.submodules.functions import window_positions
+from modules.submodules.functions import settings
 from .submodules.build_example_message import build_example_message
+import modules.submodules.start_check
 
 
 class StaffCheck:
@@ -22,70 +20,9 @@ class StaffCheck:
     This class is the main class of the program, initializing the GUI and the other modules.
     """
 
-    def read_config(self):
-        """
-        Read the config file.
-        """
-        self.config = configparser.ConfigParser()
-        self._read_config_file()
-        self._set_default_values()
-
-    def _read_config_file(self):
-        config_file_path = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-        self.config.read(config_file_path)
-        self._read_config_values()
-
-    def _read_config_values(self):
-        section = "STAFFCHECK"
-        if section in self.config:
-            self.good_to_check_message = self.config[section].get(
-                "good_to_check_message", ""
-            )
-            self.not_good_to_check_message = self.config[section].get(
-                "not_good_to_check_message", ""
-            )
-            self.join_awr_message = self.config[section].get("join_awr_message", "")
-            self.unprivate_xbox_message = self.config[section].get(
-                "unprivate_xbox_message", ""
-            )
-            self.verify_message = self.config[section].get("verify_message", "")
-
-        section = "API"
-        if section in self.config:
-            self.api_url = self.config[section].get("api_url", "")
-
-    def _set_default_values(self):
-        default_config = {
-            "STAFFCHECK": {
-                "good_to_check_message": "userID Good to check -- GT: xboxGT",
-                "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
-                "join_awr_message": "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)",
-                "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
-                "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
-            },
-            "API": {"api_url": "http://ashen_api.famkoets.nl"},
-        }
-
-        for section, options in default_config.items():
-            if section not in self.config:
-                self.config[section] = options
-            else:
-                for option, value in options.items():
-                    if option not in self.config[section]:
-                        self.config[section][option] = value
-
-        self._write_config_file()
-
-    def _write_config_file(self):
-        config_file_path = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
-        with open(config_file_path, "w", encoding="UTF-8") as configfile:
-            self.config.write(configfile)
-
     def __init__(self, root):
         self.root = root
         self.keyboard_lock = threading.Lock()
-
-        self.read_config()
 
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
@@ -553,43 +490,32 @@ class CustomizeWindow:
         status_label: ttk.Label,
     ):
         def save_changes(self):
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                "w",
-                encoding="UTF-8",
-            ) as configfile:
-                try:
-                    self.example_label.destroy()
-                    self.config["STAFFCHECK"][type_] = self.message.get()
-                    build_example_message(self, id_, status_label)
-                except AttributeError:
-                    pass
-                self.config.write(configfile)
-                build_example_message(self, 99, status_label)
+            settings.set_custom_value("STAFFCHECK", type_, self.message.get())
+            try:
+                self.example_label.destroy()
+                build_example_message(self, id_, status_label)
+            except AttributeError:
+                pass
+
+            build_example_message(self, 99, status_label)
 
         def reset_to_default(self):
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/settings.ini"),
-                "w",
-                encoding="UTF-8",
-            ) as configfile:
-                self.example_label.destroy()
-                self.config["STAFFCHECK"][type_] = default
-                self.config.write(configfile)
-                self.message.set(default)
-                build_example_message(self, id_, status_label)
+            settings.set_custom_value("STAFFCHECK", type_, default)
+            self.example_label.destroy()
+            self.message.set(default)
+            build_example_message(self, id_, status_label)
 
         self.mainframe = mainframe
         self.start_button = start_button
-        self.config = configparser.ConfigParser()
-        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
+        config = settings.read_config()
+
         self.customize_window = Toplevel()
         self.customize_window.title("Customize")
 
         widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
         widgets.create_label(self.customize_window, f"{type_}:", 3, 1, "W")
 
-        self.message = StringVar(value=self.config["STAFFCHECK"][type_])
+        self.message = StringVar(value=config[type_])
         widgets.create_entry(self.customize_window, self.message, 4, 1, "W, E", 75)
 
         build_example_message(self, id_, status_label)
