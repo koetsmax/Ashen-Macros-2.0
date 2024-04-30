@@ -1,6 +1,7 @@
 """
 This module checks if a previous check has been done on the user.
 """
+
 import keyboard
 import modules.submodules.start_check
 from .functions.clear_typing_bar import clear_typing_bar
@@ -36,5 +37,7 @@ def search_gamertag(self):
     keyboard.write(f"in:#on-duty-chat {self.xbox_gt}")
     keyboard.press_and_release("enter")
 
-    self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.determine_method(self))
+    self.start_button.config(
+        text="Continue", command=lambda: modules.submodules.start_check.determine_method(self)
+    )
     self.start_button.state(["!disabled"])

@@ -2,8 +2,11 @@
 This function attempts to clear the message bar in discord
 and get rid of any other prompts that might be open
 """
+
 import keyboard
-from .activate_window import activate_window
+from .activate_window import (  # pylint: disable=relative-beyond-top-level
+    activate_window,
+)
 
 
 def clear_typing_bar():

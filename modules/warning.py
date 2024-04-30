@@ -2,20 +2,18 @@
 This module adds a warning to the specified member.
 """
 
-import os
+import runpy
+import threading
 from tkinter import *
 from tkinter import ttk as tk
+from modules.submodules.functions import window_positions
 from modules.submodules.functions.switch_channel import switch_channel
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
-import runpy
-import launcher
-import modules.submodules.functions.window_positions as window_positions
-import threading
-import configparser
+import launcher  # pylint: disable=unused-import
 
 
-class Warning:
+class AddWarning:
     """
     This class creates the window where the user can fill out all the details about the member they want to warn.
     """
@@ -23,8 +21,6 @@ class Warning:
     def __init__(self, root):
         self.keyboard_lock = threading.Lock()
         self.root = root
-        self.config = configparser.ConfigParser()
-        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 
@@ -166,5 +162,5 @@ def start_script():
     window_positions.load_window_position(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
-    Warning(root)
+    AddWarning(root)
     root.mainloop()

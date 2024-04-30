@@ -6,18 +6,20 @@ import os
 import runpy
 import time
 import keyboard
+from modules.submodules.functions import window_positions
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
-import modules.submodules.functions.window_positions as window_positions
 
 
 def start_verification(self):
     """
-    This function sends a message in a specific channel, which notifies the api to start the verification process
+    This function sends a message to the bot which starts the verification process
     """
     self.verify_button.state(["disabled"])
     time.sleep(3)
-    with open(os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8") as tokenfile:
+    with open(
+        os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
+    ) as tokenfile:
         token = tokenfile.read().strip()
 
     enc_token = token.encode("utf-8")
