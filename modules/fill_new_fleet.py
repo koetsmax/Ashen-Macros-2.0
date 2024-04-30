@@ -1,12 +1,14 @@
 """
 This module fills a new fleet with the specified queue members.
 """
+
+import runpy
+import launcher
 from tkinter import *
 from tkinter import ttk as tk
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
-import runpy
-import launcher
+
 import modules.submodules.functions.window_positions as window_positions
 
 
@@ -67,7 +69,9 @@ class FillNewFleet:
         ).grid(column=1, row=7, columnspan=5, sticky="W, E")
 
         # Create the buttons
-        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
+        self.kill_button = tk.Button(
+            self.mainframe, text="Back to launcher", command=self.back
+        )
         self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
@@ -178,6 +182,8 @@ def start_script():
     root = Tk()
     window_positions.load_window_position(root)
 
-    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
+    root.protocol(
+        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
+    )
     FillNewFleet(root)
     root.mainloop()
