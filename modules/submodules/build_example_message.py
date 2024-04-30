@@ -5,17 +5,20 @@ This module builds the customizable messages and checks if they are valid.
 import tkinter as tk
 
 from modules.submodules.functions import widgets
+from modules.submodules.functions import settings
 
 
 def build_example_message(self, id_: int, status_label: tk.Label):
     """
     This module builds the customizable messages and checks if they are valid.
     """
-    good_to_check_message = self.config["STAFFCHECK"]["good_to_check_message"]
-    not_good_to_check_message = self.config["STAFFCHECK"]["not_good_to_check_message"]
-    join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
-    unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
-    verify_message = self.config["STAFFCHECK"]["verify_message"]
+    config = settings.read_config()
+
+    good_to_check_message = config["good_to_check_message"]
+    not_good_to_check_message = config["not_good_to_check_message"]
+    join_awr_message = config["join_awr_message"]
+    unprivate_xbox_message = config["unprivate_xbox_message"]
+    verify_message = config["verify_message"]
     final_string = ""
     self.start_button.state(["!disabled"])
     status_label.config(text="Waiting for ID", foreground="Black")
