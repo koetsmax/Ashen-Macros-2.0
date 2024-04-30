@@ -1,9 +1,12 @@
 """
 This module attempts to switch between discord channels
 """
+
 import time
 import keyboard
-from .clear_typing_bar import clear_typing_bar
+from .clear_typing_bar import (  # pylint: disable=relative-beyond-top-level
+    clear_typing_bar,
+)
 
 
 def switch_channel(self, channel: str, *args, **kwargs):
