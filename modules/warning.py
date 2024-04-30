@@ -2,17 +2,15 @@
 This module adds a warning to the specified member.
 """
 
-import os
+import runpy
+import threading
 from tkinter import *
 from tkinter import ttk as tk
+from modules.submodules.functions import window_positions
 from modules.submodules.functions.switch_channel import switch_channel
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
-import runpy
-import launcher
-import modules.submodules.functions.window_positions as window_positions
-import threading
-import configparser
+import launcher  # pylint: disable=unused-import
 
 
 class AddWarning:
@@ -23,8 +21,6 @@ class AddWarning:
     def __init__(self, root):
         self.keyboard_lock = threading.Lock()
         self.root = root
-        self.config = configparser.ConfigParser()
-        self.config.read(os.path.expanduser("~/Documents/Ashen Macros/settings.ini"))
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 
@@ -57,9 +53,7 @@ class AddWarning:
         # Create the labels and entry boxes
         tk.Label(self.mainframe, text="Discord ID:").grid(column=1, row=3, sticky=E)
         self.user_id = StringVar()
-        self.user_id_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.user_id
-        )
+        self.user_id_entry = tk.Entry(self.mainframe, width=19, textvariable=self.user_id)
         self.user_id_entry.grid(column=2, row=3, sticky="W, E")
 
         tk.Label(
@@ -67,9 +61,7 @@ class AddWarning:
             text="Custom Reason:",
         ).grid(column=1, row=4, sticky=E)
         self.custom_reason = StringVar()
-        self.custom_reason_entry = tk.Entry(
-            self.mainframe, width=19, textvariable=self.custom_reason
-        )
+        self.custom_reason_entry = tk.Entry(self.mainframe, width=19, textvariable=self.custom_reason)
         self.custom_reason_entry.grid(column=2, row=4, sticky="W, E")
 
         # create a checkbox for loghistory
@@ -96,9 +88,7 @@ class AddWarning:
         self.nodm_checkbox.grid(columnspan=2, column=1, row=6, sticky=W)
 
         # Create the buttons
-        self.kill_button = tk.Button(
-            self.mainframe, text="Back to launcher", command=self.back
-        )
+        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
         self.kill_button.grid(row=81, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
@@ -171,8 +161,6 @@ def start_script():
     root = Tk()
     window_positions.load_window_position(root)
 
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddWarning(root)
     root.mainloop()
