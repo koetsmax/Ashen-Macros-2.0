@@ -20,9 +20,13 @@ def after_check_message(self):
         text="Neither of these apply",
         command=lambda: modules.submodules.start_check.continue_to_next(self),
     )
-    self.kill_button.config(text="Open modmail to unprivate Xbox", command=lambda: unprivate_xbox(self))
+    self.kill_button.config(
+        text="Open modmail to unprivate Xbox", command=lambda: unprivate_xbox(self)
+    )
     self.start_button.config(text="Needs to join the AWR", command=lambda: join_awr(self))
-    self.function_button_2.config(text="Needs to verify account", command=lambda: verify_account(self))
+    self.function_button_2.config(
+        text="Needs to verify account", command=lambda: verify_account(self)
+    )
     self.kill_button.state(["!disabled"])
     self.function_button_2.state(["!disabled"])
 
@@ -47,8 +51,12 @@ def unprivate_xbox(self):
     clear_typing_bar()
     built_unprivate_xbox_message = self.config["STAFFCHECK"]["unprivate_xbox_message"]
     if built_unprivate_xbox_message.lower() != "delete":
-        built_unprivate_xbox_message = built_unprivate_xbox_message.replace("userID", f"<@{self.user_id.get()}>")
-        built_unprivate_xbox_message = built_unprivate_xbox_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        built_unprivate_xbox_message = built_unprivate_xbox_message.replace(
+            "userID", f"<@{self.user_id.get()}>"
+        )
+        built_unprivate_xbox_message = built_unprivate_xbox_message.replace(
+            "Time", f"<t:{round(time.time() + 600)}:R>"
+        )
         keyboard.write(built_unprivate_xbox_message)
         keyboard.press_and_release("enter")
     time.sleep(2)
@@ -67,8 +75,12 @@ def join_awr(self):
     execute_command(self, joinawr[0], joinawr[1:])
     built_join_awr_message = self.config["STAFFCHECK"]["join_awr_message"]
     if built_join_awr_message.lower() != "delete":
-        built_join_awr_message = built_join_awr_message.replace("userID", f"<@{self.user_id.get()}>")
-        built_join_awr_message = built_join_awr_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        built_join_awr_message = built_join_awr_message.replace(
+            "userID", f"<@{self.user_id.get()}>"
+        )
+        built_join_awr_message = built_join_awr_message.replace(
+            "Time", f"<t:{round(time.time() + 600)}:R>"
+        )
         keyboard.write(built_join_awr_message)
         keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
@@ -85,7 +97,9 @@ def verify_account(self):
     built_verify_message = self.config["STAFFCHECK"]["verify_message"]
     if built_verify_message.lower() != "delete":
         built_verify_message = built_verify_message.replace("userID", f"<@{self.user_id.get()}>")
-        built_verify_message = built_verify_message.replace("Time", f"<t:{round(time.time() + 600)}:R>")
+        built_verify_message = built_verify_message.replace(
+            "Time", f"<t:{round(time.time() + 600)}:R>"
+        )
         keyboard.write(built_verify_message)
         keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
