@@ -55,6 +55,7 @@ def _set_default_values(config):
         },
         "COMMANDS": {"initial_command": "2", "follow_up": "0.4"},
         "ADD_TO_BAN_LIST": {"delay": "15"},
+        "WINDOW": {"x_offset": "0", "y_offset": "0"},
         "API": {"api_url": "http://ashen_api.famkoets.nl"},
     }
 
