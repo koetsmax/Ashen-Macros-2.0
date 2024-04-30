@@ -14,6 +14,7 @@ import modules.submodules.functions.widgets as widgets
 import modules.submodules.invite_tracker
 import modules.submodules.pre_check
 import modules.submodules.sot_official
+from modules.submodules.functions.settings import read_config
 
 
 def validate_user_id(self) -> bool:
@@ -51,8 +52,9 @@ def start_check(self):
     try:
         self.status_label.config(text="Sending API request")
         self.mainframe.update()
+        config = read_config()
         response = requests.post(
-            f"{self.api_url}/staffcheck", json=payload, verify=False, timeout=20
+            f"{config["api_url"]}/staffcheck", json=payload, verify=False, timeout=20
         )
 
         if response.status_code != 200:

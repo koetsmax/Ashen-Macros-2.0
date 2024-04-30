@@ -8,6 +8,9 @@ import requests
 
 import modules.submodules.start_check
 
+from .functions.settings import (  # pylint: disable=relative-beyond-top-level
+    read_config,
+)
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
@@ -61,8 +64,11 @@ def api_request(self):
     self.invite_tracker_status_label.config(text="Sending", foreground="orange")
     self.mainframe.update()
     try:
+        config = read_config()
         payload = {"userID": self.user_id.get()}
-        response = requests.post(f"{self.api_url}/invite", json=payload, verify=False, timeout=20)
+        response = requests.post(
+            f"{config["api_url"]}/invite", json=payload, verify=False, timeout=20
+        )
 
         if response.status_code != 200:
             request_error = True
@@ -78,11 +84,15 @@ def api_request(self):
             self.invited_by_label.config(text=inviter, foreground="green")
             self.times_invited_label.config(
                 text=f"{len(response_json['inviters_names'])} time(s)",
-                foreground="green" if len(response_json["inviters_ids"]) < 5 else "orange",
+                foreground=(
+                    "green" if len(response_json["inviters_ids"]) < 5 else "orange"
+                ),
             )
             self.num_people_invited_label.config(
                 text=f"{len(response_json['invitees_ids'])}",
-                foreground="green" if len(response_json["invitees_ids"]) < 5 else "orange",
+                foreground=(
+                    "green" if len(response_json["invitees_ids"]) < 5 else "orange"
+                ),
             )
 
             self.invite_tracker_status_label.config(text="Success", foreground="green")
@@ -97,7 +107,11 @@ def api_request(self):
                 self.invitees_ids = response_json["invitees_ids"]
                 self.invited_users_loghistory_button.state(["!disabled"])
 
-    except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
+    except (
+        requests.exceptions.ConnectionError,
+        TypeError,
+        requests.exceptions.ReadTimeout,
+    ):
         request_error = True
 
     if request_error:
