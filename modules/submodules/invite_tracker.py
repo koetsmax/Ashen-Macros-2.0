@@ -1,9 +1,9 @@
 """
 This module checks how a user was invited to the server.
 """
+
 import time
 
-# import keyboard
 import requests
 
 import modules.submodules.start_check
@@ -20,15 +20,7 @@ def invite_tracker(self):
     self.currentstate = "InviteTracker"
     if self.method.get() == "Invite Tracker":
         api_request(self)
-    # switch_channel(self, "#invite-tracker")
-    # clear_typing_bar()
-    # keyboard.press_and_release("ctrl+f")
-    # keyboard.press_and_release("ctrl+a")
-    # keyboard.press_and_release("backspace")
-    # keyboard.write(f"in:#invite-tracker {self.user_id.get()}")
-    # keyboard.press_and_release("enter")
 
-    # self.start_button.config(text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self))
     self.start_button.state(["!disabled"])
     modules.submodules.start_check.continue_to_next(self)
 
@@ -75,8 +67,14 @@ def api_request(self):
             else:
                 inviter = "Unknown"
             self.invited_by_label.config(text=inviter, foreground="green")
-            self.times_invited_label.config(text=f"{len(response_json['inviters_names'])} time(s)", foreground="green" if len(response_json["inviters_ids"]) < 5 else "orange")
-            self.num_people_invited_label.config(text=f"{len(response_json['invitees_ids'])}", foreground="green" if len(response_json["invitees_ids"]) < 5 else "orange")
+            self.times_invited_label.config(
+                text=f"{len(response_json['inviters_names'])} time(s)",
+                foreground="green" if len(response_json["inviters_ids"]) < 5 else "orange",
+            )
+            self.num_people_invited_label.config(
+                text=f"{len(response_json['invitees_ids'])}",
+                foreground="green" if len(response_json["invitees_ids"]) < 5 else "orange",
+            )
 
             self.invite_tracker_status_label.config(text="Success", foreground="green")
 
