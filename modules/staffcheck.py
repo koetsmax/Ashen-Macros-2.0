@@ -8,11 +8,11 @@ from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
 from typing import Union
 
 import launcher  # pylint: disable=unused-import
+import modules.submodules.start_check
 from modules.submodules.functions import widgets
 from modules.submodules.functions import window_positions
 from modules.submodules.functions import settings
 from .submodules.build_example_message import build_example_message
-import modules.submodules.start_check
 
 
 class StaffCheck:
@@ -120,7 +120,14 @@ class StaffCheck:
         )
         self.function_button_2.state(["disabled"])
 
-        self.stop_button = widgets.create_button(self.mainframe, "Stop check!", lambda: modules.submodules.check_message.stop_check(self), 7, 2, "W, E")  # type: ignore
+        self.stop_button = widgets.create_button(
+            self.mainframe,
+            "Stop check!",
+            lambda: modules.submodules.check_message.stop_check(self),
+            7,
+            2,
+            "W, E",
+        )
         self.stop_button.state(["disabled"])
 
         self.status_label = widgets.create_label(
@@ -309,7 +316,9 @@ class StaffCheck:
         self.total_friends_label = widgets.create_label(
             self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
         )
-        # self.ban_ratio_label = widgets.create_label(self.search_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        # self.ban_ratio_label = widgets.create_label(
+        #     self.search_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
+        # )
         self.completion_label = widgets.create_label(
             self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
         )
