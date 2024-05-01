@@ -46,8 +46,6 @@ class Launcher:
         except FileNotFoundError:
             with open("version", "r", encoding="UTF-8") as versionfile:
                 local_version = versionfile.read().strip()
-        if local_version is None:
-            local_version = "0.0.0"
 
         valid_login, username = self.check_login(False)
         print(f"Valid login: {valid_login}")
