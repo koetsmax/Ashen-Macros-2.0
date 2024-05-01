@@ -35,10 +35,7 @@ class Launcher:
     def __init__(self, _root):
         self.keyboard_lock = threading.Lock()
         # create a directory in the users documents folder
-        try:
-            os.mkdir(os.path.expanduser("~/Documents/Ashen Macros"))
-        except FileExistsError:
-            pass
+        os.makedirs(os.path.expanduser("~/Documents/Ashen Macros"), exist_ok=True)
 
         try:
             with open("_internal/version", "r", encoding="UTF-8") as versionfile:
