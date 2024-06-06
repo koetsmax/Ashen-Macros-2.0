@@ -6,3 +6,4 @@ pyuac
 pyautogui
 packaging
 python-socketio
+filelock
