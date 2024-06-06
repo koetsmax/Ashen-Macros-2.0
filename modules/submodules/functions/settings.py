@@ -40,6 +40,9 @@ def set_custom_value(section, option, value):
 
 
 def _read_config_file(config) -> None:
+    # validate that the file exists
+    if not os.path.exists(CONFIG_FILE_PATH):
+        raise FileNotFoundError("Config file not found")
     config.read(CONFIG_FILE_PATH)
 
 
