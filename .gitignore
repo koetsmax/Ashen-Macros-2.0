@@ -1,5 +1,5 @@
 ashen-macros
-api_tester.py
+api_tester.spec
 openai.token
 pyproject.toml
 /.vscode
