@@ -391,6 +391,9 @@ class Launcher:
         Test the API connection
         """
         api_url = settings.read_config()["api_url"]
+        if api_url == "http://ashen_api.famkoets.nl":
+            api_url = "https://ashen_api.famkoets.nl"
+            settings.set_custom_value("API", "api_url", api_url)
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
