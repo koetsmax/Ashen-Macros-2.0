@@ -204,6 +204,11 @@ def ashen_api_request(self):
         ):
             request_error = True
 
+    else:
+        self.search_status_label.config(
+            text="Not sending request", foreground="green"
+        )
+
     if request_error:
         self.search_status_label.config(text="Request failed", foreground="red")
 

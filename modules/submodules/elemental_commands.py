@@ -246,7 +246,7 @@ def elemental_api_request(self):
             request_error = True
     else:
         self.loghistory_status_label.config(
-            text="Not sending request", foreground="red"
+            text="Not sending request", foreground="green"
         )
 
     if request_error:
