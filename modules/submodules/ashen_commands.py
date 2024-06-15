@@ -58,7 +58,7 @@ def needs_to_remove_friends(self):
     """
     This function notes the member as not good to check if they have to remove banned friends
     """
-    self.reason = StringVar(value="Needs to remove banned friends:")
+    self.reason.set("Needs to remove banned friends:")
     not_good_to_check(self)
 
 
@@ -66,7 +66,7 @@ def needs_to_unprivate_xbox(self):
     """
     This function notes the member as not good to check if they have to unprivate their Xbox
     """
-    self.reason = StringVar(value="Needs to unprivate xbox")
+    self.reason.set("Needs to unprivate xbox")
     not_good_to_check(self)
 
 
@@ -74,7 +74,7 @@ def needs_to_verify(self):
     """
     This function notes the member as not good to check if they have to verify their account
     """
-    self.reason = StringVar(value="Needs to verify account")
+    self.reason.set("Needs to verify account")
     not_good_to_check(self)
 
 
