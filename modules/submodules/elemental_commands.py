@@ -161,8 +161,9 @@ def elemental_api_request(self):
         )
         self.mainframe.update()
         try:
-            #! Still perform the request even if the user has no gamertag.casefold
+            #! Still perform the request even if the user has no gamertag.
             #! So we can run the loghistory API
+            self.loghistory_fix_issues_button.state(["disabled"])
             payload = {
                 "userID": self.user_id.get(),
                 "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij",
