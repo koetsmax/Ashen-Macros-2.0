@@ -12,7 +12,9 @@ class ThreadedSocketClient:
         self.events = EventManager(asyncd=False)
         self.added_events = set()
         self.emitQueue = queue.Queue()
-        self.thread = threading.Thread(target=self.thread_func, args=[url, auth], daemon=True)
+        self.thread = threading.Thread(
+            target=self.thread_func, args=[url, auth], daemon=True
+        )
         self.thread.start()
 
     async def socketio_thread(self, url, auth):
