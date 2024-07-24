@@ -294,7 +294,7 @@ class StaffCheck:
         widgets.create_label(self.search_labelframe, "Alts Found:", 8, 1, "W, E")
         widgets.create_label(self.search_labelframe, "Status:", 9, 1, "W, E")
 
-        self.fix_issues_search_button = widgets.create_button(
+        self.search_fix_issues_button = widgets.create_button(
             self.search_labelframe,
             "Fix issues",
             lambda: modules.submodules.ashen_commands.fix_issues(self),
@@ -304,7 +304,7 @@ class StaffCheck:
             1,
             2,
         )
-        self.fix_issues_search_button.state(["disabled"])
+        self.search_fix_issues_button.state(["disabled"])
         self.jump_to_message_search_button = widgets.create_button(
             self.search_labelframe, "Jump to message", lambda: None, 11, 1, "W, E", 1, 2
         )

@@ -179,7 +179,7 @@ def reset_ui(self):
     self.alts_found_label.config(text="N/A", foreground="orange")
     self.search_status_label.config(text="Waiting", foreground="orange")
     self.jump_to_message_search_button.state(["disabled"])
-    self.fix_issues_search_button.state(["disabled"])
+    self.search_fix_issues_button.state(["disabled"])
 
     self.total_messages_label.config(text="N/A", foreground="orange")
     self.messages_with_alliance_label.config(text="N/A", foreground="orange")

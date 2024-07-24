@@ -108,6 +108,7 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
+            self.search_fix_issues_button.state(["disabled"])
             payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
             config = read_config()
             response = requests.post(
@@ -195,7 +196,7 @@ def ashen_api_request(self):
                     foreground="red" if self.search_issues else "green",
                 )
                 if self.search_issues:
-                    self.fix_issues_search_button.state(["!disabled"])
+                    self.search_fix_issues_button.state(["!disabled"])
 
         except (
             requests.exceptions.ConnectionError,
