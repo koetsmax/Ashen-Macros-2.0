@@ -19,7 +19,6 @@ elif url == "2":
 elif url == "3":
     URL = PRODUCTION_URL
 
-payload = {"userID": "287048710519783426", "gamertag": "R1chardb68"}
 payload = {"test": "true"}
 # test the connection GET endpoint
 
