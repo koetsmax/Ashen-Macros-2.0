@@ -414,6 +414,7 @@ class Launcher:
             requests.exceptions.ConnectionError,
             TypeError,
             requests.exceptions.ReadTimeout,
+            requests.exceptions.InvalidSchema,
         ):
             request_error = True
 
