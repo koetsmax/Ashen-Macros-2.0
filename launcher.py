@@ -431,9 +431,12 @@ class Launcher:
 
 if __name__ == "__main__":
     root = Tk()
+
     window_positions.load_window_position(root)
     root.protocol(
         "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
     )
+
     Launcher(root)
+
     root.mainloop()

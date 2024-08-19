@@ -5,7 +5,10 @@ This is a helper module for creating widgets.
 from tkinter import ttk
 import tkinter as tk
 from typing import List, Callable, Union
-from .settings import read_config, set_custom_value  # pylint: disable=relative-beyond-top-level
+from .settings import (  # pylint: disable=relative-beyond-top-level
+    read_config,
+    set_custom_value,
+)
 
 
 def create_button(
@@ -23,7 +26,9 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    button.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return button
 
 
@@ -41,7 +46,9 @@ def create_label(
     Creates a label widget and places it in the parent widget.
     """
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    label.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return label
 
 
