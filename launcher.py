@@ -145,7 +145,7 @@ class Launcher:
             ),
             ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
             (
-                "Command Delay",
+                "Settings",
                 lambda: self.delay_config(),  # pylint: disable=unnecessary-lambda
                 81,
                 1,
@@ -318,12 +318,13 @@ class Launcher:
             """
             Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)
             Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
-            All of these delays need to be entered in seconds (ex. 2 or 2.5)
+            API URL: The URL of the API that the macro uses. Leave this default unless you know what you are doing.
+            All of the delays need to be entered in seconds (ex. 2 or 2.5)
             """,
-            ["Delay initial command:", "Delay follow up:"],
-            "COMMANDS",
-            ["initial_command", "follow_up"],
-            ["2", "0.4"],
+            ["Delay initial command:", "Delay follow up:", "API URL:"],
+            ["COMMANDS", "COMMANDS", "API"],
+            ["initial_command", "follow_up", "api_url"],
+            ["2", "0.4", "https://ashen_api.famkoets.nl"],
         ]
         # pylint enable=line-too-long
         widgets.CreateSettingsWindow(self.root, config)
