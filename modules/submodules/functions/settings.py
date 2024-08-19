@@ -1,6 +1,6 @@
 import configparser
 import os
-from filelock import FileLock, Timeout
+from filelock import FileLock
 
 CONFIG_FILE_PATH = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
 LOCK_FILE_PATH = CONFIG_FILE_PATH + ".lock"
