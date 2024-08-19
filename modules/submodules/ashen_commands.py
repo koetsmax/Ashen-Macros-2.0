@@ -4,7 +4,6 @@ This modules handles all of the ashen commands
 
 import datetime
 import threading
-from tkinter import StringVar
 
 import requests
 

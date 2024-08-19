@@ -1,5 +1,4 @@
 import requests
-import json
 
 LOCAL_URL = "https://localhost:8000"
 TESTING_URL = "https://192.168.1.2:8000"
