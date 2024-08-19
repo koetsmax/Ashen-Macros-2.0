@@ -73,7 +73,7 @@ def api_request(self):
         config = read_config()
         payload = {"userID": self.user_id.get()}
         response = requests.post(
-            f"{config["api_url"]}/sotofficial", json=payload, verify=False, timeout=20
+            f"{config["api_url"]}/staffcheck/sotofficial", json=payload, verify=False, timeout=20
         )
 
         if response.status_code != 200:

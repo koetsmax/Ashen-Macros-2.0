@@ -23,13 +23,13 @@ payload = {"test": "true"}
 # test the connection GET endpoint
 
 endpoints = {
-    "connection": "get",
-    "validate_token": "post",
-    "staffcheck": "post",
-    "elemental": "post",
-    "search": "post",
-    "sotofficial": "post",
-    "invite": "post",
+    "auth/connection": "get",
+    "auth/validate_token": "post",
+    "staffcheck/essential_data": "post",
+    "staffcheck/elemental": "post",
+    "staffcheck/search": "post",
+    "staffcheck/sotofficial": "post",
+    "staffcheck/invite": "post",
 }
 
 results = []

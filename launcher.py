@@ -362,7 +362,7 @@ class Launcher:
             api_url = settings.read_config()["api_url"]
             payload = {"token": enc_token}
             response = requests.post(
-                f"{api_url}/validate_token", json=payload, verify=False, timeout=3
+                f"{api_url}/auth/validate_token", json=payload, verify=False, timeout=3
             )
 
             if response.status_code != 200:
@@ -397,7 +397,9 @@ class Launcher:
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(f"{api_url}/connection", verify=False, timeout=3)
+            response = requests.get(
+                f"{api_url}/auth/connection", verify=False, timeout=3
+            )
 
             if response.status_code != 200:
                 request_error = True
