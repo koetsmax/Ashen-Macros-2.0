@@ -1,3 +1,5 @@
+"""Simple program that tests the API endpoints"""
+
 import requests
 
 LOCAL_URL = "https://localhost:8000"
