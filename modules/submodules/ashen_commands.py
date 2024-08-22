@@ -4,7 +4,6 @@ This modules handles all of the ashen commands
 
 import datetime
 import threading
-from tkinter import StringVar
 
 import requests
 
@@ -108,10 +107,11 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
+            self.search_fix_issues_button.state(["disabled"])
             payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
             config = read_config()
             response = requests.post(
-                f"{config["api_url"]}/search", json=payload, verify=False, timeout=120
+                f"{config["api_url"]}/staffcheck/search", json=payload, verify=False, timeout=120, headers=self.headers
             )
 
             if response.status_code != 200:
@@ -195,7 +195,7 @@ def ashen_api_request(self):
                     foreground="red" if self.search_issues else "green",
                 )
                 if self.search_issues:
-                    self.fix_issues_search_button.state(["!disabled"])
+                    self.search_fix_issues_button.state(["!disabled"])
 
         except (
             requests.exceptions.ConnectionError,

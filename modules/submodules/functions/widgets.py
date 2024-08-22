@@ -5,7 +5,10 @@ This is a helper module for creating widgets.
 from tkinter import ttk
 import tkinter as tk
 from typing import List, Callable, Union
-from .settings import read_config, set_custom_value  # pylint: disable=relative-beyond-top-level
+from .settings import (  # pylint: disable=relative-beyond-top-level
+    read_config,
+    set_custom_value,
+)
 
 
 def create_button(
@@ -23,7 +26,9 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    button.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return button
 
 
@@ -41,7 +46,9 @@ def create_label(
     Creates a label widget and places it in the parent widget.
     """
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
+    label.grid(
+        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
+    )
     return label
 
 
@@ -104,49 +111,48 @@ class CreateSettingsWindow:
     def __init__(self, root: Union[tk.Toplevel, ttk.Frame], _config: List[str]):
         config = read_config()
 
-        # extract config from list
-        window_title = _config[0]
-        explanation = _config[1]
-        text = _config[2]
-        self.settings = _config[3]
-        self.variables = _config[4]
-        self.defaults = _config[5]
+        # Extract config from list
+        (
+            window_title,
+            explanation,
+            text,
+            self.settings_segments,
+            self.variables,
+            self.defaults,
+        ) = _config
 
         settings_window = tk.Toplevel()
         settings_window.title(window_title)
 
-        self.var1 = self.variables[0]
-        print(self.settings)
-        print(self.var1)
+        # Initialize StringVar variables dynamically
+        self.variables_dict = {}
+        for i, var in enumerate(self.variables):
+            try:
+                self.variables_dict[f"variable{i+1}"] = tk.StringVar(value=config[var])
+            except (IndexError, AttributeError):
+                self.variables_dict[f"variable{i+1}"] = tk.StringVar(value="")
 
-        self.variable1 = tk.StringVar(value=config[self.variables[0]])
-        print(self.variable1, self.variable1.get())
-        try:
-            self.variable2 = tk.StringVar(value=config[self.variables[1]])
-        except (IndexError, AttributeError):
-            pass
-
-        # Create the labels
+        # Create the labels and entries dynamically
         create_label(settings_window, explanation, 1, 1, "W", 2)
-        create_label(settings_window, text[0], 3, 1, "W")
-        try:
-            create_label(settings_window, text[1], 5, 1, "W")
-        except (IndexError, AttributeError):
-            pass
-
-        # Create the entries
-        self.entry1 = create_entry(settings_window, self.variable1, 4, 1, "E, W")
-        try:
-            self.entry2 = create_entry(settings_window, self.variable2, 6, 1, "E, W")
-        except (IndexError, AttributeError):
-            pass
+        for i, txt in enumerate(text):
+            try:
+                create_label(settings_window, txt, 3 + i * 2, 1, "W")
+                self.__dict__[f"entry{i+1}"] = create_entry(
+                    settings_window,
+                    self.variables_dict[f"variable{i+1}"],
+                    4 + i * 2,
+                    1,
+                    "E, W",
+                )
+            except (IndexError, AttributeError):
+                pass
 
         # Create the buttons
         create_button(
             settings_window,
             "Save Changes",
             lambda: self.save_changes(),  # pylint: disable=unnecessary-lambda
-            7,
+            7 + len(text) * 2,
             1,
             "W",
         )
@@ -154,7 +160,7 @@ class CreateSettingsWindow:
             settings_window,
             "Reset To Default",
             lambda: self.reset_to_default(),  # pylint: disable=unnecessary-lambda
-            7,
+            7 + len(text) * 2,
             1,
             "E",
         )
@@ -168,20 +174,23 @@ class CreateSettingsWindow:
         """
         Saves the changes made in the settings window.
         """
-        set_custom_value(self.settings, self.variables[0], self.entry1.get())
-        try:
-            set_custom_value(self.settings, self.variables[0], self.entry2.get())
-        except (IndexError, AttributeError):
-            pass
+        for i, var in enumerate(self.variables):
+            try:
+                entry_value = self.__dict__[f"entry{i+1}"].get()
+                segment = self.settings_segments[i]
+                set_custom_value(segment, var, entry_value)
+            except (IndexError, AttributeError):
+                continue
 
     def reset_to_default(self):
         """
         Resets the settings to default.
         """
-        self.variable1.set(self.defaults[0])
-        set_custom_value(self.settings, self.variables[0], self.defaults[0])
-        try:
-            self.variable2.set(self.defaults[1])
-            set_custom_value(self.settings, self.variables[0], self.defaults[1])
-        except (IndexError, AttributeError):
-            pass
+        for i, var in enumerate(self.variables):
+            try:
+                default_value = self.defaults[i]
+                self.variables_dict[f"variable{i+1}"].set(default_value)
+                segment = self.settings_segments[i]
+                set_custom_value(segment, var, default_value)
+            except (IndexError, AttributeError):
+                continue

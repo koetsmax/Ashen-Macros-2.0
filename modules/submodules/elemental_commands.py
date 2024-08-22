@@ -161,8 +161,9 @@ def elemental_api_request(self):
         )
         self.mainframe.update()
         try:
-            #! Still perform the request even if the user has no gamertag.casefold
+            #! Still perform the request even if the user has no gamertag.
             #! So we can run the loghistory API
+            self.loghistory_fix_issues_button.state(["disabled"])
             payload = {
                 "userID": self.user_id.get(),
                 "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij",
@@ -170,15 +171,15 @@ def elemental_api_request(self):
             }
             config = read_config()
             response = requests.post(
-                f"{config["api_url"]}/elemental", json=payload, verify=False, timeout=120
+                f"{config["api_url"]}/staffcheck/elemental", json=payload, verify=False, timeout=120, headers=self.headers
             )
 
             if response.status_code != 200:
                 request_error = True
             elif response.json()["error"] == "No command found!":
-                self.loghistory_status_label.config(
-                    text="Command not found!", foreground="red"
-                )
+                self.loghistory_status_label.config(text="Command not found!", foreground="red")
+            elif response.json()["error"] == "User not found!":
+                self.loghistory_status_label.config(text="User not found", foreground="red")
             else:
                 response_json = response.json()
                 self.account_age_label.config(
