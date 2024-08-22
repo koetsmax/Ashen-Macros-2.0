@@ -6,7 +6,7 @@ import runpy
 import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
 from typing import Union
-
+import os
 import launcher  # pylint: disable=unused-import
 import modules.submodules.start_check
 from modules.submodules.functions import widgets
@@ -22,6 +22,16 @@ class StaffCheck:
 
     def __init__(self, root):
         self.root = root
+
+        with open(
+            os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
+        ) as tokenfile:
+            token = tokenfile.read().strip()
+
+        enc_token = token.encode("utf-8")
+        enc_token = enc_token.hex()
+        self.headers = {"Authorization": enc_token}
+
         self.keyboard_lock = threading.Lock()
 
         self.root.title("StaffCheck")

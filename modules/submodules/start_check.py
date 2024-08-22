@@ -54,7 +54,7 @@ def start_check(self):
         self.mainframe.update()
         config = read_config()
         response = requests.post(
-            f"{config["api_url"]}/staffcheck/essential_data", json=payload, verify=False, timeout=20
+            f"{config["api_url"]}/staffcheck/essential_data", json=payload, verify=False, timeout=20, headers=self.headers
         )
 
         if response.status_code != 200:
