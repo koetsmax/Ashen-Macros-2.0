@@ -171,7 +171,7 @@ class StaffCheck:
         widgets.create_label(self.loghistory_labelframe, "Status:", 7, 1, "W, E")
         self.loghistory_fix_issues_button = widgets.create_button(
             self.loghistory_labelframe,
-            "Fix issues",
+            "Add GT note",
             lambda: modules.submodules.elemental_commands.fix_issues(self),
             8,
             1,
@@ -306,7 +306,7 @@ class StaffCheck:
 
         self.search_fix_issues_button = widgets.create_button(
             self.search_labelframe,
-            "Fix issues",
+            "W.I.P.",
             lambda: modules.submodules.ashen_commands.fix_issues(self),
             10,
             1,
