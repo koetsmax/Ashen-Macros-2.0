@@ -18,6 +18,9 @@ elif url == "2":
     URL = TESTING_URL
 elif url == "3":
     URL = PRODUCTION_URL
+else:
+    print("Invalid input")
+    exit()
 
 payload = {"test": "true"}
 # test the connection GET endpoint
@@ -37,7 +40,7 @@ results = []
 for endpoint, method in endpoints.items():
     if method == "get":
         response = requests.get(url=URL + "/" + endpoint, timeout=30, verify=False)
-    elif method == "post":
+    else:
         response = requests.post(
             url=URL + "/" + endpoint, json=payload, timeout=30, verify=False
         )
