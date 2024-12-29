@@ -141,7 +141,7 @@ def ashen_api_request(self):
                     text=f"{response_json['completion_percentage']}",
                     foreground=(
                         "green"
-                        if int(response_json["completion_percentage"]) > 10
+                        if int(response_json["completion_percentage"]) >= 10
                         else "red"
                     ),
                 )
