@@ -67,8 +67,11 @@ def start_check(self):
             self.mutual_guilds_label = widgets.create_label(
                 self.mainframe, f"Mutual guilds:\n{guild_list}", 11, 1, "W, E", 1, 2
             )
-            # Grab the first cboc account from the request
-            self.xbox_gt = self.essential_data_response.json()["linked_xbox"][0]
+            # Grab the first xbox account from the request
+            try:
+                self.xbox_gt = self.essential_data_response.json()["linked_xbox"][0]
+            except IndexError:
+                self.xbox_gt = []
             print(self.xbox_gt, len(self.essential_data_response.json()["linked_xbox"]))
             if len(self.essential_data_response.json()["linked_xbox"]) > 1:
                 self.status_label.config(text="Warning: Has multiple accounts linked. Only showing the first one.", foreground="Red")
