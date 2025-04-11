@@ -243,6 +243,8 @@ def elemental_api_request(self):
 
     if request_error:
         self.loghistory_status_label.config(text="API request failed", foreground="red")
+        #! This will break if this ever gets expanded upon
+        self.loghistory_fix_issues_button.state(["!disabled"])
 
 
 def fix_issues(self):
