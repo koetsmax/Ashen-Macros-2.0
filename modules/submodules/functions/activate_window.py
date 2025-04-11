@@ -46,9 +46,13 @@ def activate_window(window: str, timeout: float = 2.0):
             if window.lower() in title.lower():
                 # Only proceed if window is valid and visible
                 if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
-                    # Try to restore window first
-                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                    time.sleep(0.1)
+                    # Get current window state
+                    current_state = win32gui.GetWindowPlacement(hwnd)[1]
+
+                    # If window is minimized, restore it
+                    if current_state == win32con.SW_SHOWMINIMIZED:
+                        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                        time.sleep(0.1)
 
                     # Set foreground with timeout check
                     if time.time() - start_time < timeout:
