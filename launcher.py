@@ -89,36 +89,28 @@ class Launcher:
         button_data = [
             (
                 "Staffcheck script",
-                lambda: self.start_script(
-                    "Staffcheck"
-                ),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script("Staffcheck"),  # pylint: disable=unnecessary-lambda
                 3,
                 1,
                 "E, W",
             ),
             (
                 "Add to ban list script",
-                lambda: self.start_script(
-                    "Add to ban list"
-                ),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script("Add to ban list"),  # pylint: disable=unnecessary-lambda
                 4,
                 1,
                 "E, W",
             ),
             (
                 "Queue monitor",
-                lambda: self.start_script(
-                    "Queue"
-                ),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script("Queue"),  # pylint: disable=unnecessary-lambda
                 5,
                 1,
                 "E, W",
             ),
             (
                 "Add warning script",
-                lambda: self.start_script(
-                    "Add warning"
-                ),  # pylint: disable=unnecessary-lambda
+                lambda: self.start_script("Add warning"),  # pylint: disable=unnecessary-lambda
                 6,
                 1,
                 "E, W",
@@ -136,9 +128,7 @@ class Launcher:
             ),
             (
                 "Check for updates!!!",
-                lambda: self.check_for_updates(
-                    False
-                ),  # pylint: disable=unnecessary-lambda
+                lambda: self.check_for_updates(False),  # pylint: disable=unnecessary-lambda
                 10,
                 1,
                 "E, W",
@@ -155,9 +145,7 @@ class Launcher:
 
         for label, command, row, column, position in button_data:
             if valid_login:
-                widgets.create_button(
-                    self.mainframe, label.strip(), command, row, column, position
-                )
+                widgets.create_button(self.mainframe, label.strip(), command, row, column, position)
 
         if valid_login:
             # Replace the button with a label saying welcome back, username
@@ -279,17 +267,9 @@ class Launcher:
             else:
                 self.root.destroy()
                 runAsAdmin()
-        elif (
-            version.parse(local_version) == version.parse(self.online_version)
-            and not silent
-        ):
-            self.update_window(
-                "You are currently on the most up-to-date version.", False
-            )
-        elif (
-            version.parse(local_version) > version.parse(self.online_version)
-            and not silent
-        ):
+        elif version.parse(local_version) == version.parse(self.online_version) and not silent:
+            self.update_window("You are currently on the most up-to-date version.", False)
+        elif version.parse(local_version) > version.parse(self.online_version) and not silent:
             self.update_window("You are currently on the dev version", False)
 
         return lambda: None
@@ -398,9 +378,7 @@ class Launcher:
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(
-                f"{api_url}/auth/connection", verify=False, timeout=3
-            )
+            response = requests.get(f"{api_url}/auth/connection", verify=False, timeout=3)
 
             if response.status_code != 200:
                 request_error = True
@@ -437,9 +415,7 @@ if __name__ == "__main__":
     root = Tk()
 
     window_positions.load_window_position(root)
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
 
     Launcher(root)
 
