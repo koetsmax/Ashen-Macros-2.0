@@ -34,16 +34,7 @@ def elemental_commands(self, *args):
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
 
-    # self.notespage = 2
     if not args:
-        # self.function_button.config(text="Add GT to Notes", command=lambda: add_note(self))
-        # self.kill_button.config(
-        #     text=f"Check notes page {self.notespage}", command=lambda: check_notes_page(self)
-        # )
-        # self.start_button.config(
-        #     text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self)
-        # )
-        # self.start_button.state(["!disabled"])
         modules.submodules.start_check.continue_to_next(self)
     else:
         self.function_button.config(
@@ -156,9 +147,7 @@ def elemental_api_request(self):
     """
     request_error = False
     if self.channel.get() == "#on-duty-commands":
-        self.loghistory_status_label.config(
-            text="Sending API request", foreground="orange"
-        )
+        self.loghistory_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
             #! Still perform the request even if the user has no gamertag.
@@ -171,7 +160,11 @@ def elemental_api_request(self):
             }
             config = read_config()
             response = requests.post(
-                f"{config["api_url"]}/staffcheck/elemental", json=payload, verify=False, timeout=120, headers=self.headers
+                f"{config["api_url"]}/staffcheck/elemental",
+                json=payload,
+                verify=False,
+                timeout=120,
+                headers=self.headers,
             )
 
             if response.status_code != 200:
@@ -188,9 +181,7 @@ def elemental_api_request(self):
                 )
                 self.needs_warning_talk_label.config(
                     text=f"{response_json['needs_warning_talk']}",
-                    foreground=(
-                        "red" if response_json["needs_warning_talk"] else "green"
-                    ),
+                    foreground=("red" if response_json["needs_warning_talk"] else "green"),
                 )
                 self.gamertag_in_notes_label.config(
                     text=f"{response_json['gamertag_in_notes']}",
@@ -198,9 +189,7 @@ def elemental_api_request(self):
                 )
                 self.needs_to_be_spoken_to_label.config(
                     text=f"{response_json['needs_to_be_spoken_to']}",
-                    foreground=(
-                        "red" if response_json["needs_to_be_spoken_to"] else "green"
-                    ),
+                    foreground=("red" if response_json["needs_to_be_spoken_to"] else "green"),
                 )
                 self.needs_mic_check_label.config(
                     text=f"{response_json['needs_mic_check']}",
@@ -208,15 +197,11 @@ def elemental_api_request(self):
                 )
                 self.anti_alliance_note_label.config(
                     text=f"{response_json['anti_alliance_note']}",
-                    foreground=(
-                        "red" if response_json["anti_alliance_note"] else "green"
-                    ),
+                    foreground=("red" if response_json["anti_alliance_note"] else "green"),
                 )
                 self.jump_to_message_button.state(["!disabled"])
                 self.jump_to_message_button.config(
-                    command=lambda: switch_channel(
-                        self, response_json["jump_url"], kwargs=True
-                    )
+                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
                 )
 
                 issues = {
@@ -229,9 +214,7 @@ def elemental_api_request(self):
                 }
 
                 # Add the issues to the list
-                self.loghistory_issues = [
-                    issue for issue, has_issue in issues.items() if has_issue
-                ]
+                self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(
                     text=f"{len(self.loghistory_issues)} issue(s) found",
                     foreground="red" if self.loghistory_issues else "green",
@@ -246,12 +229,12 @@ def elemental_api_request(self):
         ):
             request_error = True
     else:
-        self.loghistory_status_label.config(
-            text="Not sending request", foreground="green"
-        )
+        self.loghistory_status_label.config(text="Not sending request", foreground="green")
 
     if request_error:
         self.loghistory_status_label.config(text="API request failed", foreground="red")
+        #! This will break if this ever gets expanded upon
+        self.loghistory_fix_issues_button.state(["!disabled"])
 
 
 def fix_issues(self):
