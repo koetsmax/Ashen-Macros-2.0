@@ -29,7 +29,10 @@ def ashen_commands(self):
     if self.method.get() == "Ashen Commands":
         switch_channel(self, self.channel.get())
         clear_typing_bar()
-    search = ["/search ", f"member: {self.user_id.get()}", f"gamertag: {self.xbox_gt}"]
+    # remove all spaces from the gamertag to search
+    search_gt = self.xbox_gt.replace(" ", "")
+    print(search_gt)
+    search = ["/search ", f"member: {self.user_id.get()}", f"gamertag: {search_gt}"]
     execute_command(self, search[0], search[1:])
     start_ashen_api_requests_thread(self)
 
