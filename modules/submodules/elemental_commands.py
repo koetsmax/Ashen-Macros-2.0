@@ -41,8 +41,8 @@ def elemental_commands(self, *args):
             text="Tell to link xbox", command=lambda: tell_to_link_xbox(self)
         )
         self.kill_button.config(
-            text="Tell to verify + link xbox",
-            command=lambda: tell_to_verify_link_xbox(self),
+            text="Tell to verify",
+            command=lambda: tell_to_verify(self),
         )
         self.start_button.state(["disabled"])
 
@@ -87,7 +87,7 @@ def tell_to_link_xbox(self):
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    verify = ["/verify", self.user_id.get(), "verify_type: link_xbox"]
+    verify = ["/verify", self.user_id.get(), "link_xbox"]
     clear_typing_bar()
     execute_command(self, verify[0], verify[1:])
     self.function_button.state(["!disabled"])
@@ -100,14 +100,14 @@ def tell_to_link_xbox(self):
     )
 
 
-def tell_to_verify_link_xbox(self):
+def tell_to_verify(self):
     """
     Tells the user to verify and link their xbox account.
     """
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    verify = ["/verify", self.user_id.get(), "verify_type: both"]
+    verify = ["/verify", self.user_id.get(), "verify"]
     clear_typing_bar()
     execute_command(self, verify[0], verify[1:])
     self.function_button.state(["!disabled"])

@@ -105,7 +105,8 @@ def verify_account(self):
     """
     clear_typing_bar()
     switch_channel(self, "#on-duty-chat")
-    verifyaccount = ["/verify", self.user_id.get()]
+    verifyaccount = ["/verify", self.user_id.get(), "verify"]
+    clear_typing_bar()
     execute_command(self, verifyaccount[0], verifyaccount[1:])
 
     config = read_config()
