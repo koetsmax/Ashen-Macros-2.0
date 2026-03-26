@@ -22,7 +22,7 @@ def elemental_commands(self, *args):
     This function executes all elemental commands.
     """
     # create timestmap forced to UTC+0
-    self.timestamp = datetime.datetime.now(datetime.UTC).timestamp()
+    self.timestamp = int(datetime.datetime.utcnow().timestamp())
     print(self.timestamp)
     self.currentstate = "ElementalCommands"
     switch_channel(self, self.channel.get())
