@@ -41,9 +41,7 @@ for endpoint, method in endpoints.items():
     if method == "get":
         response = requests.get(url=URL + "/" + endpoint, timeout=30, verify=False)
     else:
-        response = requests.post(
-            url=URL + "/" + endpoint, json=payload, timeout=30, verify=False
-        )
+        response = requests.post(url=URL + "/" + endpoint, json=payload, timeout=30, verify=False)
     try:
         if response.json()["test"] == "success":
             results.append(f"{endpoint} is working")
