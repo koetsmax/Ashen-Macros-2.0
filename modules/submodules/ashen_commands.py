@@ -2,7 +2,7 @@
 This modules handles all of the ashen commands
 """
 
-import datetime
+import time
 import threading
 
 import requests
@@ -23,7 +23,7 @@ def ashen_commands(self):
     This function makes changes to the GUI and applies commands to the buttons
     """
     # create timestmap forced to UTC+0
-    self.timestamp = int(datetime.datetime.utcnow().timestamp())
+    self.timestamp = int(time.time())
     print(self.timestamp)
     self.currentstate = "AshenCommands"
     if self.method.get() == "Ashen Commands":

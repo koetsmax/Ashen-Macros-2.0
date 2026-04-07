@@ -2,7 +2,7 @@
 This module executes all elemental commands.
 """
 
-import datetime
+import time
 import threading
 
 import requests
@@ -22,7 +22,7 @@ def elemental_commands(self, *args):
     This function executes all elemental commands.
     """
     # create timestmap forced to UTC+0
-    self.timestamp = int(datetime.datetime.utcnow().timestamp())
+    self.timestamp = int(time.time())
     print(self.timestamp)
     self.currentstate = "ElementalCommands"
     switch_channel(self, self.channel.get())
