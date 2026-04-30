@@ -18,6 +18,8 @@ from modules import fill_new_fleet
 from modules import hammertime_generator
 from modules import rename_fleet
 from modules import staffcheck
+from modules import ship_holder
+from modules import command_executor
 from modules.submodules.functions import settings
 from modules.submodules.verification import start_verification
 from modules.submodules.functions import widgets
@@ -90,62 +92,54 @@ class Launcher:
             (
                 "Staffcheck script",
                 lambda: self.start_script("Staffcheck"),  # pylint: disable=unnecessary-lambda
-                3,
-                1,
-                "E, W",
+                2,
             ),
-            (
-                "Add to ban list script",
-                lambda: self.start_script("Add to ban list"),  # pylint: disable=unnecessary-lambda
-                4,
-                1,
-                "E, W",
-            ),
+            # (
+            #     "Launch Ship Holder",
+            #     lambda: self.start_script("ShipHolder"),
+            #     3,
+            # ),
+            # (
+            #     "Command Executor",
+            #     lambda: self.start_script("CommandExecutor"),
+            #     4,
+            # ),
+            # (
+            #     "Add to ban list script",
+            #     lambda: self.start_script("Add to ban list"),  # pylint: disable=unnecessary-lambda
+            #     4,
+            # ),
             (
                 "Queue monitor",
                 lambda: self.start_script("Queue"),  # pylint: disable=unnecessary-lambda
                 5,
-                1,
-                "E, W",
             ),
+            # (
+            #     "Add warning script",
+            #     lambda: self.start_script("Add warning"),  # pylint: disable=unnecessary-lambda
+            #     6,
+            # ), #TODO: Outdated warning messages
+            # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 7),
+            # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 8),
+            # (
+            #     "Timestamp generator",
+            #     lambda: self.start_script(  # pylint: disable=unnecessary-lambda
+            #         "Timestamp generator"
+            #     ),
+            #     9,
+            # ),
             (
-                "Add warning script",
-                lambda: self.start_script("Add warning"),  # pylint: disable=unnecessary-lambda
-                6,
-                1,
-                "E, W",
-            ),
-            # ("Rename fleet script", lambda: self.start_script("Rename fleet"), 7, 1, "E, W"),
-            # ("Fill new Fleet script", lambda: self.start_script("Fill new fleet"), 8, 1, "E, W"),
-            (
-                "Timestamp generator",
-                lambda: self.start_script(  # pylint: disable=unnecessary-lambda
-                    "Timestamp generator"
-                ),
-                9,
-                1,
-                "E, W",
-            ),
-            (
-                "Check for updates!!!",
+                "Check for updates",
                 lambda: self.check_for_updates(False),  # pylint: disable=unnecessary-lambda
                 10,
-                1,
-                "E, W",
             ),
-            ("Kill Program", lambda: self.start_script("Kill"), 80, 1, "E, W"),
-            (
-                "Settings",
-                lambda: self.delay_config(),  # pylint: disable=unnecessary-lambda
-                81,
-                1,
-                "E, W",
-            ),
+            ("Kill Program", lambda: self.start_script("Kill"), 80),
+            ("Settings", lambda: self.delay_config(), 81),  # pylint: disable=unnecessary-lambda
         ]
 
-        for label, command, row, column, position in button_data:
+        for label, command, row in button_data:
             if valid_login:
-                widgets.create_button(self.mainframe, label.strip(), command, row, column, position)
+                widgets.create_button(self.mainframe, label.strip(), command, row, 1, "E, W")
 
         if valid_login:
             # Replace the button with a label saying welcome back, username
@@ -188,6 +182,8 @@ class Launcher:
 
         script_actions = {
             "Staffcheck": staffcheck.start_script,
+            "ShipHolder": ship_holder.start_script,
+            "CommandExecutor": command_executor.start_script,
             "Add warning": warning.start_script,
             "Queue": queue.start_script,
             "Rename fleet": rename_fleet.start_script,
