@@ -50,15 +50,11 @@ class StaffCheck:
         self.menu_customize.add_command(
             label="Not good to check message", command=self.edit_not_good_to_check
         )
-        self.menu_customize.add_command(
-            label="Join AWR message", command=self.edit_join_awr
-        )
+        self.menu_customize.add_command(label="Join AWR message", command=self.edit_join_awr)
         self.menu_customize.add_command(
             label="Unprivate Xbox message", command=self.edit_unprivate_xbox
         )
-        self.menu_customize.add_command(
-            label="Verify message", command=self.edit_verify
-        )
+        self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
 
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
@@ -67,9 +63,7 @@ class StaffCheck:
 
         widgets.create_label(self.mainframe, "Discord ID:", 1, 1, "E")
         self.user_id = StringVar()
-        self.user_id_entry = widgets.create_entry(
-            self.mainframe, self.user_id, 1, 2, "W, E"
-        )
+        self.user_id_entry = widgets.create_entry(self.mainframe, self.user_id, 1, 2, "W, E")
 
         widgets.create_label(self.mainframe, "GamerTag:", 2, 1, "E")
         self.gamertag_label = widgets.create_label(self.mainframe, "Unknown", 2, 2, "W")
@@ -152,21 +146,11 @@ class StaffCheck:
         self.loghistory_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.loghistory_labelframe, "Account Age:", 1, 1, "W")
-        widgets.create_label(
-            self.loghistory_labelframe, "Needs warning talk:", 2, 1, "W"
-        )
-        widgets.create_label(
-            self.loghistory_labelframe, "Has gamertag in notes:", 3, 1, "W, E"
-        )
-        widgets.create_label(
-            self.loghistory_labelframe, "Needs to be spoken to:", 4, 1, "W, E"
-        )
-        widgets.create_label(
-            self.loghistory_labelframe, "Needs mic check:", 5, 1, "W, E"
-        )
-        widgets.create_label(
-            self.loghistory_labelframe, "Has anti-alliance note:", 6, 1, "W, E"
-        )
+        widgets.create_label(self.loghistory_labelframe, "Needs warning talk:", 2, 1, "W")
+        widgets.create_label(self.loghistory_labelframe, "Has gamertag in notes:", 3, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs to be spoken to:", 4, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Needs mic check:", 5, 1, "W, E")
+        widgets.create_label(self.loghistory_labelframe, "Has anti-alliance note:", 6, 1, "W, E")
         widgets.create_label(self.loghistory_labelframe, "Status:", 7, 1, "W, E")
         self.loghistory_fix_issues_button = widgets.create_button(
             self.loghistory_labelframe,
@@ -214,24 +198,16 @@ class StaffCheck:
         )
 
         # Invite Tracker
-        self.invite_tracker_labelframe = ttk.LabelFrame(
-            self.mainframe, text="Invite Tracker"
-        )
+        self.invite_tracker_labelframe = ttk.LabelFrame(self.mainframe, text="Invite Tracker")
         self.invite_tracker_labelframe.grid(
             column=3, row=5, columnspan=2, rowspan=4, sticky="N, W, E, S"
         )
         self.invite_tracker_labelframe.columnconfigure(0, weight=1)
         self.invite_tracker_labelframe.rowconfigure(0, weight=1)
 
-        widgets.create_label(
-            self.invite_tracker_labelframe, "Invited by:", 1, 1, "W, E"
-        )
-        widgets.create_label(
-            self.invite_tracker_labelframe, "Has joined ashen:", 2, 1, "W, E"
-        )
-        widgets.create_label(
-            self.invite_tracker_labelframe, "Total people invited:", 3, 1, "W, E"
-        )
+        widgets.create_label(self.invite_tracker_labelframe, "Invited by:", 1, 1, "W, E")
+        widgets.create_label(self.invite_tracker_labelframe, "Has joined ashen:", 2, 1, "W, E")
+        widgets.create_label(self.invite_tracker_labelframe, "Total people invited:", 3, 1, "W, E")
         widgets.create_label(self.invite_tracker_labelframe, "Status:", 4, 1, "W, E")
         self.invited_by_loghistory_button = widgets.create_button(
             self.invite_tracker_labelframe,
@@ -285,18 +261,14 @@ class StaffCheck:
 
         # Search Command
         self.search_labelframe = ttk.LabelFrame(self.mainframe, text="Search")
-        self.search_labelframe.grid(
-            column=5, row=1, columnspan=3, rowspan=4, sticky="N, W, E, S"
-        )
+        self.search_labelframe.grid(column=5, row=1, columnspan=3, rowspan=4, sticky="N, W, E, S")
         self.search_labelframe.columnconfigure(0, weight=1)
         self.search_labelframe.rowconfigure(0, weight=1)
 
         widgets.create_label(self.search_labelframe, "Gamertag Exists:", 1, 1, "W, E")
         widgets.create_label(self.search_labelframe, "Total Friends:", 2, 1, "W, E")
         # widgets.create_label(self.search_labelframe, "Banned Ratio:", 3, 1, "W, E")
-        widgets.create_label(
-            self.search_labelframe, "Completion percentage:", 4, 1, "W, E"
-        )
+        widgets.create_label(self.search_labelframe, "Completion achieved:", 4, 1, "W, E")
         widgets.create_label(self.search_labelframe, "Total Matches:", 5, 1, "W, E")
         widgets.create_label(self.search_labelframe, "Partial Matches:", 6, 1, "W, E")
         widgets.create_label(self.search_labelframe, "Exact Matches:", 7, 1, "W, E")
@@ -348,27 +320,17 @@ class StaffCheck:
         )
 
         # SOT Official
-        self.sot_official_labelframe = ttk.LabelFrame(
-            self.mainframe, text="SOT Official"
-        )
+        self.sot_official_labelframe = ttk.LabelFrame(self.mainframe, text="SOT Official")
         self.sot_official_labelframe.grid(
             column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S"
         )
         self.sot_official_labelframe.columnconfigure(0, weight=1)
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
-        widgets.create_label(
-            self.sot_official_labelframe, "Total messages sent:", 1, 1, "W"
-        )
-        widgets.create_label(
-            self.sot_official_labelframe, "Messages with alliance:", 2, 1, "W"
-        )
-        widgets.create_label(
-            self.sot_official_labelframe, "Messages with hourglass:", 3, 1, "W"
-        )
-        widgets.create_label(
-            self.sot_official_labelframe, "Messages with bad words:", 4, 1, "W, E"
-        )
+        widgets.create_label(self.sot_official_labelframe, "Total messages sent:", 1, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "Messages with alliance:", 2, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "Messages with hourglass:", 3, 1, "W")
+        widgets.create_label(self.sot_official_labelframe, "Messages with bad words:", 4, 1, "W, E")
         widgets.create_label(self.sot_official_labelframe, "Status:", 5, 1, "W")
         self.check_for_yourself_button = widgets.create_button(
             self.sot_official_labelframe,
@@ -558,9 +520,7 @@ class CustomizeWindow:
         height = self.customize_window.winfo_height()
         x_coordinate = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
         y_coordinate = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
-        self.customize_window.geometry(
-            f"{width}x{height}+{x_coordinate}+{y_coordinate}"
-        )
+        self.customize_window.geometry(f"{width}x{height}+{x_coordinate}+{y_coordinate}")
 
 
 def start_script():
@@ -570,8 +530,6 @@ def start_script():
     root = Tk()
     window_positions.load_window_position(root)
 
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     StaffCheck(root)
     root.mainloop()
