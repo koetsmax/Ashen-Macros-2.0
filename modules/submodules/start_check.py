@@ -54,7 +54,11 @@ def start_check(self):
         self.mainframe.update()
         config = read_config()
         self.essential_data_response = requests.post(
-            f"{config["api_url"]}/staffcheck/essential_data", json=payload, verify=False, timeout=20, headers=self.headers
+            f"{config["api_url"]}/staffcheck/essential_data",
+            json=payload,
+            verify=False,
+            timeout=20,
+            headers=self.headers,
         )
 
         if self.essential_data_response.status_code != 200:
@@ -74,8 +78,13 @@ def start_check(self):
                 self.xbox_gt = []
             print(self.xbox_gt, len(self.essential_data_response.json()["linked_xbox"]))
             if len(self.essential_data_response.json()["linked_xbox"]) > 1:
-                self.status_label.config(text="Warning: Has multiple accounts linked. Only showing the first one.", foreground="Red")
-                print(f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one.")
+                self.status_label.config(
+                    text="Warning: Has multiple accounts linked. Only showing the first one.",
+                    foreground="Red",
+                )
+                print(
+                    f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one."
+                )
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
         request_error = True
         print(exc)
@@ -129,10 +138,10 @@ def continue_check(self, request_error):
         self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
         self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
         self.menu_customize.entryconfigure("Verify message", state=DISABLED)
-        self.user_id_entry.config(state=[("disabled")])
-        self.channel_combo_box.config(state=[("disabled")])
-        self.method_combo_box.config(state=[("disabled")])
-        self.pre_check_button.config(state=[("disabled")])
+        self.user_id_entry.config(state=["disabled"])
+        self.channel_combo_box.config(state=["disabled"])
+        self.method_combo_box.config(state=["disabled"])
+        self.pre_check_button.config(state=["disabled"])
         self.mainframe.update()
 
         self.currentstate = None
@@ -225,10 +234,10 @@ def reset_ui(self):
     self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
     self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
     self.menu_customize.entryconfigure("Verify message", state=NORMAL)
-    self.user_id_entry.config(state=[("!disabled")])
-    self.channel_combo_box.config(state=[("!disabled")])
-    self.method_combo_box.config(state=[("!disabled")])
-    self.pre_check_button.config(state=[("!disabled")])
+    self.user_id_entry.config(state=["!disabled"])
+    self.channel_combo_box.config(state=["!disabled"])
+    self.method_combo_box.config(state=["!disabled"])
+    self.pre_check_button.config(state=["!disabled"])
 
 
 def perform_next_command(self):
