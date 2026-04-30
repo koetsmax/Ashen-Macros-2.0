@@ -259,14 +259,6 @@ def perform_next_command(self):
         elif current_state == "SOTOfficial":
             modules.submodules.check_message.check_message(self)
 
-    elif method == "Purge Commands":
-        if current_state == "PreCheck":
-            modules.submodules.elemental_commands.elemental_commands(self)
-        elif current_state == "ElementalCommands":
-            modules.submodules.ashen_commands.ashen_commands(self)
-        elif current_state == "AshenCommands":
-            modules.submodules.check_message.check_message(self)
-
 
 def continue_to_next(self):
     """
@@ -284,7 +276,7 @@ def continue_to_next(self):
         reset_ui(self)
         return
 
-    if self.method.get() not in ["Purge Commands", "All Commands"]:
+    if self.method.get() not in ["All Commands"]:
         self.currentstate = "Done"
         continue_to_next(self)
     else:
@@ -317,8 +309,6 @@ def determine_method(self):
     if self.method.get() == "All Commands":
         api_thread = threading.Thread(target=make_api_requests, args=(self,))
         api_thread.start()
-        modules.submodules.elemental_commands.elemental_commands(self)
-    elif self.method.get() == "Purge Commands":
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Elemental Commands":
         modules.submodules.elemental_commands.elemental_commands(self)

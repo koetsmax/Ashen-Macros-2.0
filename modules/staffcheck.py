@@ -91,7 +91,6 @@ class StaffCheck:
         self.method = StringVar(value="All Commands")
         method_options = [
             "All Commands",
-            "Purge Commands",
             "Elemental Commands",
             "Ashen Commands",
             "Invite Tracker",
