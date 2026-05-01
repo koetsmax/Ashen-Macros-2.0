@@ -54,7 +54,11 @@ def start_check(self):
         self.mainframe.update()
         config = read_config()
         self.essential_data_response = requests.post(
-            f"{config["api_url"]}/staffcheck/essential_data", json=payload, verify=False, timeout=20, headers=self.headers
+            f"{config["api_url"]}/staffcheck/essential_data",
+            json=payload,
+            verify=False,
+            timeout=20,
+            headers=self.headers,
         )
 
         if self.essential_data_response.status_code != 200:
@@ -74,8 +78,13 @@ def start_check(self):
                 self.xbox_gt = []
             print(self.xbox_gt, len(self.essential_data_response.json()["linked_xbox"]))
             if len(self.essential_data_response.json()["linked_xbox"]) > 1:
-                self.status_label.config(text="Warning: Has multiple accounts linked. Only showing the first one.", foreground="Red")
-                print(f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one.")
+                self.status_label.config(
+                    text="Warning: Has multiple accounts linked. Only showing the first one.",
+                    foreground="Red",
+                )
+                print(
+                    f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one."
+                )
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
         request_error = True
         print(exc)
@@ -129,10 +138,10 @@ def continue_check(self, request_error):
         self.menu_customize.entryconfigure("Join AWR message", state=DISABLED)
         self.menu_customize.entryconfigure("Unprivate Xbox message", state=DISABLED)
         self.menu_customize.entryconfigure("Verify message", state=DISABLED)
-        self.user_id_entry.config(state=[("disabled")])
-        self.channel_combo_box.config(state=[("disabled")])
-        self.method_combo_box.config(state=[("disabled")])
-        self.pre_check_button.config(state=[("disabled")])
+        self.user_id_entry.config(state=["disabled"])
+        self.channel_combo_box.config(state=["disabled"])
+        self.method_combo_box.config(state=["disabled"])
+        self.pre_check_button.config(state=["disabled"])
         self.mainframe.update()
 
         self.currentstate = None
@@ -225,10 +234,10 @@ def reset_ui(self):
     self.menu_customize.entryconfigure("Join AWR message", state=NORMAL)
     self.menu_customize.entryconfigure("Unprivate Xbox message", state=NORMAL)
     self.menu_customize.entryconfigure("Verify message", state=NORMAL)
-    self.user_id_entry.config(state=[("!disabled")])
-    self.channel_combo_box.config(state=[("!disabled")])
-    self.method_combo_box.config(state=[("!disabled")])
-    self.pre_check_button.config(state=[("!disabled")])
+    self.user_id_entry.config(state=["!disabled"])
+    self.channel_combo_box.config(state=["!disabled"])
+    self.method_combo_box.config(state=["!disabled"])
+    self.pre_check_button.config(state=["!disabled"])
 
 
 def perform_next_command(self):
@@ -250,14 +259,6 @@ def perform_next_command(self):
         elif current_state == "SOTOfficial":
             modules.submodules.check_message.check_message(self)
 
-    elif method == "Purge Commands":
-        if current_state == "PreCheck":
-            modules.submodules.elemental_commands.elemental_commands(self)
-        elif current_state == "ElementalCommands":
-            modules.submodules.ashen_commands.ashen_commands(self)
-        elif current_state == "AshenCommands":
-            modules.submodules.check_message.check_message(self)
-
 
 def continue_to_next(self):
     """
@@ -275,7 +276,7 @@ def continue_to_next(self):
         reset_ui(self)
         return
 
-    if self.method.get() not in ["Purge Commands", "All Commands"]:
+    if self.method.get() not in ["All Commands"]:
         self.currentstate = "Done"
         continue_to_next(self)
     else:
@@ -308,8 +309,6 @@ def determine_method(self):
     if self.method.get() == "All Commands":
         api_thread = threading.Thread(target=make_api_requests, args=(self,))
         api_thread.start()
-        modules.submodules.elemental_commands.elemental_commands(self)
-    elif self.method.get() == "Purge Commands":
         modules.submodules.elemental_commands.elemental_commands(self)
     elif self.method.get() == "Elemental Commands":
         modules.submodules.elemental_commands.elemental_commands(self)

@@ -143,9 +143,9 @@ def ashen_api_request(self):
                 #     foreground="red" if response_json["ban_ratio"] > 0 else "green",
                 # )
                 self.completion_label.config(
-                    text=f"{response_json['completion_percentage']}",
+                    text=f"{response_json['completion_achieved']}",
                     foreground=(
-                        "green" if int(response_json["completion_percentage"]) >= 10 else "red"
+                        "green" if response_json["completion_achieved"]) else "red"
                     ),
                 )
                 self.total_matches_label.config(
@@ -173,7 +173,7 @@ def ashen_api_request(self):
 
                 issues = {
                     "Gamertag Exists": not response_json["gamertag_exists"],
-                    "Completion": int(response_json["completion_percentage"]) < 10,
+                    "Completion": not response_json["completion_achieved"],
                     "Total Matches": int(response_json["total_matches"]) > 0,
                     "Partial Matches": int(response_json["partial_matches"]) > 0,
                     "Exact Matches": int(response_json["exact_matches"]) > 0,
