@@ -135,7 +135,6 @@ class Launcher:
                 lambda: self.check_for_updates(False),  # pylint: disable=unnecessary-lambda
                 10,
             ),
-            ("Kill Program", lambda: self.start_script("Kill"), 80),
             ("Settings", lambda: self.delay_config(), 81),  # pylint: disable=unnecessary-lambda
         ]
 
@@ -192,7 +191,6 @@ class Launcher:
             "Fill new fleet": fill_new_fleet.start_script,
             "Add to ban list": add_to_ban_list.start_script,
             "Timestamp generator": hammertime_generator.start_script,
-            "Kill": lambda: None,
         }
 
         if script_name.strip() in script_actions:
