@@ -84,15 +84,11 @@ def api_request(self):
             self.invited_by_label.config(text=inviter, foreground="green")
             self.times_invited_label.config(
                 text=f"{len(response_json['inviters_names'])} time(s)",
-                foreground=(
-                    "green" if len(response_json["inviters_ids"]) < 5 else "orange"
-                ),
+                foreground=("green" if len(response_json["inviters_ids"]) < 5 else "orange"),
             )
             self.num_people_invited_label.config(
                 text=f"{len(response_json['invitees_ids'])}",
-                foreground=(
-                    "green" if len(response_json["invitees_ids"]) < 5 else "orange"
-                ),
+                foreground=("green" if len(response_json["invitees_ids"]) < 5 else "orange"),
             )
 
             self.invite_tracker_status_label.config(text="Success", foreground="green")

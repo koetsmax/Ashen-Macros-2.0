@@ -82,9 +82,7 @@ def api_request(self):
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] == "User not found!":
-            self.sot_official_status_label.config(
-                text="User not found", foreground="red"
-            )
+            self.sot_official_status_label.config(text="User not found", foreground="red")
         elif response.json()["error"] == "No messages":
             self.sot_official_status_label.config(text="No messages", foreground="red")
         else:
@@ -98,17 +96,11 @@ def api_request(self):
             )
             self.messages_with_hourglass_label.config(
                 text=f"{len(response_json['hourglass_messages'])}",
-                foreground=(
-                    "orange"
-                    if len(response_json["hourglass_messages"]) > 0
-                    else "green"
-                ),
+                foreground=("orange" if len(response_json["hourglass_messages"]) > 0 else "green"),
             )
             self.messages_with_bad_words_label.config(
                 text=f"{len(response_json['other_messages'])}",
-                foreground=(
-                    "orange" if len(response_json["other_messages"]) > 0 else "green"
-                ),
+                foreground=("orange" if len(response_json["other_messages"]) > 0 else "green"),
             )
 
             self.sot_official_status_label.config(text="Success", foreground="green")

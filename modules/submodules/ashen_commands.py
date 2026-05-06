@@ -143,9 +143,7 @@ def ashen_api_request(self):
                 # )
                 self.completion_label.config(
                     text=f"{response_json['completion_achieved']}",
-                    foreground=(
-                        "green" if response_json["completion_achieved"]) else "red"
-                    ),
+                    foreground=("green" if response_json["completion_achieved"] else "red"),
                 )
                 self.total_matches_label.config(
                     text=f"{response_json['total_matches']}",
