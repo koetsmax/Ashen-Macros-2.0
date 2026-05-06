@@ -3,6 +3,8 @@ Creates the launcher window and checks for updates.
 """
 
 import os
+import secrets
+import keyring
 import subprocess
 from tkinter import FALSE, Tk, Toplevel, ttk, TclError
 from typing import Callable
@@ -311,36 +313,24 @@ class Launcher:
         Checks if the user has a known login. if not, create it.
         """
         try:
-            assert force_new_token is False
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/token"),
-                "r",
-                encoding="UTF-8",
-            ) as tokenfile:
-                token = tokenfile.read().strip()
-                assert len(token) == 64
-
-        except (FileNotFoundError, AssertionError):
+            if force_new_token:
+                raise ValueError("Force new token")
+            token = keyring.get_password("AshenMacros", "token")
+            if token is None:
+                raise ValueError("Token not found")
+            if len(token) != 128:
+                raise ValueError("Invalid token length")
+        except ValueError:
             print("Token not found or invalid. Creating new token...")
             # generate a random token
-            token = os.urandom(32).hex()
-            with open(
-                os.path.expanduser("~/Documents/Ashen Macros/token"),
-                "w",
-                encoding="UTF-8",
-            ) as tokenfile:
-                tokenfile.write(token)
+            token = secrets.token_hex(64)
+            keyring.set_password("AshenMacros", "token", token)
 
         # validate if the token is correct and known.
-        # encrypt the token and send it to the api
-        enc_token = token.encode("utf-8")
-        enc_token = enc_token.hex()
         try:
             api_url = settings.read_config()["api_url"]
-            payload = {"token": enc_token}
-            response = requests.post(
-                f"{api_url}/auth/validate_token", json=payload, verify=False, timeout=3
-            )
+            payload = {"token": token}
+            response = requests.post(f"{api_url}/auth/validate_token", json=payload, timeout=3)
 
             if response.status_code != 200:
                 print("Failed to validate token. Error code: %s", response.status_code)
