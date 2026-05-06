@@ -162,7 +162,6 @@ def elemental_api_request(self):
             response = requests.post(
                 f"{config["api_url"]}/staffcheck/elemental",
                 json=payload,
-                verify=False,
                 timeout=120,
                 headers=self.headers,
             )

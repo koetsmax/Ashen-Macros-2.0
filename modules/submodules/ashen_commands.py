@@ -116,7 +116,6 @@ def ashen_api_request(self):
             response = requests.post(
                 f"{config["api_url"]}/staffcheck/search",
                 json=payload,
-                verify=False,
                 timeout=120,
                 headers=self.headers,
             )

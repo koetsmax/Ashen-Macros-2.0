@@ -56,7 +56,6 @@ def start_check(self):
         self.essential_data_response = requests.post(
             f"{config["api_url"]}/staffcheck/essential_data",
             json=payload,
-            verify=False,
             timeout=20,
             headers=self.headers,
         )

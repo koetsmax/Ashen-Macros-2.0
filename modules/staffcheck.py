@@ -28,9 +28,7 @@ class StaffCheck:
         ) as tokenfile:
             token = tokenfile.read().strip()
 
-        enc_token = token.encode("utf-8")
-        enc_token = enc_token.hex()
-        self.headers = {"Authorization": enc_token}
+        self.headers = {"Authorization": token}
 
         self.keyboard_lock = threading.Lock()
 

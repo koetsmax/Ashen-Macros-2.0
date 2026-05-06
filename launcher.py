@@ -362,7 +362,7 @@ class Launcher:
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
         try:
-            response = requests.get(f"{api_url}/auth/connection", verify=False, timeout=3)
+            response = requests.get(f"{api_url}/auth/connection", timeout=3)
 
             if response.status_code != 200:
                 request_error = True
