@@ -7,3 +7,4 @@ pyautogui
 packaging
 python-socketio
 filelock
+keyring
