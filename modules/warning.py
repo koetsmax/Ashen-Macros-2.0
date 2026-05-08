@@ -62,7 +62,9 @@ class AddWarning:
             text="Custom Reason:",
         ).grid(column=1, row=4, sticky=E)
         self.custom_reason = StringVar()
-        self.custom_reason_entry = tk.Entry(self.mainframe, width=19, textvariable=self.custom_reason)
+        self.custom_reason_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.custom_reason
+        )
         self.custom_reason_entry.grid(column=2, row=4, sticky="W, E")
 
         # create a checkbox for loghistory

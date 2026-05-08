@@ -24,9 +24,7 @@ def check_message(self):
         text="Don't Post Message",
         command=lambda: modules.submodules.start_check.continue_to_next(self),
     )
-    self.kill_button.config(
-        text="Not Good to Check", command=lambda: not_good_to_check(self)
-    )
+    self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
@@ -47,9 +45,7 @@ def good_to_check(self):
     built_good_to_check_message = built_good_to_check_message.replace(
         "userID", f"<@{self.user_id.get()}>"
     )
-    built_good_to_check_message = built_good_to_check_message.replace(
-        "xboxGT", f"{self.xbox_gt}"
-    )
+    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
@@ -69,9 +65,7 @@ def not_good_to_check(self):
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
     self.function_button_2.state(["disabled"])
-    self.start_button.config(
-        text="Confirm Reason", command=lambda: build_not_good_to_check(self)
-    )
+    self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
     self.start_button.state(["!disabled"])
 
 

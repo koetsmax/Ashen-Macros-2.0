@@ -27,9 +27,7 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return button
 
 
@@ -49,9 +47,7 @@ def create_label(
     if foreground is None:
         foreground = theme.label_foreground()
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return label
 
 
