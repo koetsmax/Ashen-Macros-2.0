@@ -1,5 +1,6 @@
 keyboard
 pywin32
+sv-ttk
 packaging
 requests
 pyuac

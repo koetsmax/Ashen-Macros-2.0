@@ -25,6 +25,7 @@ from modules import command_executor
 from modules.submodules.functions import settings
 from modules.submodules.verification import start_verification
 from modules.submodules.functions import widgets
+from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
 from modules import warning
 from modules import queue
@@ -172,8 +173,6 @@ class Launcher:
 
         self.api_request()
 
-        self.check_for_updates(True)
-
     def start_script(self, script_name: str) -> Callable[[], None]:
         """
         Starts a specified script.
@@ -204,7 +203,8 @@ class Launcher:
         """
         Creates the update window.
         """
-        updatewindow = Toplevel()
+        updatewindow = Toplevel(self.root)
+        theme.paint_toplevel(updatewindow)
         self.root.eval(f"tk::PlaceWindow {str(updatewindow)} center")
         updatewindow.title("Update available")
         widgets.create_label(updatewindow, text, 1, 1, "E")
@@ -233,42 +233,72 @@ class Launcher:
 
         return lambda: None
 
-    def check_for_updates(self, silent) -> Callable[[], None]:
+    def check_for_updates(self, silent) -> None:
         """
-        Checks for updates.
+        Checks for updates. HTTP runs off the main thread so the window can paint immediately.
         """
-        request = requests.get(
-            "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
-            timeout=15,
-        )
-        if request.status_code != 200:
-            print("Failed to check for updates. Error code: %s", request.status_code)
-            return lambda: None
-        request_dictionary = request.json()
-        try:
-            with open("_internal/version", "r", encoding="UTF-8") as versionfile:
-                local_version = versionfile.read().strip()
-        except FileNotFoundError:
-            with open("version", "r", encoding="UTF-8") as versionfile:
-                local_version = versionfile.read().strip()
-        if local_version is None:
-            local_version = "0.0.0"
-        self.online_version = request_dictionary["name"]
-        if version.parse(local_version) < version.parse(self.online_version):
-            if isUserAdmin():
-                self.update_window(
-                    "There is an update available.\nWould you like to download it?",
-                    True,
-                )
-            else:
-                self.root.destroy()
-                runAsAdmin()
-        elif version.parse(local_version) == version.parse(self.online_version) and not silent:
-            self.update_window("You are currently on the most up-to-date version.", False)
-        elif version.parse(local_version) > version.parse(self.online_version) and not silent:
-            self.update_window("You are currently on the dev version", False)
 
-        return lambda: None
+        def worker() -> None:
+            result = self._compute_update_check_result(silent)
+            self.root.after(0, lambda r=result: self._apply_update_check_result(r))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _compute_update_check_result(self, silent: bool) -> tuple:
+        try:
+            request = requests.get(
+                "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
+                timeout=15,
+            )
+            if request.status_code != 200:
+                print(f"Failed to check for updates. Error code: {request.status_code}")
+                return ("noop",)
+            request_dictionary = request.json()
+            try:
+                with open("_internal/version", "r", encoding="UTF-8") as versionfile:
+                    local_version = versionfile.read().strip()
+            except FileNotFoundError:
+                with open("version", "r", encoding="UTF-8") as versionfile:
+                    local_version = versionfile.read().strip()
+            if local_version is None:
+                local_version = "0.0.0"
+            online_version = request_dictionary["name"]
+            if version.parse(local_version) < version.parse(online_version):
+                if isUserAdmin():
+                    return ("prompt_update", online_version)
+                return ("elevate",)
+            if version.parse(local_version) == version.parse(online_version) and not silent:
+                return ("inform_current",)
+            if version.parse(local_version) > version.parse(online_version) and not silent:
+                return ("inform_dev",)
+            return ("noop",)
+        except Exception as e:  # pylint: disable=broad-except
+            print(f"Failed to check for updates: {e}")
+            return ("noop",)
+
+    def _apply_update_check_result(self, result: tuple) -> None:
+        try:
+            if not self.root.winfo_exists():
+                return
+        except TclError:
+            return
+
+        kind = result[0]
+        if kind == "noop":
+            return
+        if kind == "prompt_update":
+            self.online_version = result[1]
+            self.update_window(
+                "There is an update available.\nWould you like to download it?",
+                True,
+            )
+        elif kind == "elevate":
+            self.root.destroy()
+            runAsAdmin()
+        elif kind == "inform_current":
+            self.update_window("You are currently on the most up-to-date version.", False)
+        elif kind == "inform_dev":
+            self.update_window("You are currently on the dev version", False)
 
     def commence_update(self) -> Callable[[], None]:
         """
@@ -397,10 +427,15 @@ class Launcher:
 
 if __name__ == "__main__":
     root = Tk()
+    # Launcher.__init__ blocks on token/keyring + validate HTTP before widgets exist—avoid empty flash.
+    root.withdraw()
 
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
 
-    Launcher(root)
+    app = Launcher(root)
+    theme.reveal_root(root)
+    app.check_for_updates(True)
 
     root.mainloop()

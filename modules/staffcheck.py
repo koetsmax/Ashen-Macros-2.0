@@ -4,12 +4,13 @@ This module creates the GUI for the staff check module.
 
 import runpy
 import threading
-from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
+from tkinter import FALSE, BooleanVar, Menu, Menubutton, StringVar, Tk, Toplevel, ttk
 from typing import Union
 import os
 import launcher  # pylint: disable=unused-import
 import modules.submodules.start_check
 from modules.submodules.functions import widgets
+from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
 from modules.submodules.functions import settings
 from .submodules.build_example_message import build_example_message
@@ -35,13 +36,16 @@ class StaffCheck:
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
-        menubar = Menu(self.root)
-        self.root["menu"] = menubar
+        # In-window menu: native root["menu"] cannot be dark-themed on Windows.
+        self.menubar_frame = ttk.Frame(self.root)
+        self.menubar_frame.grid(column=0, row=0, sticky="EW")
 
-        self.menu_customize = Menu(menubar)
+        mb_opts = theme.tk_menubutton_options()
+        customize_mb = Menubutton(self.menubar_frame, text="Customize", **mb_opts)
+        customize_mb.pack(side="left", padx=4, pady=2)
 
-        menubar.add_cascade(menu=self.menu_customize, label="Customize")
-
+        self.menu_customize = Menu(customize_mb, tearoff=0)
+        theme.configure_popup_menu(self.menu_customize)
         self.menu_customize.add_command(
             label="Good to check message", command=self.edit_good_to_check
         )
@@ -53,11 +57,13 @@ class StaffCheck:
             label="Unprivate Xbox message", command=self.edit_unprivate_xbox
         )
         self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
+        customize_mb.configure(menu=self.menu_customize)
 
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
+        self.mainframe.grid(column=0, row=1, sticky="NSEW")
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=1)
 
         widgets.create_label(self.mainframe, "Discord ID:", 1, 1, "E")
         self.user_id = StringVar()
@@ -487,8 +493,10 @@ class CustomizeWindow:
         self.start_button = start_button
         config = settings.read_config()
 
-        self.customize_window = Toplevel()
+        self.customize_window = Toplevel(mainframe.winfo_toplevel())
+        theme.defer_dialog_show(self.customize_window)
         self.customize_window.title("Customize")
+        theme.paint_toplevel(self.customize_window)
 
         widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
         widgets.create_label(self.customize_window, f"{type_}:", 3, 1, "W")
@@ -519,6 +527,7 @@ class CustomizeWindow:
         x_coordinate = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
         y_coordinate = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
         self.customize_window.geometry(f"{width}x{height}+{x_coordinate}+{y_coordinate}")
+        theme.present_dialog(self.customize_window)
 
 
 def start_script():
@@ -526,8 +535,11 @@ def start_script():
     Starts the script.
     """
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     StaffCheck(root)
+    theme.reveal_root(root)
     root.mainloop()

@@ -11,6 +11,7 @@ from .after_check_message import (  # pylint: disable=relative-beyond-top-level
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.settings import read_config  # pylint: disable=relative-beyond-top-level
+from modules.submodules.functions import theme
 
 
 def check_message(self):
@@ -102,4 +103,4 @@ def stop_check(self):
     self.currentstate = "Done"
     modules.submodules.start_check.continue_to_next(self)
     self.start_button.state(["!disabled"])
-    self.status_label.config(text="Waiting for ID", foreground="black")
+    self.status_label.config(text="Waiting for ID", foreground=theme.label_foreground())

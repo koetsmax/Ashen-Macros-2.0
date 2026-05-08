@@ -15,6 +15,7 @@ import modules.submodules.invite_tracker
 import modules.submodules.pre_check
 import modules.submodules.sot_official
 from modules.submodules.functions.settings import read_config
+from modules.submodules.functions import theme
 
 
 def validate_user_id(self) -> bool:
@@ -109,7 +110,7 @@ def continue_check(self, request_error):
     This function continues the check process
     """
     if not len(self.essential_data_response.json()["linked_xbox"]) > 1:
-        self.status_label.config(text="Running Check", foreground="black")
+        self.status_label.config(text="Running Check", foreground=theme.label_foreground())
     self.mainframe.update()
     if request_error:
         self.xbox_gt = self.xbox_gt.get().strip()
@@ -162,7 +163,7 @@ def reset_ui(self):
         text="Re-run last check", command=lambda: self.user_id.set(previous_user_id)
     )
     self.user_id.set("")
-    self.status_label.config(text="Waiting for ID", foreground="black")
+    self.status_label.config(text="Waiting for ID", foreground=theme.label_foreground())
     self.gamertag_label.config(text="Unknown")
     self.stop_button.state(["disabled"])
     try:

@@ -8,6 +8,7 @@ import runpy
 import time
 import launcher
 import modules.submodules.functions.window_positions as window_positions
+from modules.submodules.functions import theme
 
 
 class HammertimeGenerator:
@@ -130,9 +131,10 @@ class HammertimeGenerator:
 
 def start_script():
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    theme.apply_theme(root)
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     HammertimeGenerator(root)
+    theme.reveal_root(root)
     root.mainloop()

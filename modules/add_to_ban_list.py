@@ -6,13 +6,14 @@ import re
 import runpy
 import time
 import webbrowser
-from tkinter import Menu, StringVar, Tk, FALSE, ttk
+from tkinter import Menu, Menubutton, StringVar, Tk, FALSE, ttk
 
 import keyboard
 
 import launcher  # pylint: disable=unused-import
 from modules.submodules.functions import settings
 from modules.submodules.functions import widgets
+from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
 
 
@@ -29,20 +30,23 @@ class AddToBanList:
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 
-        menubar = Menu(self.root)
-        self.root["menu"] = menubar
+        self.menubar_frame = ttk.Frame(self.root)
+        self.menubar_frame.grid(column=0, row=0, sticky="EW")
 
-        self.menu_settings = Menu(menubar)
+        mb_opts = theme.tk_menubutton_options()
+        settings_mb = Menubutton(self.menubar_frame, text="Settings", **mb_opts)
+        settings_mb.pack(side="left", padx=4, pady=2)
 
-        menubar.add_cascade(menu=self.menu_settings, label="Settings")
-
+        self.menu_settings = Menu(settings_mb, tearoff=0)
+        theme.configure_popup_menu(self.menu_settings)
         self.menu_settings.add_command(label="Change delay", command=self.change_delay)
+        settings_mb.configure(menu=self.menu_settings)
 
-        # Create the menu
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
+        self.mainframe.grid(column=0, row=1, sticky="NSEW")
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=1)
 
         # create the labels and entry boxes
 
@@ -246,8 +250,11 @@ def start_script():
     Starts the script.
     """
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddToBanList(root)
+    theme.reveal_root(root)
     root.mainloop()

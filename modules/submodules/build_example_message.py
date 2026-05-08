@@ -6,6 +6,7 @@ import tkinter as tk
 
 from modules.submodules.functions import widgets
 from modules.submodules.functions import settings
+from modules.submodules.functions import theme
 
 
 def build_example_message(self, id_: int, status_label: tk.Label):
@@ -21,7 +22,7 @@ def build_example_message(self, id_: int, status_label: tk.Label):
     verify_message = config["verify_message"]
     final_string = ""
     self.start_button.state(["!disabled"])
-    status_label.config(text="Waiting for ID", foreground="Black")
+    status_label.config(text="Waiting for ID", foreground=theme.label_foreground())
 
     if not "userID" in good_to_check_message or not "xboxGT" in good_to_check_message:
         self.start_button.state(["disabled"])

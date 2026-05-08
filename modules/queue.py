@@ -7,6 +7,7 @@ from modules.threadedsio import ThreadedSocketClient
 import modules.submodules.functions.window_positions as window_positions
 import traceback
 import modules.submodules.functions.widgets as widgets
+from modules.submodules.functions import theme
 
 
 class Queue:

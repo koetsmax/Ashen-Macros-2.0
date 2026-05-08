@@ -67,6 +67,7 @@ def _set_default_values(config):
         "ADD_TO_BAN_LIST": {"delay": "15"},
         "WINDOW": {"x_offset": "0", "y_offset": "0"},
         "API": {"api_url": "https://ashen_api.famkoets.nl"},
+        "UI": {"dark_mode": "true"},
     }
 
     for section, options in default_config.items():

@@ -5,6 +5,7 @@ import launcher
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 import modules.submodules.functions.window_positions as window_positions
+from modules.submodules.functions import theme
 
 
 class RenameFleet:
@@ -110,8 +111,11 @@ class RenameFleet:
 
 def start_script():
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     RenameFleet(root)
+    theme.reveal_root(root)
     root.mainloop()
