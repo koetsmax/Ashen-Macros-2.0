@@ -1,8 +1,7 @@
 import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk, IntVar
-
+import os
 import requests
-from modules.threadedsio import ThreadedSocketClient
 
 import modules.submodules.functions.window_positions as window_positions
 import traceback
@@ -13,9 +12,13 @@ from modules.submodules.functions import theme
 class Queue:
     def __init__(self, root, sio=None):
         self.root = root
-        self.sio = sio or ThreadedSocketClient(
-            url="http://192.168.1.3:5000", auth="Controller"
-        )
+        with open(
+            os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
+        ) as tokenfile:
+            token = tokenfile.read().strip()
+
+        self.headers = {"Authorization": token}
+
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky="NWES")
         self.root.columnconfigure(0, weight=1)
