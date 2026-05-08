@@ -314,19 +314,14 @@ def start_script():
     """
     try:
         root = Tk()
-        client = Queue(root)
-
-        def events():
-            client.sio.events.processEvents()
-            root.after(50, events)
-
-        events()
+        root.withdraw()
 
         window_positions.load_window_position(root)
+        theme.apply_theme(root)
+        root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
 
-        root.protocol(
-            "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-        )
+        Queue(root)
+        theme.reveal_root(root)
 
         root.mainloop()
     except Exception:
