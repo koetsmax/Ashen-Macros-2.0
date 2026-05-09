@@ -20,10 +20,6 @@ def check_message(self):
     """
     self.currentstate = "Done"
 
-    self.function_button.config(
-        text="Don't Post Message",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
     self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
@@ -56,10 +52,6 @@ def not_good_to_check(self):
     This function allows the user to enter the reason if the user is not good to check
     """
     self.currentstate = "Done"
-    self.function_button.config(
-        text="Don't Post Message",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
     self.kill_button.state(["disabled"])
