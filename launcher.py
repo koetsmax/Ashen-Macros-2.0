@@ -289,7 +289,7 @@ class Launcher:
             ["Delay initial command:", "Delay follow up:", "API URL:"],
             ["COMMANDS", "COMMANDS", "API"],
             ["initial_command", "follow_up", "api_url"],
-            ["2", "0.4", "https://ashen_api.famkoets.nl"],
+            ["2", "0.4", "https://ashen.api.famkoets.nl"],
         ]
         # pylint enable=line-too-long
         widgets.CreateSettingsWindow(self.root, config)
@@ -300,8 +300,8 @@ class Launcher:
         Test the API connection
         """
         api_url = settings.read_config()["api_url"]
-        if api_url == "http://ashen_api.famkoets.nl":
-            api_url = "https://ashen_api.famkoets.nl"
+        if api_url in ["http://ashen_api.famkoets.nl", "https://ashen_api.famkoets.nl"]:
+            api_url = "https://ashen.api.famkoets.nl"
             settings.set_custom_value("API", "api_url", api_url)
         request_error = False
         self.api_label.config(text="Sent...", foreground="orange")
