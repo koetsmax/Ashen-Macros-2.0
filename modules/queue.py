@@ -2,6 +2,7 @@ import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk, IntVar
 import os
 import requests
+from typing import Callable, Optional
 
 import modules.submodules.functions.window_positions as window_positions
 import traceback
@@ -10,8 +11,9 @@ from modules.submodules.functions import theme
 
 
 class Queue:
-    def __init__(self, root, sio=None):
+    def __init__(self, root, sio=None, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
         with open(
             os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
         ) as tokenfile:

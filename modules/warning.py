@@ -2,10 +2,10 @@
 This module adds a warning to the specified member.
 """
 
-import runpy
 import threading
 from tkinter import *
 from tkinter import ttk as tk
+from typing import Callable, Optional
 from modules.submodules.functions import window_positions
 from modules.submodules.functions import theme
 from modules.submodules.functions.switch_channel import switch_channel
@@ -19,9 +19,10 @@ class AddWarning:
     This class creates the window where the user can fill out all the details about the member they want to warn.
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.keyboard_lock = threading.Lock()
         self.root = root
+        self.on_back = on_back
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 
@@ -102,12 +103,12 @@ class AddWarning:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def add_warning(self):
         """

@@ -1,12 +1,14 @@
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
+from typing import Callable, Optional
 import launcher  # pylint: disable=unused-import
 from modules.submodules.functions import window_positions
 from modules.submodules.functions import theme
 
 
 class ShipHolder:
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
         self.root.title("Ship Holder")
         self.root.option_add("*tearOff", FALSE)
 

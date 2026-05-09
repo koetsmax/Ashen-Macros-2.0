@@ -5,6 +5,7 @@ import time
 import keyboard
 import threading
 import ast
+from typing import Callable, Optional
 from modules.submodules.functions import widgets
 from modules.submodules.functions import theme
 from modules.submodules.functions.execute_command import execute_command
@@ -13,8 +14,9 @@ from modules.submodules.functions.switch_channel import switch_channel
 
 
 class CommandExecutor:
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
         self.root.title("Command Executor")
         self.root.option_add("*tearOff", FALSE)
 

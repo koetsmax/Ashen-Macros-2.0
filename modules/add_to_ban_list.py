@@ -3,10 +3,10 @@ This module adds the specified member to the ban list.
 """
 
 import re
-import runpy
 import time
 import webbrowser
 from tkinter import Menu, Menubutton, StringVar, Tk, FALSE, ttk
+from typing import Callable, Optional
 
 import keyboard
 
@@ -22,11 +22,12 @@ class AddToBanList:
     class for the add_to_ban_list window
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         # read the delay from the INI file
         self.delay = settings.read_config()
 
         self.root = root
+        self.on_back = on_back
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 
@@ -133,12 +134,12 @@ class AddToBanList:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def add_to_ban_list_other(self):
         """

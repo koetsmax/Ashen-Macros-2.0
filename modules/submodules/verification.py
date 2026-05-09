@@ -3,7 +3,6 @@ This module adds the option for the user to link their macro and discord account
 """
 
 import keyring
-import runpy
 import time
 import keyboard
 from modules.submodules.functions import window_positions
@@ -25,8 +24,10 @@ def start_verification(self):
     time.sleep(3)
     keyboard.press_and_release("enter")
     time.sleep(2)
-    # restart the program
-    window_positions.save_window_position(self.root)
-    self.root.destroy()
-    # run the launcher using runpy
-    runpy.run_module("launcher", run_name="__main__")
+    # Refresh the launcher screen so the new "logged in" state renders without
+    # tearing down the Tk root or recursing into a fresh mainloop.
+    on_refresh = getattr(self, "on_refresh", None)
+    if on_refresh is not None:
+        on_refresh()
+        return
+    window_positions.save_window_position(self.root, 1)

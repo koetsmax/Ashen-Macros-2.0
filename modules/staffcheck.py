@@ -2,10 +2,9 @@
 This module creates the GUI for the staff check module.
 """
 
-import runpy
 import threading
 from tkinter import FALSE, BooleanVar, Menu, Menubutton, StringVar, Tk, Toplevel, ttk
-from typing import Union
+from typing import Callable, Optional, Union
 import os
 import launcher  # pylint: disable=unused-import
 import modules.submodules.start_check
@@ -21,8 +20,9 @@ class StaffCheck:
     This class is the main class of the program, initializing the GUI and the other modules.
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
 
         with open(
             os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
@@ -450,12 +450,13 @@ class StaffCheck:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (single-root frame swap when running under the App;
+        falls back to closing the standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
 
 class CustomizeWindow:

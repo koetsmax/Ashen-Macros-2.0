@@ -2,10 +2,10 @@
 This module fills a new fleet with the specified queue members.
 """
 
-import runpy
-import launcher
+import launcher  # pylint: disable=unused-import
 from tkinter import *
 from tkinter import ttk as tk
+from typing import Callable, Optional
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 
@@ -18,8 +18,9 @@ class FillNewFleet:
     This class creates the window where the user can fill out all the queue numbers for the new fleet
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
         self.root.title("Fill New Fleet")
         self.root.option_add("*tearOff", FALSE)
 
@@ -81,12 +82,12 @@ class FillNewFleet:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def start(self):
         """
