@@ -38,9 +38,7 @@ def good_to_check(self):
 
     config = read_config()
     built_good_to_check_message = config["good_to_check_message"]
-    built_good_to_check_message = built_good_to_check_message.replace(
-        "userID", f"<@{self.user_id.get()}>"
-    )
+    built_good_to_check_message = built_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
     built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
@@ -67,15 +65,9 @@ def build_not_good_to_check(self):
     """
     config = read_config()
     built_not_good_to_check_message = config["not_good_to_check_message"]
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "userID", f"<@{self.user_id.get()}>"
-    )
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}"
-    )
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "Reason", f"{self.reason.get()}"
-    )
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("Reason", f"{self.reason.get()}")
     clear_typing_bar()
     keyboard.write(built_not_good_to_check_message)
     keyboard.press_and_release("enter")
