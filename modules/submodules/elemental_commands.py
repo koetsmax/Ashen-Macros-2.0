@@ -216,11 +216,7 @@ def elemental_api_request(self):
                 if self.loghistory_issues:
                     self.loghistory_fix_issues_button.state(["!disabled"])
 
-        except (
-            requests.exceptions.ConnectionError,
-            TypeError,
-            requests.exceptions.ReadTimeout,
-        ):
+        except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
     else:
         self.loghistory_status_label.config(text="Not sending request", foreground="green")
