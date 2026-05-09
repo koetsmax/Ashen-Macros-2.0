@@ -109,7 +109,7 @@ def continue_check(self, request_error):
     """
     This function continues the check process
     """
-    if not len(self.essential_data_response.json()["linked_xbox"]) > 1:
+    if request_error or not len(self.essential_data_response.json()["linked_xbox"]) > 1:
         self.status_label.config(text="Running Check", foreground=theme.label_foreground())
     self.mainframe.update()
     if request_error:
