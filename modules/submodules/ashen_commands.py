@@ -88,7 +88,6 @@ def make_api_request(self):
         print(f"API Request Error: {e}")
 
 
-# Create a function to start API requests in a separate thread
 def start_ashen_api_requests_thread(self):
     """
     This function starts the API request in a separate thread

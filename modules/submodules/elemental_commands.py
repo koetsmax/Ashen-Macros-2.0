@@ -130,7 +130,6 @@ def make_api_request(self):
         print(f"API Request Error: {e}")
 
 
-# Create a function to start API requests in a separate thread
 def start_elemental_api_requests_thread(self):
     """
     This function starts the Elemental API requests in a separate thread.
