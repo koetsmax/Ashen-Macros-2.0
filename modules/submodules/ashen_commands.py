@@ -198,7 +198,7 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Not sending request", foreground="green")
 
     if request_error:
-        self.search_status_label.config(text="Request failed", foreground="red")
+        self.search_status_label.config(text="Failed", foreground="red")
 
 
 def fix_issues(self):  # pylint: disable=unused-argument
