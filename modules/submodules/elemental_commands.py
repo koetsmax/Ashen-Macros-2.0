@@ -225,6 +225,8 @@ def elemental_api_request(self):
             request_error = True
     else:
         self.loghistory_status_label.config(text="Not sending request", foreground="green")
+        self.loghistory_issues = ["Gamertag in Notes"]
+        self.loghistory_fix_issues_button.state(["!disabled"])
 
     if request_error:
         self.loghistory_status_label.config(text="Failed", foreground="red")
