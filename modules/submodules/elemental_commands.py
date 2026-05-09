@@ -37,9 +37,7 @@ def elemental_commands(self, *args):
     if not args:
         modules.submodules.start_check.continue_to_next(self)
     else:
-        self.function_button.config(
-            text="Tell to link xbox", command=lambda: tell_to_link_xbox(self)
-        )
+        self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
         self.kill_button.config(
             text="Tell to verify",
             command=lambda: tell_to_verify(self),
@@ -199,9 +197,7 @@ def elemental_api_request(self):
                     foreground=("red" if response_json["anti_alliance_note"] else "green"),
                 )
                 self.jump_to_message_button.state(["!disabled"])
-                self.jump_to_message_button.config(
-                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
-                )
+                self.jump_to_message_button.config(command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True))
 
                 issues = {
                     "Account Age": response_json["account_age"] < 60,

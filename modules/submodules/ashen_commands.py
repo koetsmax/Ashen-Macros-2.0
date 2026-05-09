@@ -46,13 +46,9 @@ def ashen_commands(self):
         command=lambda: needs_to_remove_friends(self),
     )
     self.function_button.state(["!disabled"])
-    self.function_button_2.config(
-        text="Needs to verify account", command=lambda: needs_to_verify(self)
-    )
+    self.function_button_2.config(text="Needs to verify account", command=lambda: needs_to_verify(self))
     self.function_button_2.state(["!disabled"])
-    self.kill_button.config(
-        text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
-    )
+    self.kill_button.config(text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self))
     self.kill_button.state(["!disabled"])
 
 
@@ -134,9 +130,7 @@ def ashen_api_request(self):
                     text=f"{response_json['gamertag_exists']}",
                     foreground="green" if response_json["gamertag_exists"] else "red",
                 )
-                self.total_friends_label.config(
-                    text=f"{response_json['total_friends']}", foreground="green"
-                )
+                self.total_friends_label.config(text=f"{response_json['total_friends']}", foreground="green")
                 # self.ban_ratio_label.config(
                 #     text=f"{response_json['ban_ratio']}",
                 #     foreground="red" if response_json["ban_ratio"] > 0 else "green",
@@ -151,9 +145,7 @@ def ashen_api_request(self):
                 )
                 self.partial_matches_label.config(
                     text=f"{response_json['partial_matches']}",
-                    foreground=(
-                        "green" if int(response_json["partial_matches"]) == 0 else "orange"
-                    ),
+                    foreground=("green" if int(response_json["partial_matches"]) == 0 else "orange"),
                 )
                 self.exact_matches_label.config(
                     text=f"{response_json['exact_matches']}",
@@ -164,9 +156,7 @@ def ashen_api_request(self):
                     foreground="green" if response_json["alts_found"] == "0" else "red",
                 )
                 self.jump_to_message_search_button.state(["!disabled"])
-                self.jump_to_message_search_button.config(
-                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
-                )
+                self.jump_to_message_search_button.config(command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True))
 
                 issues = {
                     "Gamertag Exists": not response_json["gamertag_exists"],
