@@ -70,18 +70,14 @@ class Queue:
         self.queue_info_labelframe.columnconfigure(0, weight=1)
         self.queue_info_labelframe.rowconfigure(0, weight=1)
 
-        self.label_queue_active = widgets.create_label(
-            self.queue_info_labelframe, f"Queue: {self.active.get()}", 0, 0
-        )
+        self.label_queue_active = widgets.create_label(self.queue_info_labelframe, f"Queue: {self.active.get()}", 0, 0)
         self.label_total = widgets.create_label(
             self.queue_info_labelframe,
             f"Total ({self.ships_total.get()}): {self.queue_total.get()}",
             1,
             0,
         )
-        self.label_any = widgets.create_label(
-            self.queue_info_labelframe, f"Anything: {self.queue_any.get()}", 2, 0
-        )
+        self.label_any = widgets.create_label(self.queue_info_labelframe, f"Anything: {self.queue_any.get()}", 2, 0)
         self.label_fotd = widgets.create_label(
             self.queue_info_labelframe,
             f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}",
@@ -167,13 +163,9 @@ class Queue:
         self.ship_info_labelframe.columnconfigure(0, weight=1)
         self.ship_info_labelframe.rowconfigure(0, weight=1)
 
-        self.label_ship_active = widgets.create_label(
-            self.ship_info_labelframe, "Ships: Initializing", 0, 0
-        )
+        self.label_ship_active = widgets.create_label(self.ship_info_labelframe, "Ships: Initializing", 0, 0)
 
-        request_api_queue = requests.get(
-            "http://localhost:5000/queue/members", headers=self.headers
-        )
+        request_api_queue = requests.get("http://localhost:5000/queue/members", headers=self.headers)
 
         def queue(data):
             print(f"queue: {data}")
@@ -230,31 +222,17 @@ class Queue:
                     self.queue_unk.set(self.queue_unk.get() + 1)
 
             self.label_queue_active.config(text=f"Queue: {self.active.get()}")
-            self.label_total.config(
-                text=f"Total ({self.ships_total.get()}): {self.queue_total.get()}"
-            )
+            self.label_total.config(text=f"Total ({self.ships_total.get()}): {self.queue_total.get()}")
             self.label_any.config(text=f"Anything: {self.queue_any.get()}")
-            self.label_fotd.config(
-                text=f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}"
-            )
-            self.label_we.config(
-                text=f"World Events ({self.ships_we.get()}): {self.queue_we.get()}"
-            )
-            self.label_gh.config(
-                text=f"Gold Hoarders ({self.ships_gh.get()}): {self.queue_gh.get()}"
-            )
-            self.label_mrcnt.config(
-                text=f"Merchant ({self.ships_mrcnt.get()}): {self.queue_mrcnt.get()}"
-            )
-            self.label_oos.config(
-                text=f"Order of Souls ({self.ships_oos.get()}): {self.queue_oos.get()}"
-            )
+            self.label_fotd.config(text=f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}")
+            self.label_we.config(text=f"World Events ({self.ships_we.get()}): {self.queue_we.get()}")
+            self.label_gh.config(text=f"Gold Hoarders ({self.ships_gh.get()}): {self.queue_gh.get()}")
+            self.label_mrcnt.config(text=f"Merchant ({self.ships_mrcnt.get()}): {self.queue_mrcnt.get()}")
+            self.label_oos.config(text=f"Order of Souls ({self.ships_oos.get()}): {self.queue_oos.get()}")
             self.label_rpr.config(text=f"Reaper ({self.ships_rpr.get()}): {self.queue_rpr.get()}")
             self.label_atn.config(text=f"Athena ({self.ships_atn.get()}): {self.queue_atn.get()}")
             self.label_hc.config(text=f"Fishing ({self.ships_hc.get()}): {self.queue_hc.get()}")
-            self.label_sk.config(
-                text=f"Sunken Kingdom ({self.ships_sk.get()}): {self.queue_sk.get()}"
-            )
+            self.label_sk.config(text=f"Sunken Kingdom ({self.ships_sk.get()}): {self.queue_sk.get()}")
             self.label_sf.config(text=f"Sea Forts ({self.ships_sf.get()}): {self.queue_sf.get()}")
             self.label_tt.config(text=f"Tall Tales ({self.ships_tt.get()}): {self.queue_tt.get()}")
             self.label_ss.config(text=f"Siren Song ({self.ships_ss.get()}): {self.queue_ss.get()}")
@@ -286,10 +264,7 @@ class Queue:
                     self.ships_atn.set(self.ships_atn.get() + 1)
                 if "gold hoarder" in ship["activity"].lower():
                     self.ships_gh.set(self.ships_gh.get() + 1)
-                if (
-                    "order of souls" in ship["activity"].lower()
-                    or "oos" in ship["activity"].lower()
-                ):
+                if "order of souls" in ship["activity"].lower() or "oos" in ship["activity"].lower():
                     self.ships_oos.set(self.ships_oos.get() + 1)
                 if "merchant" in ship["activity"].lower():
                     self.ships_mrcnt.set(self.ships_mrcnt.get() + 1)

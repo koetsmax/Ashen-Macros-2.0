@@ -43,16 +43,10 @@ class StaffCheck:
 
         self.menu_customize = Menu(customize_mb, tearoff=0)
         theme.configure_popup_menu(self.menu_customize)
-        self.menu_customize.add_command(
-            label="Good to check message", command=self.edit_good_to_check
-        )
-        self.menu_customize.add_command(
-            label="Not good to check message", command=self.edit_not_good_to_check
-        )
+        self.menu_customize.add_command(label="Good to check message", command=self.edit_good_to_check)
+        self.menu_customize.add_command(label="Not good to check message", command=self.edit_not_good_to_check)
         self.menu_customize.add_command(label="Join AWR message", command=self.edit_join_awr)
-        self.menu_customize.add_command(
-            label="Unprivate Xbox message", command=self.edit_unprivate_xbox
-        )
+        self.menu_customize.add_command(label="Unprivate Xbox message", command=self.edit_unprivate_xbox)
         self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
         customize_mb.configure(menu=self.menu_customize)
 
@@ -78,9 +72,7 @@ class StaffCheck:
             "#captain-commands",
             "#admin-commands",
         ]
-        self.channel_combo_box = widgets.create_listbox(
-            self.mainframe, channel_options, self.channel, 3, 2, "W, E"
-        )
+        self.channel_combo_box = widgets.create_listbox(self.mainframe, channel_options, self.channel, 3, 2, "W, E")
 
         widgets.create_label(self.mainframe, "Method:", 4, 1, "E")
         self.method = StringVar(value="All Commands")
@@ -92,23 +84,15 @@ class StaffCheck:
             "SOT Official",
             "Check Message",
         ]
-        self.method_combo_box = widgets.create_listbox(
-            self.mainframe, method_options, self.method, 4, 2, "W, E"
-        )
+        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.method, 4, 2, "W, E")
 
         self.check = BooleanVar(value=False)
-        self.pre_check_button = widgets.create_checkbox(
-            self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E"
-        )
+        self.pre_check_button = widgets.create_checkbox(self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E")
 
-        self.function_button = widgets.create_button(
-            self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E"
-        )
+        self.function_button = widgets.create_button(self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E")
         self.function_button.state(["disabled"])
 
-        self.kill_button = widgets.create_button(
-            self.mainframe, "Back to launcher", self.back, 6, 1, "W, E"
-        )
+        self.kill_button = widgets.create_button(self.mainframe, "Back to launcher", self.back, 6, 1, "W, E")
 
         self.start_button = widgets.create_button(
             self.mainframe,
@@ -119,9 +103,7 @@ class StaffCheck:
             "W, E",
         )
 
-        self.function_button_2 = widgets.create_button(
-            self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E"
-        )
+        self.function_button_2 = widgets.create_button(self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E")
         self.function_button_2.state(["disabled"])
 
         self.stop_button = widgets.create_button(
@@ -134,15 +116,11 @@ class StaffCheck:
         )
         self.stop_button.state(["disabled"])
 
-        self.status_label = widgets.create_label(
-            self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2
-        )
+        self.status_label = widgets.create_label(self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2)
 
         # User Report
         self.loghistory_labelframe = ttk.LabelFrame(self.mainframe, text="User Report")
-        self.loghistory_labelframe.grid(
-            column=3, row=1, columnspan=2, rowspan=4, sticky="N, W, E, S"
-        )
+        self.loghistory_labelframe.grid(column=3, row=1, columnspan=2, rowspan=4, sticky="N, W, E, S")
         self.loghistory_labelframe.columnconfigure(0, weight=1)
         self.loghistory_labelframe.rowconfigure(0, weight=1)
 
@@ -176,33 +154,17 @@ class StaffCheck:
         )
         self.jump_to_message_button.state(["disabled"])
 
-        self.account_age_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange"
-        )
-        self.needs_warning_talk_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.gamertag_in_notes_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
-        self.needs_to_be_spoken_to_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
-        self.needs_mic_check_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange"
-        )
-        self.anti_alliance_note_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange"
-        )
-        self.loghistory_status_label = widgets.create_label(
-            self.loghistory_labelframe, "Waiting", 7, 1, "E", 1, 2, foreground="orange"
-        )
+        self.account_age_label = widgets.create_label(self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.needs_warning_talk_label = widgets.create_label(self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.gamertag_in_notes_label = widgets.create_label(self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.needs_to_be_spoken_to_label = widgets.create_label(self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.needs_mic_check_label = widgets.create_label(self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.anti_alliance_note_label = widgets.create_label(self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.loghistory_status_label = widgets.create_label(self.loghistory_labelframe, "Waiting", 7, 1, "E", 1, 2, foreground="orange")
 
         # Invite Tracker
         self.invite_tracker_labelframe = ttk.LabelFrame(self.mainframe, text="Invite Tracker")
-        self.invite_tracker_labelframe.grid(
-            column=3, row=5, columnspan=2, rowspan=4, sticky="N, W, E, S"
-        )
+        self.invite_tracker_labelframe.grid(column=3, row=5, columnspan=2, rowspan=4, sticky="N, W, E, S")
         self.invite_tracker_labelframe.columnconfigure(0, weight=1)
         self.invite_tracker_labelframe.rowconfigure(0, weight=1)
 
@@ -243,12 +205,8 @@ class StaffCheck:
             2,
             foreground="orange",
         )
-        self.times_invited_label = widgets.create_label(
-            self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.num_people_invited_label = widgets.create_label(
-            self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
+        self.times_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.num_people_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
         self.invite_tracker_status_label = widgets.create_label(
             self.invite_tracker_labelframe,
             "Waiting",
@@ -287,44 +245,24 @@ class StaffCheck:
             2,
         )
         self.search_fix_issues_button.state(["disabled"])
-        self.jump_to_message_search_button = widgets.create_button(
-            self.search_labelframe, "Jump to message", lambda: None, 11, 1, "W, E", 1, 2
-        )
+        self.jump_to_message_search_button = widgets.create_button(self.search_labelframe, "Jump to message", lambda: None, 11, 1, "W, E", 1, 2)
         self.jump_to_message_search_button.state(["disabled"])
 
-        self.gamertag_exists_label = widgets.create_label(
-            self.search_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange"
-        )
-        self.total_friends_label = widgets.create_label(
-            self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
+        self.gamertag_exists_label = widgets.create_label(self.search_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange")
+        self.total_friends_label = widgets.create_label(self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
         # self.ban_ratio_label = widgets.create_label(
         #     self.search_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
         # )
-        self.completion_label = widgets.create_label(
-            self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
-        self.total_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 5, 2, "W, E", foreground="orange"
-        )
-        self.partial_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 6, 2, "W, E", foreground="orange"
-        )
-        self.exact_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 7, 2, "W, E", foreground="orange"
-        )
-        self.alts_found_label = widgets.create_label(
-            self.search_labelframe, "N/A", 8, 2, "W, E", foreground="orange"
-        )
-        self.search_status_label = widgets.create_label(
-            self.search_labelframe, "Waiting", 9, 1, "E", 1, 2, foreground="orange"
-        )
+        self.completion_label = widgets.create_label(self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.total_matches_label = widgets.create_label(self.search_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.partial_matches_label = widgets.create_label(self.search_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.exact_matches_label = widgets.create_label(self.search_labelframe, "N/A", 7, 2, "W, E", foreground="orange")
+        self.alts_found_label = widgets.create_label(self.search_labelframe, "N/A", 8, 2, "W, E", foreground="orange")
+        self.search_status_label = widgets.create_label(self.search_labelframe, "Waiting", 9, 1, "E", 1, 2, foreground="orange")
 
         # SOT Official
         self.sot_official_labelframe = ttk.LabelFrame(self.mainframe, text="SOT Official")
-        self.sot_official_labelframe.grid(
-            column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S"
-        )
+        self.sot_official_labelframe.grid(column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S")
         self.sot_official_labelframe.columnconfigure(0, weight=1)
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
@@ -345,18 +283,10 @@ class StaffCheck:
         )
         self.check_for_yourself_button.state(["disabled"])
 
-        self.total_messages_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 1, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_alliance_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_hourglass_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_bad_words_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
+        self.total_messages_label = widgets.create_label(self.sot_official_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.messages_with_alliance_label = widgets.create_label(self.sot_official_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.messages_with_hourglass_label = widgets.create_label(self.sot_official_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.messages_with_bad_words_label = widgets.create_label(self.sot_official_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
         self.sot_official_status_label = widgets.create_label(
             self.sot_official_labelframe,
             "Waiting",
@@ -504,9 +434,7 @@ class CustomizeWindow:
 
         build_example_message(self, id_, status_label)
 
-        widgets.create_button(
-            self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W"
-        )
+        widgets.create_button(self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W")
         widgets.create_button(
             self.customize_window,
             "Reset To Default!",
