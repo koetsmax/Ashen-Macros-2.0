@@ -5,7 +5,7 @@ This module creates the GUI for the staff check module.
 import threading
 from tkinter import FALSE, BooleanVar, Menu, Menubutton, StringVar, Tk, Toplevel, ttk
 from typing import Callable, Optional, Union
-import os
+import keyring
 import launcher  # pylint: disable=unused-import
 import modules.submodules.start_check
 from modules.submodules.functions import widgets
@@ -24,10 +24,7 @@ class StaffCheck:
         self.root = root
         self.on_back = on_back
 
-        with open(
-            os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
-        ) as tokenfile:
-            token = tokenfile.read().strip()
+        token = keyring.get_password("AshenMacros", "token")
 
         self.headers = {"Authorization": token}
 
