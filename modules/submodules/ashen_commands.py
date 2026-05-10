@@ -117,12 +117,8 @@ def ashen_api_request(self):
 
             if response.status_code != 200:
                 request_error = True
-            elif response.json()["error"] == "User not found!":
-                self.search_status_label.config(text="User not found", foreground="red")
-            elif response.json()["error"] == "Xbox API error!":
-                self.search_status_label.config(text="Xbox API error", foreground="red")
-            elif response.json()["error"] == "No command found!":
-                self.search_status_label.config(text="Command not found!", foreground="red")
+            elif response.json()["error"] != "none":
+                self.search_status_label.config(text=response.json()["error"], foreground="red")
             else:
                 response_json = response.json()
                 self.gamertag_exists_label.config(

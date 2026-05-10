@@ -81,10 +81,8 @@ def api_request(self):
 
         if response.status_code != 200:
             request_error = True
-        elif response.json()["error"] == "User not found!":
-            self.sot_official_status_label.config(text="User not found", foreground="red")
-        elif response.json()["error"] == "No messages":
-            self.sot_official_status_label.config(text="No messages", foreground="red")
+        elif response.json()["error"] != "none":
+            self.sot_official_status_label.config(text=response.json()["error"], foreground="red")
         else:
             response_json = response.json()
             print(response_json)
