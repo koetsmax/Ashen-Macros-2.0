@@ -86,12 +86,8 @@ def api_request(self):
         else:
             response_json = response.json()
             print(response_json)
-            self.total_messages_label.config(
-                text=f"{response_json['total_messages']}", foreground="green"
-            )
-            self.messages_with_alliance_label.config(
-                text=f"{len(response_json['alliance_messages'])}", foreground="green"
-            )
+            self.total_messages_label.config(text=f"{response_json['total_messages']}", foreground="green")
+            self.messages_with_alliance_label.config(text=f"{len(response_json['alliance_messages'])}", foreground="green")
             self.messages_with_hourglass_label.config(
                 text=f"{len(response_json['hourglass_messages'])}",
                 foreground=("orange" if len(response_json["hourglass_messages"]) > 0 else "green"),
