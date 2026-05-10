@@ -81,7 +81,7 @@ def unprivate_api_request(self):
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":
-            request_error = True
+            request_error = True  #! Request error needs to be set here to make sure it will always continue to next if there is an error
             self.status_label.config(text=response.json()["error"], foreground="red")
         else:
             response_json = response.json()
