@@ -2,8 +2,7 @@
 This module adds the option for the user to link their macro and discord account.
 """
 
-import os
-import runpy
+import keyring
 import time
 import keyboard
 from modules.submodules.functions import window_positions
@@ -17,21 +16,18 @@ def start_verification(self):
     """
     self.verify_button.state(["disabled"])
     time.sleep(3)
-    with open(
-        os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
-    ) as tokenfile:
-        token = tokenfile.read().strip()
+    token = keyring.get_password("AshenMacros", "token")
 
-    enc_token = token.encode("utf-8")
-    enc_token = enc_token.hex()
     switch_channel(self, "derry_fastulfr", kwargs=True)
     clear_typing_bar()
-    keyboard.write(f"!verifymeprettyplease {enc_token}")
+    keyboard.write(f"!verifymeprettyplease {token}")
     time.sleep(3)
     keyboard.press_and_release("enter")
     time.sleep(2)
-    # restart the program
-    window_positions.save_window_position(self.root)
-    self.root.destroy()
-    # run the launcher using runpy
-    runpy.run_module("launcher", run_name="__main__")
+    # Refresh the launcher screen so the new "logged in" state renders without
+    # tearing down the Tk root or recursing into a fresh mainloop.
+    on_refresh = getattr(self, "on_refresh", None)
+    if on_refresh is not None:
+        on_refresh()
+        return
+    window_positions.save_window_position(self.root, 1)

@@ -37,9 +37,7 @@ def elemental_commands(self, *args):
     if not args:
         modules.submodules.start_check.continue_to_next(self)
     else:
-        self.function_button.config(
-            text="Tell to link xbox", command=lambda: tell_to_link_xbox(self)
-        )
+        self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
         self.kill_button.config(
             text="Tell to verify",
             command=lambda: tell_to_verify(self),
@@ -132,7 +130,6 @@ def make_api_request(self):
         print(f"API Request Error: {e}")
 
 
-# Create a function to start API requests in a separate thread
 def start_elemental_api_requests_thread(self):
     """
     This function starts the Elemental API requests in a separate thread.
@@ -162,17 +159,14 @@ def elemental_api_request(self):
             response = requests.post(
                 f"{config["api_url"]}/staffcheck/elemental",
                 json=payload,
-                verify=False,
                 timeout=120,
                 headers=self.headers,
             )
 
             if response.status_code != 200:
                 request_error = True
-            elif response.json()["error"] == "No command found!":
-                self.loghistory_status_label.config(text="Command not found!", foreground="red")
-            elif response.json()["error"] == "User not found!":
-                self.loghistory_status_label.config(text="User not found", foreground="red")
+            elif response.json()["error"] != "none":
+                self.loghistory_status_label.config(text=response.json()["error"], foreground="red")
             else:
                 response_json = response.json()
                 self.account_age_label.config(
@@ -200,9 +194,7 @@ def elemental_api_request(self):
                     foreground=("red" if response_json["anti_alliance_note"] else "green"),
                 )
                 self.jump_to_message_button.state(["!disabled"])
-                self.jump_to_message_button.config(
-                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
-                )
+                self.jump_to_message_button.config(command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True))
 
                 issues = {
                     "Account Age": response_json["account_age"] < 60,
@@ -222,17 +214,15 @@ def elemental_api_request(self):
                 if self.loghistory_issues:
                     self.loghistory_fix_issues_button.state(["!disabled"])
 
-        except (
-            requests.exceptions.ConnectionError,
-            TypeError,
-            requests.exceptions.ReadTimeout,
-        ):
+        except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
     else:
         self.loghistory_status_label.config(text="Not sending request", foreground="green")
+        self.loghistory_issues = ["Gamertag in Notes"]
+        self.loghistory_fix_issues_button.state(["!disabled"])
 
     if request_error:
-        self.loghistory_status_label.config(text="API request failed", foreground="red")
+        self.loghistory_status_label.config(text="Failed", foreground="red")
         #! This will break if this ever gets expanded upon
         self.loghistory_fix_issues_button.state(["!disabled"])
 

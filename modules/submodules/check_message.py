@@ -11,6 +11,7 @@ from .after_check_message import (  # pylint: disable=relative-beyond-top-level
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.settings import read_config  # pylint: disable=relative-beyond-top-level
+from modules.submodules.functions import theme
 
 
 def check_message(self):
@@ -19,13 +20,7 @@ def check_message(self):
     """
     self.currentstate = "Done"
 
-    self.function_button.config(
-        text="Don't Post Message",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
-    self.kill_button.config(
-        text="Not Good to Check", command=lambda: not_good_to_check(self)
-    )
+    self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
@@ -43,12 +38,8 @@ def good_to_check(self):
 
     config = read_config()
     built_good_to_check_message = config["good_to_check_message"]
-    built_good_to_check_message = built_good_to_check_message.replace(
-        "userID", f"<@{self.user_id.get()}>"
-    )
-    built_good_to_check_message = built_good_to_check_message.replace(
-        "xboxGT", f"{self.xbox_gt}"
-    )
+    built_good_to_check_message = built_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
+    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
     keyboard.write(built_good_to_check_message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
@@ -59,18 +50,12 @@ def not_good_to_check(self):
     This function allows the user to enter the reason if the user is not good to check
     """
     self.currentstate = "Done"
-    self.function_button.config(
-        text="Don't Post Message",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
     self.function_button_2.state(["disabled"])
-    self.start_button.config(
-        text="Confirm Reason", command=lambda: build_not_good_to_check(self)
-    )
+    self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
     self.start_button.state(["!disabled"])
 
 
@@ -80,15 +65,9 @@ def build_not_good_to_check(self):
     """
     config = read_config()
     built_not_good_to_check_message = config["not_good_to_check_message"]
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "userID", f"<@{self.user_id.get()}>"
-    )
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}"
-    )
-    built_not_good_to_check_message = built_not_good_to_check_message.replace(
-        "Reason", f"{self.reason.get()}"
-    )
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}")
+    built_not_good_to_check_message = built_not_good_to_check_message.replace("Reason", f"{self.reason.get()}")
     clear_typing_bar()
     keyboard.write(built_not_good_to_check_message)
     keyboard.press_and_release("enter")
@@ -102,4 +81,4 @@ def stop_check(self):
     self.currentstate = "Done"
     modules.submodules.start_check.continue_to_next(self)
     self.start_button.state(["!disabled"])
-    self.status_label.config(text="Waiting for ID", foreground="black")
+    self.status_label.config(text="Waiting for ID", foreground=theme.label_foreground())

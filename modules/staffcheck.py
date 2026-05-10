@@ -2,14 +2,14 @@
 This module creates the GUI for the staff check module.
 """
 
-import runpy
 import threading
-from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk
-from typing import Union
-import os
+from tkinter import FALSE, BooleanVar, Menu, Menubutton, StringVar, Tk, Toplevel, ttk
+from typing import Callable, Optional, Union
+import keyring
 import launcher  # pylint: disable=unused-import
 import modules.submodules.start_check
 from modules.submodules.functions import widgets
+from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
 from modules.submodules.functions import settings
 from .submodules.build_example_message import build_example_message
@@ -20,46 +20,41 @@ class StaffCheck:
     This class is the main class of the program, initializing the GUI and the other modules.
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
 
-        with open(
-            os.path.expanduser("~/Documents/Ashen Macros/token"), "r", encoding="UTF-8"
-        ) as tokenfile:
-            token = tokenfile.read().strip()
+        token = keyring.get_password("AshenMacros", "token")
 
-        enc_token = token.encode("utf-8")
-        enc_token = enc_token.hex()
-        self.headers = {"Authorization": enc_token}
+        self.headers = {"Authorization": token}
 
         self.keyboard_lock = threading.Lock()
 
         self.root.title("StaffCheck")
         self.root.option_add("*tearOff", FALSE)
 
-        menubar = Menu(self.root)
-        self.root["menu"] = menubar
+        # In-window menu: native root["menu"] cannot be dark-themed on Windows.
+        self.menubar_frame = ttk.Frame(self.root)
+        self.menubar_frame.grid(column=0, row=0, sticky="EW")
 
-        self.menu_customize = Menu(menubar)
+        mb_opts = theme.tk_menubutton_options()
+        customize_mb = Menubutton(self.menubar_frame, text="Customize", **mb_opts)
+        customize_mb.pack(side="left", padx=4, pady=2)
 
-        menubar.add_cascade(menu=self.menu_customize, label="Customize")
-
-        self.menu_customize.add_command(
-            label="Good to check message", command=self.edit_good_to_check
-        )
-        self.menu_customize.add_command(
-            label="Not good to check message", command=self.edit_not_good_to_check
-        )
+        self.menu_customize = Menu(customize_mb, tearoff=0)
+        theme.configure_popup_menu(self.menu_customize)
+        self.menu_customize.add_command(label="Good to check message", command=self.edit_good_to_check)
+        self.menu_customize.add_command(label="Not good to check message", command=self.edit_not_good_to_check)
         self.menu_customize.add_command(label="Join AWR message", command=self.edit_join_awr)
-        self.menu_customize.add_command(
-            label="Unprivate Xbox message", command=self.edit_unprivate_xbox
-        )
+        self.menu_customize.add_command(label="Unprivate Xbox message", command=self.edit_unprivate_xbox)
         self.menu_customize.add_command(label="Verify message", command=self.edit_verify)
+        customize_mb.configure(menu=self.menu_customize)
 
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
+        self.mainframe.grid(column=0, row=1, sticky="NSEW")
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=1)
 
         widgets.create_label(self.mainframe, "Discord ID:", 1, 1, "E")
         self.user_id = StringVar()
@@ -77,9 +72,7 @@ class StaffCheck:
             "#captain-commands",
             "#admin-commands",
         ]
-        self.channel_combo_box = widgets.create_listbox(
-            self.mainframe, channel_options, self.channel, 3, 2, "W, E"
-        )
+        self.channel_combo_box = widgets.create_listbox(self.mainframe, channel_options, self.channel, 3, 2, "W, E")
 
         widgets.create_label(self.mainframe, "Method:", 4, 1, "E")
         self.method = StringVar(value="All Commands")
@@ -91,23 +84,15 @@ class StaffCheck:
             "SOT Official",
             "Check Message",
         ]
-        self.method_combo_box = widgets.create_listbox(
-            self.mainframe, method_options, self.method, 4, 2, "W, E"
-        )
+        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.method, 4, 2, "W, E")
 
         self.check = BooleanVar(value=False)
-        self.pre_check_button = widgets.create_checkbox(
-            self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E"
-        )
+        self.pre_check_button = widgets.create_checkbox(self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E")
 
-        self.function_button = widgets.create_button(
-            self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E"
-        )
+        self.function_button = widgets.create_button(self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E")
         self.function_button.state(["disabled"])
 
-        self.kill_button = widgets.create_button(
-            self.mainframe, "Back to launcher", self.back, 6, 1, "W, E"
-        )
+        self.kill_button = widgets.create_button(self.mainframe, "Back to launcher", self.back, 6, 1, "W, E")
 
         self.start_button = widgets.create_button(
             self.mainframe,
@@ -118,9 +103,7 @@ class StaffCheck:
             "W, E",
         )
 
-        self.function_button_2 = widgets.create_button(
-            self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E"
-        )
+        self.function_button_2 = widgets.create_button(self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E")
         self.function_button_2.state(["disabled"])
 
         self.stop_button = widgets.create_button(
@@ -133,15 +116,11 @@ class StaffCheck:
         )
         self.stop_button.state(["disabled"])
 
-        self.status_label = widgets.create_label(
-            self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2
-        )
+        self.status_label = widgets.create_label(self.mainframe, "Waiting for ID", 8, 1, "W, E", 1, 2)
 
         # User Report
         self.loghistory_labelframe = ttk.LabelFrame(self.mainframe, text="User Report")
-        self.loghistory_labelframe.grid(
-            column=3, row=1, columnspan=2, rowspan=4, sticky="N, W, E, S"
-        )
+        self.loghistory_labelframe.grid(column=3, row=1, columnspan=2, rowspan=4, sticky="N, W, E, S")
         self.loghistory_labelframe.columnconfigure(0, weight=1)
         self.loghistory_labelframe.rowconfigure(0, weight=1)
 
@@ -175,33 +154,17 @@ class StaffCheck:
         )
         self.jump_to_message_button.state(["disabled"])
 
-        self.account_age_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange"
-        )
-        self.needs_warning_talk_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.gamertag_in_notes_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
-        self.needs_to_be_spoken_to_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
-        self.needs_mic_check_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange"
-        )
-        self.anti_alliance_note_label = widgets.create_label(
-            self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange"
-        )
-        self.loghistory_status_label = widgets.create_label(
-            self.loghistory_labelframe, "Waiting", 7, 1, "E", 1, 2, foreground="orange"
-        )
+        self.account_age_label = widgets.create_label(self.loghistory_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.needs_warning_talk_label = widgets.create_label(self.loghistory_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.gamertag_in_notes_label = widgets.create_label(self.loghistory_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.needs_to_be_spoken_to_label = widgets.create_label(self.loghistory_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.needs_mic_check_label = widgets.create_label(self.loghistory_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.anti_alliance_note_label = widgets.create_label(self.loghistory_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.loghistory_status_label = widgets.create_label(self.loghistory_labelframe, "Waiting", 7, 1, "E", 1, 2, foreground="orange")
 
         # Invite Tracker
         self.invite_tracker_labelframe = ttk.LabelFrame(self.mainframe, text="Invite Tracker")
-        self.invite_tracker_labelframe.grid(
-            column=3, row=5, columnspan=2, rowspan=4, sticky="N, W, E, S"
-        )
+        self.invite_tracker_labelframe.grid(column=3, row=5, columnspan=2, rowspan=4, sticky="N, W, E, S")
         self.invite_tracker_labelframe.columnconfigure(0, weight=1)
         self.invite_tracker_labelframe.rowconfigure(0, weight=1)
 
@@ -242,12 +205,8 @@ class StaffCheck:
             2,
             foreground="orange",
         )
-        self.times_invited_label = widgets.create_label(
-            self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.num_people_invited_label = widgets.create_label(
-            self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
+        self.times_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.num_people_invited_label = widgets.create_label(self.invite_tracker_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
         self.invite_tracker_status_label = widgets.create_label(
             self.invite_tracker_labelframe,
             "Waiting",
@@ -286,44 +245,24 @@ class StaffCheck:
             2,
         )
         self.search_fix_issues_button.state(["disabled"])
-        self.jump_to_message_search_button = widgets.create_button(
-            self.search_labelframe, "Jump to message", lambda: None, 11, 1, "W, E", 1, 2
-        )
+        self.jump_to_message_search_button = widgets.create_button(self.search_labelframe, "Jump to message", lambda: None, 11, 1, "W, E", 1, 2)
         self.jump_to_message_search_button.state(["disabled"])
 
-        self.gamertag_exists_label = widgets.create_label(
-            self.search_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange"
-        )
-        self.total_friends_label = widgets.create_label(
-            self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
+        self.gamertag_exists_label = widgets.create_label(self.search_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange")
+        self.total_friends_label = widgets.create_label(self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
         # self.ban_ratio_label = widgets.create_label(
         #     self.search_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
         # )
-        self.completion_label = widgets.create_label(
-            self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
-        self.total_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 5, 2, "W, E", foreground="orange"
-        )
-        self.partial_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 6, 2, "W, E", foreground="orange"
-        )
-        self.exact_matches_label = widgets.create_label(
-            self.search_labelframe, "N/A", 7, 2, "W, E", foreground="orange"
-        )
-        self.alts_found_label = widgets.create_label(
-            self.search_labelframe, "N/A", 8, 2, "W, E", foreground="orange"
-        )
-        self.search_status_label = widgets.create_label(
-            self.search_labelframe, "Waiting", 9, 1, "E", 1, 2, foreground="orange"
-        )
+        self.completion_label = widgets.create_label(self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
+        self.total_matches_label = widgets.create_label(self.search_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
+        self.partial_matches_label = widgets.create_label(self.search_labelframe, "N/A", 6, 2, "W, E", foreground="orange")
+        self.exact_matches_label = widgets.create_label(self.search_labelframe, "N/A", 7, 2, "W, E", foreground="orange")
+        self.alts_found_label = widgets.create_label(self.search_labelframe, "N/A", 8, 2, "W, E", foreground="orange")
+        self.search_status_label = widgets.create_label(self.search_labelframe, "Waiting", 9, 1, "E", 1, 2, foreground="orange")
 
         # SOT Official
         self.sot_official_labelframe = ttk.LabelFrame(self.mainframe, text="SOT Official")
-        self.sot_official_labelframe.grid(
-            column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S"
-        )
+        self.sot_official_labelframe.grid(column=5, row=5, columnspan=3, rowspan=4, sticky="N, W, E, S")
         self.sot_official_labelframe.columnconfigure(0, weight=1)
         self.sot_official_labelframe.rowconfigure(0, weight=1)
 
@@ -344,18 +283,10 @@ class StaffCheck:
         )
         self.check_for_yourself_button.state(["disabled"])
 
-        self.total_messages_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 1, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_alliance_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 2, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_hourglass_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        )
-        self.messages_with_bad_words_label = widgets.create_label(
-            self.sot_official_labelframe, "N/A", 4, 2, "W, E", foreground="orange"
-        )
+        self.total_messages_label = widgets.create_label(self.sot_official_labelframe, "N/A", 1, 2, "W, E", foreground="orange")
+        self.messages_with_alliance_label = widgets.create_label(self.sot_official_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
+        self.messages_with_hourglass_label = widgets.create_label(self.sot_official_labelframe, "N/A", 3, 2, "W, E", foreground="orange")
+        self.messages_with_bad_words_label = widgets.create_label(self.sot_official_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
         self.sot_official_status_label = widgets.create_label(
             self.sot_official_labelframe,
             "Waiting",
@@ -446,12 +377,13 @@ class StaffCheck:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (single-root frame swap when running under the App;
+        falls back to closing the standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
 
 class CustomizeWindow:
@@ -489,8 +421,10 @@ class CustomizeWindow:
         self.start_button = start_button
         config = settings.read_config()
 
-        self.customize_window = Toplevel()
+        self.customize_window = Toplevel(mainframe.winfo_toplevel())
+        theme.defer_dialog_show(self.customize_window)
         self.customize_window.title("Customize")
+        theme.paint_toplevel(self.customize_window)
 
         widgets.create_label(self.customize_window, explanation, 1, 1, "W", 2)
         widgets.create_label(self.customize_window, f"{type_}:", 3, 1, "W")
@@ -500,9 +434,7 @@ class CustomizeWindow:
 
         build_example_message(self, id_, status_label)
 
-        widgets.create_button(
-            self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W"
-        )
+        widgets.create_button(self.customize_window, "Save Changes", lambda: save_changes(self), 7, 1, "W")
         widgets.create_button(
             self.customize_window,
             "Reset To Default!",
@@ -521,6 +453,7 @@ class CustomizeWindow:
         x_coordinate = (self.customize_window.winfo_screenwidth() // 2) - (width // 2)
         y_coordinate = (self.customize_window.winfo_screenheight() // 2) - (height // 2)
         self.customize_window.geometry(f"{width}x{height}+{x_coordinate}+{y_coordinate}")
+        theme.present_dialog(self.customize_window)
 
 
 def start_script():
@@ -528,8 +461,11 @@ def start_script():
     Starts the script.
     """
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     StaffCheck(root)
+    theme.reveal_root(root)
     root.mainloop()

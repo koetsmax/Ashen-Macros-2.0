@@ -67,7 +67,7 @@ def api_request(self):
         config = read_config()
         payload = {"userID": self.user_id.get()}
         response = requests.post(
-            f"{config["api_url"]}/staffcheck/invite", json=payload, verify=False, timeout=20, headers=self.headers
+            f"{config["api_url"]}/staffcheck/invite", json=payload, timeout=20, headers=self.headers
         )
 
         if response.status_code != 200:
@@ -84,15 +84,11 @@ def api_request(self):
             self.invited_by_label.config(text=inviter, foreground="green")
             self.times_invited_label.config(
                 text=f"{len(response_json['inviters_names'])} time(s)",
-                foreground=(
-                    "green" if len(response_json["inviters_ids"]) < 5 else "orange"
-                ),
+                foreground=("green" if len(response_json["inviters_ids"]) < 5 else "orange"),
             )
             self.num_people_invited_label.config(
                 text=f"{len(response_json['invitees_ids'])}",
-                foreground=(
-                    "green" if len(response_json["invitees_ids"]) < 5 else "orange"
-                ),
+                foreground=("green" if len(response_json["invitees_ids"]) < 5 else "orange"),
             )
 
             self.invite_tracker_status_label.config(text="Success", foreground="green")

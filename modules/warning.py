@@ -2,11 +2,12 @@
 This module adds a warning to the specified member.
 """
 
-import runpy
 import threading
 from tkinter import *
 from tkinter import ttk as tk
+from typing import Callable, Optional
 from modules.submodules.functions import window_positions
+from modules.submodules.functions import theme
 from modules.submodules.functions.switch_channel import switch_channel
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
@@ -18,9 +19,10 @@ class AddWarning:
     This class creates the window where the user can fill out all the details about the member they want to warn.
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.keyboard_lock = threading.Lock()
         self.root = root
+        self.on_back = on_back
         self.root.title("Add Warning")
         self.root.option_add("*tearOff", FALSE)
 
@@ -61,7 +63,9 @@ class AddWarning:
             text="Custom Reason:",
         ).grid(column=1, row=4, sticky=E)
         self.custom_reason = StringVar()
-        self.custom_reason_entry = tk.Entry(self.mainframe, width=19, textvariable=self.custom_reason)
+        self.custom_reason_entry = tk.Entry(
+            self.mainframe, width=19, textvariable=self.custom_reason
+        )
         self.custom_reason_entry.grid(column=2, row=4, sticky="W, E")
 
         # create a checkbox for loghistory
@@ -99,12 +103,12 @@ class AddWarning:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def add_warning(self):
         """
@@ -159,8 +163,11 @@ class AddWarning:
 
 def start_script():
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddWarning(root)
+    theme.reveal_root(root)
     root.mainloop()

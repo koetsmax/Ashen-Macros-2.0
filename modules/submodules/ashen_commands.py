@@ -46,13 +46,9 @@ def ashen_commands(self):
         command=lambda: needs_to_remove_friends(self),
     )
     self.function_button.state(["!disabled"])
-    self.function_button_2.config(
-        text="Needs to verify account", command=lambda: needs_to_verify(self)
-    )
+    self.function_button_2.config(text="Needs to verify account", command=lambda: needs_to_verify(self))
     self.function_button_2.state(["!disabled"])
-    self.kill_button.config(
-        text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self)
-    )
+    self.kill_button.config(text="Needs to unprivate Xbox", command=lambda: needs_to_unprivate_xbox(self))
     self.kill_button.state(["!disabled"])
 
 
@@ -92,7 +88,6 @@ def make_api_request(self):
         print(f"API Request Error: {e}")
 
 
-# Create a function to start API requests in a separate thread
 def start_ashen_api_requests_thread(self):
     """
     This function starts the API request in a separate thread
@@ -116,37 +111,28 @@ def ashen_api_request(self):
             response = requests.post(
                 f"{config["api_url"]}/staffcheck/search",
                 json=payload,
-                verify=False,
                 timeout=120,
                 headers=self.headers,
             )
 
             if response.status_code != 200:
                 request_error = True
-            elif response.json()["error"] == "User not found!":
-                self.search_status_label.config(text="User not found", foreground="red")
-            elif response.json()["error"] == "Xbox API error!":
-                self.search_status_label.config(text="Xbox API error", foreground="red")
-            elif response.json()["error"] == "No command found!":
-                self.search_status_label.config(text="Command not found!", foreground="red")
+            elif response.json()["error"] != "none":
+                self.search_status_label.config(text=response.json()["error"], foreground="red")
             else:
                 response_json = response.json()
                 self.gamertag_exists_label.config(
                     text=f"{response_json['gamertag_exists']}",
                     foreground="green" if response_json["gamertag_exists"] else "red",
                 )
-                self.total_friends_label.config(
-                    text=f"{response_json['total_friends']}", foreground="green"
-                )
+                self.total_friends_label.config(text=f"{response_json['total_friends']}", foreground="green")
                 # self.ban_ratio_label.config(
                 #     text=f"{response_json['ban_ratio']}",
                 #     foreground="red" if response_json["ban_ratio"] > 0 else "green",
                 # )
                 self.completion_label.config(
                     text=f"{response_json['completion_achieved']}",
-                    foreground=(
-                        "green" if response_json["completion_achieved"]) else "red"
-                    ),
+                    foreground=("green" if response_json["completion_achieved"] else "red"),
                 )
                 self.total_matches_label.config(
                     text=f"{response_json['total_matches']}",
@@ -154,9 +140,7 @@ def ashen_api_request(self):
                 )
                 self.partial_matches_label.config(
                     text=f"{response_json['partial_matches']}",
-                    foreground=(
-                        "green" if int(response_json["partial_matches"]) == 0 else "orange"
-                    ),
+                    foreground=("green" if int(response_json["partial_matches"]) == 0 else "orange"),
                 )
                 self.exact_matches_label.config(
                     text=f"{response_json['exact_matches']}",
@@ -167,9 +151,7 @@ def ashen_api_request(self):
                     foreground="green" if response_json["alts_found"] == "0" else "red",
                 )
                 self.jump_to_message_search_button.state(["!disabled"])
-                self.jump_to_message_search_button.config(
-                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
-                )
+                self.jump_to_message_search_button.config(command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True))
 
                 issues = {
                     "Gamertag Exists": not response_json["gamertag_exists"],
@@ -201,7 +183,7 @@ def ashen_api_request(self):
         self.search_status_label.config(text="Not sending request", foreground="green")
 
     if request_error:
-        self.search_status_label.config(text="Request failed", foreground="red")
+        self.search_status_label.config(text="Failed", foreground="red")
 
 
 def fix_issues(self):  # pylint: disable=unused-argument

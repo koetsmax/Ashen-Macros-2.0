@@ -4,12 +4,12 @@ import requests
 
 LOCAL_URL = "https://localhost:8000"
 TESTING_URL = "https://192.168.1.2:8000"
-PRODUCTION_URL = "https://ashen_api.famkoets.nl"
+PRODUCTION_URL = "https://ashen.api.famkoets.nl"
 
 # print all 3 of the urls and let the user pick a number one to 3 for which one to use
 print("1) Localhost (https://localhost:8000)")
 print("2) Testing (ttps://192.168.1.2:8000)")
-print("3) Production (https://ashen_api.famkoets.nl)")
+print("3) Production (https://ashen.api.famkoets.nl)")
 url = input("Enter the number of the URL you want to use: ")
 
 if url == "1":

@@ -73,39 +73,28 @@ def api_request(self):
         config = read_config()
         payload = {"userID": self.user_id.get()}
         response = requests.post(
-            f"{config["api_url"]}/staffcheck/sotofficial", json=payload, verify=False, timeout=20, headers=self.headers
+            f"{config["api_url"]}/staffcheck/sotofficial",
+            json=payload,
+            timeout=20,
+            headers=self.headers,
         )
 
         if response.status_code != 200:
             request_error = True
-        elif response.json()["error"] == "User not found!":
-            self.sot_official_status_label.config(
-                text="User not found", foreground="red"
-            )
-        elif response.json()["error"] == "No messages":
-            self.sot_official_status_label.config(text="No messages", foreground="red")
+        elif response.json()["error"] != "none":
+            self.sot_official_status_label.config(text=response.json()["error"], foreground="red")
         else:
             response_json = response.json()
             print(response_json)
-            self.total_messages_label.config(
-                text=f"{response_json['total_messages']}", foreground="green"
-            )
-            self.messages_with_alliance_label.config(
-                text=f"{len(response_json['alliance_messages'])}", foreground="green"
-            )
+            self.total_messages_label.config(text=f"{response_json['total_messages']}", foreground="green")
+            self.messages_with_alliance_label.config(text=f"{len(response_json['alliance_messages'])}", foreground="green")
             self.messages_with_hourglass_label.config(
                 text=f"{len(response_json['hourglass_messages'])}",
-                foreground=(
-                    "orange"
-                    if len(response_json["hourglass_messages"]) > 0
-                    else "green"
-                ),
+                foreground=("orange" if len(response_json["hourglass_messages"]) > 0 else "green"),
             )
             self.messages_with_bad_words_label.config(
                 text=f"{len(response_json['other_messages'])}",
-                foreground=(
-                    "orange" if len(response_json["other_messages"]) > 0 else "green"
-                ),
+                foreground=("orange" if len(response_json["other_messages"]) > 0 else "green"),
             )
 
             self.sot_official_status_label.config(text="Success", foreground="green")

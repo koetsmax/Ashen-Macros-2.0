@@ -1,20 +1,23 @@
 import threading
 from tkinter import FALSE, BooleanVar, Menu, StringVar, Tk, Toplevel, ttk, IntVar
-
+import keyring
 import requests
-from modules.threadedsio import ThreadedSocketClient
+from typing import Callable, Optional
 
 import modules.submodules.functions.window_positions as window_positions
 import traceback
 import modules.submodules.functions.widgets as widgets
+from modules.submodules.functions import theme
 
 
 class Queue:
-    def __init__(self, root, sio=None):
+    def __init__(self, root, sio=None, on_back: Optional[Callable[[], None]] = None):
         self.root = root
-        self.sio = sio or ThreadedSocketClient(
-            url="http://192.168.1.3:5000", auth="Controller"
-        )
+        self.on_back = on_back
+        token = keyring.get_password("AshenMacros", "token")
+
+        self.headers = {"Authorization": token}
+
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky="NWES")
         self.root.columnconfigure(0, weight=1)
@@ -61,106 +64,109 @@ class Queue:
         self.ships_ss = IntVar(value=0)
         self.ships_unk = IntVar(value=0)
 
-        self.label_active = widgets.create_label(
-            self.mainframe, f"Queue: {self.active.get()}", 0, 0
-        )
+        # Queue Info
+        self.queue_info_labelframe = ttk.LabelFrame(self.mainframe, text="Queue Info")
+        self.queue_info_labelframe.grid(column=1, row=1, sticky="N, W, E, S")
+        self.queue_info_labelframe.columnconfigure(0, weight=1)
+        self.queue_info_labelframe.rowconfigure(0, weight=1)
+
+        self.label_queue_active = widgets.create_label(self.queue_info_labelframe, f"Queue: {self.active.get()}", 0, 0)
         self.label_total = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Total ({self.ships_total.get()}): {self.queue_total.get()}",
             1,
             0,
         )
-        self.label_any = widgets.create_label(
-            self.mainframe, f"Anything: {self.queue_any.get()}", 2, 0
-        )
+        self.label_any = widgets.create_label(self.queue_info_labelframe, f"Anything: {self.queue_any.get()}", 2, 0)
         self.label_fotd = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}",
             3,
             0,
         )
         self.label_we = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"World Events ({self.ships_we.get()}): {self.queue_we.get()}",
             4,
             0,
         )
         self.label_gh = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Gold Hoarders ({self.ships_gh.get()}): {self.queue_gh.get()}",
             5,
             0,
         )
         self.label_mrcnt = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Merchant ({self.ships_mrcnt.get()}): {self.queue_mrcnt.get()}",
             6,
             0,
         )
         self.label_oos = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Order of Souls ({self.ships_oos.get()}): {self.queue_oos.get()}",
             7,
             0,
         )
         self.label_rpr = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Reaper ({self.ships_rpr.get()}): {self.queue_rpr.get()}",
             8,
             0,
         )
         self.label_atn = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Athena ({self.ships_atn.get()}): {self.queue_atn.get()}",
             9,
             0,
         )
         self.label_hc = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Fishing ({self.ships_hc.get()}): {self.queue_hc.get()}",
             10,
             0,
         )
         self.label_sk = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Sunken Kingdom ({self.ships_sk.get()}): {self.queue_sk.get()}",
             11,
             0,
         )
         self.label_sf = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Sea Forts ({self.ships_sf.get()}): {self.queue_sf.get()}",
             12,
             0,
         )
         self.label_tt = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Tall Tales ({self.ships_tt.get()}): {self.queue_tt.get()}",
             13,
             0,
         )
         self.label_ss = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Siren Song ({self.ships_ss.get()}): {self.queue_ss.get()}",
             14,
             0,
         )
         self.label_unk = widgets.create_label(
-            self.mainframe,
+            self.queue_info_labelframe,
             f"Unknown ({self.ships_unk.get()}): {self.queue_unk.get()}",
             15,
             0,
         )
 
-        @self.sio.event()
-        def connect():
-            print("Connected to server")
+        # Ship Info
+        self.ship_info_labelframe = ttk.LabelFrame(self.mainframe, text="Ship Info")
+        self.ship_info_labelframe.grid(column=2, row=1, rowspan=2, sticky="N, W, E, S")
+        self.ship_info_labelframe.columnconfigure(0, weight=1)
+        self.ship_info_labelframe.rowconfigure(0, weight=1)
 
-        @self.sio.event()
-        def disconnect():
-            print("Disconnected from server")
+        self.label_ship_active = widgets.create_label(self.ship_info_labelframe, "Ships: Initializing", 0, 0)
 
-        @self.sio.event()
+        request_api_queue = requests.get("http://localhost:5000/queue/members", headers=self.headers)
+
         def queue(data):
             print(f"queue: {data}")
             print(data.get("active"))
@@ -215,52 +221,23 @@ class Queue:
                 if not entry["is_known"] and not entry["manual_override"]:
                     self.queue_unk.set(self.queue_unk.get() + 1)
 
-            self.label_active.config(text=f"Queue: {self.active.get()}")
-            self.label_total.config(
-                text=f"Total ({self.ships_total.get()}): {self.queue_total.get()}"
-            )
+            self.label_queue_active.config(text=f"Queue: {self.active.get()}")
+            self.label_total.config(text=f"Total ({self.ships_total.get()}): {self.queue_total.get()}")
             self.label_any.config(text=f"Anything: {self.queue_any.get()}")
-            self.label_fotd.config(
-                text=f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}"
-            )
-            self.label_we.config(
-                text=f"World Events ({self.ships_we.get()}): {self.queue_we.get()}"
-            )
-            self.label_gh.config(
-                text=f"Gold Hoarders ({self.ships_gh.get()}): {self.queue_gh.get()}"
-            )
-            self.label_mrcnt.config(
-                text=f"Merchant ({self.ships_mrcnt.get()}): {self.queue_mrcnt.get()}"
-            )
-            self.label_oos.config(
-                text=f"Order of Souls ({self.ships_oos.get()}): {self.queue_oos.get()}"
-            )
-            self.label_rpr.config(
-                text=f"Reaper ({self.ships_rpr.get()}): {self.queue_rpr.get()}"
-            )
-            self.label_atn.config(
-                text=f"Athena ({self.ships_atn.get()}): {self.queue_atn.get()}"
-            )
-            self.label_hc.config(
-                text=f"Fishing ({self.ships_hc.get()}): {self.queue_hc.get()}"
-            )
-            self.label_sk.config(
-                text=f"Sunken Kingdom ({self.ships_sk.get()}): {self.queue_sk.get()}"
-            )
-            self.label_sf.config(
-                text=f"Sea Forts ({self.ships_sf.get()}): {self.queue_sf.get()}"
-            )
-            self.label_tt.config(
-                text=f"Tall Tales ({self.ships_tt.get()}): {self.queue_tt.get()}"
-            )
-            self.label_ss.config(
-                text=f"Siren Song ({self.ships_ss.get()}): {self.queue_ss.get()}"
-            )
-            self.label_unk.config(
-                text=f"Unknown ({self.ships_unk.get()}): {self.queue_unk.get()}"
-            )
+            self.label_fotd.config(text=f"Fort of the Damned ({self.ships_fotd.get()}): {self.queue_fotd.get()}")
+            self.label_we.config(text=f"World Events ({self.ships_we.get()}): {self.queue_we.get()}")
+            self.label_gh.config(text=f"Gold Hoarders ({self.ships_gh.get()}): {self.queue_gh.get()}")
+            self.label_mrcnt.config(text=f"Merchant ({self.ships_mrcnt.get()}): {self.queue_mrcnt.get()}")
+            self.label_oos.config(text=f"Order of Souls ({self.ships_oos.get()}): {self.queue_oos.get()}")
+            self.label_rpr.config(text=f"Reaper ({self.ships_rpr.get()}): {self.queue_rpr.get()}")
+            self.label_atn.config(text=f"Athena ({self.ships_atn.get()}): {self.queue_atn.get()}")
+            self.label_hc.config(text=f"Fishing ({self.ships_hc.get()}): {self.queue_hc.get()}")
+            self.label_sk.config(text=f"Sunken Kingdom ({self.ships_sk.get()}): {self.queue_sk.get()}")
+            self.label_sf.config(text=f"Sea Forts ({self.ships_sf.get()}): {self.queue_sf.get()}")
+            self.label_tt.config(text=f"Tall Tales ({self.ships_tt.get()}): {self.queue_tt.get()}")
+            self.label_ss.config(text=f"Siren Song ({self.ships_ss.get()}): {self.queue_ss.get()}")
+            self.label_unk.config(text=f"Unknown ({self.ships_unk.get()}): {self.queue_unk.get()}")
 
-        @self.sio.event()
         def info(data):
             print(f"info: {data}")
             self.ships_total.set(len(data))
@@ -287,10 +264,7 @@ class Queue:
                     self.ships_atn.set(self.ships_atn.get() + 1)
                 if "gold hoarder" in ship["activity"].lower():
                     self.ships_gh.set(self.ships_gh.get() + 1)
-                if (
-                    "order of souls" in ship["activity"].lower()
-                    or "oos" in ship["activity"].lower()
-                ):
+                if "order of souls" in ship["activity"].lower() or "oos" in ship["activity"].lower():
                     self.ships_oos.set(self.ships_oos.get() + 1)
                 if "merchant" in ship["activity"].lower():
                     self.ships_mrcnt.set(self.ships_mrcnt.get() + 1)
@@ -317,19 +291,14 @@ def start_script():
     """
     try:
         root = Tk()
-        client = Queue(root)
-
-        def events():
-            client.sio.events.processEvents()
-            root.after(50, events)
-
-        events()
+        root.withdraw()
 
         window_positions.load_window_position(root)
+        theme.apply_theme(root)
+        root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
 
-        root.protocol(
-            "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-        )
+        Queue(root)
+        theme.reveal_root(root)
 
         root.mainloop()
     except Exception:

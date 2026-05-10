@@ -3,16 +3,17 @@ This module adds the specified member to the ban list.
 """
 
 import re
-import runpy
 import time
 import webbrowser
-from tkinter import Menu, StringVar, Tk, FALSE, ttk
+from tkinter import Menu, Menubutton, StringVar, Tk, FALSE, ttk
+from typing import Callable, Optional
 
 import keyboard
 
 import launcher  # pylint: disable=unused-import
 from modules.submodules.functions import settings
 from modules.submodules.functions import widgets
+from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
 
 
@@ -21,35 +22,41 @@ class AddToBanList:
     class for the add_to_ban_list window
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         # read the delay from the INI file
         self.delay = settings.read_config()
 
         self.root = root
+        self.on_back = on_back
         self.root.title("Add To Ban List")
         self.root.option_add("*tearOff", FALSE)
 
-        menubar = Menu(self.root)
-        self.root["menu"] = menubar
+        self.menubar_frame = ttk.Frame(self.root)
+        self.menubar_frame.grid(column=0, row=0, sticky="EW")
 
-        self.menu_settings = Menu(menubar)
+        mb_opts = theme.tk_menubutton_options()
+        settings_mb = Menubutton(self.menubar_frame, text="Settings", **mb_opts)
+        settings_mb.pack(side="left", padx=4, pady=2)
 
-        menubar.add_cascade(menu=self.menu_settings, label="Settings")
-
+        self.menu_settings = Menu(settings_mb, tearoff=0)
+        theme.configure_popup_menu(self.menu_settings)
         self.menu_settings.add_command(label="Change delay", command=self.change_delay)
+        settings_mb.configure(menu=self.menu_settings)
 
-        # Create the menu
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky="N, W, E, S")
+        self.mainframe.grid(column=0, row=1, sticky="NSEW")
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=1)
 
         # create the labels and entry boxes
 
         widgets.create_label(self.mainframe, "Entire Ban Entry as in AoA:", 1, 1, "W, E")
 
         self.requiem_ban = StringVar()
-        self.requiem_ban_entry = widgets.create_entry(self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2)
+        self.requiem_ban_entry = widgets.create_entry(
+            self.mainframe, self.requiem_ban, 1, 2, "W, E", 44, 2
+        )
 
         widgets.create_label(
             self.mainframe,
@@ -69,20 +76,28 @@ class AddToBanList:
         self.reason = StringVar()
 
         widgets.create_label(self.mainframe, "Discord ID:", 3, 1, "E")
-        self.user_id_entry = widgets.create_entry(self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2)
+        self.user_id_entry = widgets.create_entry(
+            self.mainframe, self.discord_id, 3, 2, "W, E", 30, 2
+        )
 
         widgets.create_label(self.mainframe, "Discord Name:", 4, 1, "E")
-        self.discord_name_entry = widgets.create_entry(self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2)
+        self.discord_name_entry = widgets.create_entry(
+            self.mainframe, self.discord_name, 4, 2, "W, E", 30, 2
+        )
 
         widgets.create_label(self.mainframe, "Xbox Gamertag:", 5, 1, "E")
-        self.xbox_gamertag_entry = widgets.create_entry(self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2)
+        self.xbox_gamertag_entry = widgets.create_entry(
+            self.mainframe, self.xbox_gt, 5, 2, "W, E", 30, 2
+        )
 
         widgets.create_label(self.mainframe, "Xbox ID:", 6, 1, "E")
         self.xbox_id_entry = widgets.create_entry(self.mainframe, self.xbox_id, 6, 2, "W, E", 30, 2)
 
         widgets.create_label(self.mainframe, "Server:", 7, 1, "E")
         method_options = ["Athena's Vanguard", "Obsidian", "Sea of Grogs"]
-        self.method_combo_box = widgets.create_listbox(self.mainframe, method_options, self.server, 7, 2, "W, E", 2)
+        self.method_combo_box = widgets.create_listbox(
+            self.mainframe, method_options, self.server, 7, 2, "W, E", 2
+        )
 
         widgets.create_label(self.mainframe, "Reason:", 8, 1, "E")
         self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 8, 2, "W, E", 30, 2)
@@ -96,7 +111,9 @@ class AddToBanList:
             2,
             "W, E",
         )
-        widgets.create_button(self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E")
+        widgets.create_button(
+            self.mainframe, "Add Other ban", self.add_to_ban_list_other, 9, 3, "W, E"
+        )
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -117,12 +134,12 @@ class AddToBanList:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def add_to_ban_list_other(self):
         """
@@ -200,7 +217,11 @@ class AddToBanList:
             gamertag = "N/A"
             discord_tag = "N/A"
             xuid = "N/A"
-            gamertag = parts[0].split(":")[1].strip() if parts[0].split(":")[1].strip().count("?") < 3 else "N/A"
+            gamertag = (
+                parts[0].split(":")[1].strip()
+                if parts[0].split(":")[1].strip().count("?") < 3
+                else "N/A"
+            )
             for i, part in enumerate(parts):
                 if i == 2:
                     discord_tag = part.strip() if part.strip().count("?") < 3 else "N/A"
@@ -246,8 +267,11 @@ def start_script():
     Starts the script.
     """
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
     root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     AddToBanList(root)
+    theme.reveal_root(root)
     root.mainloop()

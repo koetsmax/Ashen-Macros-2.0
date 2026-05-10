@@ -2,14 +2,15 @@
 This module fills a new fleet with the specified queue members.
 """
 
-import runpy
-import launcher
+import launcher  # pylint: disable=unused-import
 from tkinter import *
 from tkinter import ttk as tk
+from typing import Callable, Optional
 from modules.submodules.functions.execute_command import execute_command
 from modules.submodules.functions.clear_typing_bar import clear_typing_bar
 
 import modules.submodules.functions.window_positions as window_positions
+from modules.submodules.functions import theme
 
 
 class FillNewFleet:
@@ -17,8 +18,9 @@ class FillNewFleet:
     This class creates the window where the user can fill out all the queue numbers for the new fleet
     """
 
-    def __init__(self, root):
+    def __init__(self, root, on_back: Optional[Callable[[], None]] = None):
         self.root = root
+        self.on_back = on_back
         self.root.title("Fill New Fleet")
         self.root.option_add("*tearOff", FALSE)
 
@@ -69,9 +71,7 @@ class FillNewFleet:
         ).grid(column=1, row=7, columnspan=5, sticky="W, E")
 
         # Create the buttons
-        self.kill_button = tk.Button(
-            self.mainframe, text="Back to launcher", command=self.back
-        )
+        self.kill_button = tk.Button(self.mainframe, text="Back to launcher", command=self.back)
         self.kill_button.grid(row=80, columnspan=5, sticky="W, E")
 
         self.start_button = tk.Button(self.mainframe, text="Start", command=self.start)
@@ -82,12 +82,12 @@ class FillNewFleet:
 
     def back(self):
         """
-        Goes back to the launcher.
+        Goes back to the launcher (App callback; standalone window otherwise).
         """
-        window_positions.save_window_position(self.root)
-        self.root.destroy()
-        # run the launcher using runpy
-        runpy.run_module("launcher", run_name="__main__")
+        if self.on_back is not None:
+            self.on_back()
+            return
+        window_positions.save_window_position(self.root, 1)
 
     def start(self):
         """
@@ -180,10 +180,11 @@ class MemberInQueue:
 
 def start_script():
     root = Tk()
+    root.withdraw()
     window_positions.load_window_position(root)
+    theme.apply_theme(root)
 
-    root.protocol(
-        "WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1)
-    )
+    root.protocol("WM_DELETE_WINDOW", lambda: window_positions.save_window_position(root, 1))
     FillNewFleet(root)
+    theme.reveal_root(root)
     root.mainloop()

@@ -9,6 +9,7 @@ from .settings import (  # pylint: disable=relative-beyond-top-level
     read_config,
     set_custom_value,
 )
+from . import theme  # pylint: disable=no-name-in-module
 
 
 def create_button(
@@ -26,9 +27,7 @@ def create_button(
     """
 
     button = ttk.Button(parent, text=text, command=command)
-    button.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    button.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return button
 
 
@@ -40,15 +39,15 @@ def create_label(
     sticky: str = "",
     rowspan: int = 1,
     columnspan: int = 1,
-    foreground="black",
+    foreground=None,
 ) -> ttk.Label:
     """
     Creates a label widget and places it in the parent widget.
     """
+    if foreground is None:
+        foreground = theme.label_foreground()
     label = ttk.Label(parent, text=text, foreground=foreground)
-    label.grid(
-        row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan
-    )
+    label.grid(row=row, column=column, sticky=sticky, rowspan=rowspan, columnspan=columnspan)
     return label
 
 
@@ -121,8 +120,22 @@ class CreateSettingsWindow:
             self.defaults,
         ) = _config
 
-        settings_window = tk.Toplevel()
+        master = root.winfo_toplevel()
+        settings_window = tk.Toplevel(master)
+        theme.defer_dialog_show(settings_window)
         settings_window.title(window_title)
+        theme.paint_toplevel(settings_window)
+
+        self.dark_mode_var = tk.BooleanVar(value=theme.is_dark_mode())
+
+        def _sync_dark_mode(*_) -> None:
+            theme.set_dark_mode(self.dark_mode_var.get())
+            theme.apply_theme(master)
+            theme.paint_toplevel(settings_window)
+
+        self.dark_mode_var.trace_add("write", lambda *_a: _sync_dark_mode())
+
+        create_checkbox(settings_window, "Dark mode", self.dark_mode_var, 0, 1, "W")
 
         # Initialize StringVar variables dynamically
         self.variables_dict = {}
@@ -133,14 +146,14 @@ class CreateSettingsWindow:
                 self.variables_dict[f"variable{i+1}"] = tk.StringVar(value="")
 
         # Create the labels and entries dynamically
-        create_label(settings_window, explanation, 1, 1, "W", 2)
+        create_label(settings_window, explanation, 2, 1, "W", 2)
         for i, txt in enumerate(text):
             try:
-                create_label(settings_window, txt, 3 + i * 2, 1, "W")
+                create_label(settings_window, txt, 4 + i * 2, 1, "W")
                 self.__dict__[f"entry{i+1}"] = create_entry(
                     settings_window,
                     self.variables_dict[f"variable{i+1}"],
-                    4 + i * 2,
+                    5 + i * 2,
                     1,
                     "E, W",
                 )
@@ -152,7 +165,7 @@ class CreateSettingsWindow:
             settings_window,
             "Save Changes",
             lambda: self.save_changes(),  # pylint: disable=unnecessary-lambda
-            7 + len(text) * 2,
+            8 + len(text) * 2,
             1,
             "W",
         )
@@ -160,7 +173,7 @@ class CreateSettingsWindow:
             settings_window,
             "Reset To Default",
             lambda: self.reset_to_default(),  # pylint: disable=unnecessary-lambda
-            7 + len(text) * 2,
+            8 + len(text) * 2,
             1,
             "E",
         )
@@ -168,7 +181,8 @@ class CreateSettingsWindow:
         for child in settings_window.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
-        root.eval(f"tk::PlaceWindow {str(settings_window)} center")
+        master.eval(f"tk::PlaceWindow {str(settings_window)} center")
+        theme.present_dialog(settings_window)
 
     def save_changes(self):
         """
