@@ -8,8 +8,6 @@ from .settings import read_config  # pylint: disable=relative-beyond-top-level
 from modules.submodules.staffcheck_abort import (  # pylint: disable=relative-beyond-top-level
     AbortError,
     check_abort,
-    enter_busy,
-    exit_busy,
     interruptible_sleep,
     is_abort_requested,
 )
@@ -19,7 +17,6 @@ def execute_command(self, command: str, subcommands: List[str]):
     """
     This function tries to execute a discord slash command
     """
-    enter_busy(self)
     try:
         with self.keyboard_lock:
             if is_abort_requested(self):
@@ -43,5 +40,3 @@ def execute_command(self, command: str, subcommands: List[str]):
             keyboard.press_and_release("enter")
     except AbortError:
         pass
-    finally:
-        exit_busy(self)

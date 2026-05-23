@@ -1,5 +1,5 @@
 """
-Abort support for an in-progress staffcheck (hotkey + Abort button).
+Abort support for an in-progress staffcheck (configurable hotkey only).
 """
 
 from __future__ import annotations
@@ -42,91 +42,25 @@ def interruptible_sleep(self, duration: float, step: float = 0.05) -> None:
 
 def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, headers=None):
     """
-    POST JSON while polling for abort so in-flight API work stops promptly.
+    Single POST; returns None if aborted before the request or on connection failure.
     """
     if is_abort_requested(self):
         return None
-
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if is_abort_requested(self):
-            return None
-        chunk = min(5.0, deadline - time.time())
-        if chunk <= 0:
-            break
-        try:
-            return requests.post(url, json=payload, timeout=chunk, headers=headers)
-        except requests.exceptions.Timeout:
-            continue
-        except requests.exceptions.ConnectionError:
-            return None
-    return None
-
-
-def _start_button_text(self) -> str:
-    return str(self.start_button.cget("text"))
-
-
-def _save_start_button_state(self) -> None:
-    if _start_button_text(self) == "Abort":
-        return
-    self._abort_saved_button = (
-        _start_button_text(self),
-        self.start_button.cget("command"),
-    )
-
-
-def _show_abort_button(self) -> None:
-    if not getattr(self, "check_in_progress", False):
-        return
-    if _start_button_text(self) == "Abort":
-        return
-    _save_start_button_state(self)
-    self.start_button.config(text="Abort", command=lambda: abort_staffcheck(self))
-    self.start_button.state(["!disabled"])
-
-
-def _restore_start_button_after_busy(self) -> None:
-    if getattr(self, "_busy_count", 0) > 0 or is_abort_requested(self):
-        return
-    saved = getattr(self, "_abort_saved_button", None)
-    if saved is None:
-        return
-    text, command = saved
-    self._abort_saved_button = None
-    if text == "Abort":
-        return
-    self.start_button.config(text=text, command=command)
-
-
-def enter_busy(self) -> None:
-    if not getattr(self, "check_in_progress", False):
-        return
-    self._busy_count = getattr(self, "_busy_count", 0) + 1
-    if self._busy_count == 1:
-        self.root.after(0, lambda: _show_abort_button(self))
-
-
-def exit_busy(self) -> None:
-    if not getattr(self, "check_in_progress", False):
-        return
-    self._busy_count = max(0, getattr(self, "_busy_count", 0) - 1)
-    if self._busy_count == 0:
-        self.root.after(0, lambda: _restore_start_button_after_busy(self))
+    try:
+        return requests.post(url, json=payload, timeout=timeout, headers=headers)
+    except requests.exceptions.RequestException:
+        return None
 
 
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
-    """Show Continue when idle; defer if automation/API is still running."""
+    """Show Continue after keyboard steps."""
     from modules.submodules import start_check
 
+    if is_abort_requested(self):
+        return
     if command is None:
         command = lambda: start_check.continue_to_next(self)
 
-    if getattr(self, "_busy_count", 0) > 0:
-        self._abort_saved_button = ("Continue", command)
-        return
-
-    self._abort_saved_button = ("Continue", command)
     self.start_button.config(text="Continue", command=command)
     self.start_button.state(["!disabled"])
 
@@ -160,8 +94,6 @@ def remove_abort_hotkey(self) -> None:
 def start_check_session(self) -> None:
     self.abort_requested = False
     self.check_in_progress = True
-    self._busy_count = 0
-    self._abort_saved_button = None
     self._abort_finish_pending = False
     install_abort_hotkey(self)
 
@@ -169,9 +101,7 @@ def start_check_session(self) -> None:
 def end_check_session(self) -> None:
     remove_abort_hotkey(self)
     self.check_in_progress = False
-    self._busy_count = 0
     self.abort_requested = False
-    self._abort_saved_button = None
     self._abort_finish_pending = False
 
 
@@ -179,9 +109,7 @@ def abort_staffcheck(self) -> None:
     if not getattr(self, "check_in_progress", False):
         return
 
-    # Set immediately so blocked keyboard automation can see it without waiting for Tk.
     self.abort_requested = True
-    self._busy_count = 0
 
     if getattr(self, "_abort_finish_pending", False):
         return

@@ -19,6 +19,20 @@ from modules.submodules.functions import theme
 from modules.submodules import staffcheck_abort
 
 
+def _button_noop() -> None:
+    """Placeholder command for disabled toolbar buttons."""
+
+
+def disable_function_button(self) -> None:
+    self.function_button.config(text="Cool Button", command=_button_noop)
+    self.function_button.state(["disabled"])
+
+
+def disable_function_button_2(self) -> None:
+    self.function_button_2.config(text="Re-run last check", command=_button_noop)
+    self.function_button_2.state(["disabled"])
+
+
 def validate_user_id(self) -> bool:
     """
     This function validates the user input
@@ -144,6 +158,8 @@ def continue_check(self, request_error):
         self.channel_combo_box.config(state=["disabled"])
         self.method_combo_box.config(state=["disabled"])
         self.pre_check_button.config(state=["disabled"])
+        disable_function_button(self)
+        disable_function_button_2(self)
         self.mainframe.update()
 
         self.currentstate = None
@@ -163,9 +179,6 @@ def reset_ui(self):
     """
     staffcheck_abort.end_check_session(self)
     previous_user_id = self.user_id.get()
-    self.function_button_2.config(
-        text="Re-run last check", command=lambda: self.user_id.set(previous_user_id)
-    )
     self.user_id.set("")
     self.status_label.config(text="Waiting for ID", foreground=theme.label_foreground())
     self.gamertag_label.config(text="Unknown")
@@ -212,6 +225,10 @@ def reset_ui(self):
     self.sot_official_status_label.config(text="N/A", foreground="orange")
     self.check_for_yourself_button.state(["disabled"])
 
+    disable_function_button(self)
+    self.function_button_2.config(
+        text="Re-run last check", command=lambda: self.user_id.set(previous_user_id)
+    )
     self.function_button_2.state(["!disabled"])
 
     try:
@@ -277,10 +294,8 @@ def continue_to_next(self):
     if staffcheck_abort.is_abort_requested(self):
         return
     self.start_button.state(["disabled"])
-    self.function_button.state(["disabled"])
-    self.function_button_2.state(["disabled"])
-    self.function_button.config(text="Cool Button", command=None)
-    self.function_button_2.config(text="Re-run last check", command=None)
+    disable_function_button(self)
+    disable_function_button_2(self)
     self.kill_button.config(text="Back to launcher", command=self.back)
     self.start_button.config(text="Start Check!", command=lambda: start_check(self))
 

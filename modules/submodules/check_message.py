@@ -24,7 +24,7 @@ def check_message(self):
     self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
-    self.function_button.state(["!disabled"])
+    modules.submodules.start_check.disable_function_button(self)
 
 
 def good_to_check(self):

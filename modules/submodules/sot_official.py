@@ -22,8 +22,6 @@ def sot_official(self):
     if self.method.get() == "SOT Official":
         api_request(self)
 
-    self.start_button.state(["!disabled"])
-    self.function_button.state(["!disabled"])
     if not staffcheck_abort.is_abort_requested(self):
         modules.submodules.start_check.continue_to_next(self)
 
@@ -45,17 +43,6 @@ def old_check(self):
 
 
 def api_request(self):
-    """
-    This function makes the API request
-    """
-    staffcheck_abort.enter_busy(self)
-    try:
-        _api_request_body(self)
-    finally:
-        staffcheck_abort.exit_busy(self)
-
-
-def _api_request_body(self):
     """
     This function makes the API request
     """

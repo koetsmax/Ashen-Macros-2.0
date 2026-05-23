@@ -9,14 +9,12 @@ from .functions.switch_channel import switch_channel
 from modules.submodules.staffcheck_abort import (
     AbortError,
     check_abort,
-    enter_busy,
-    exit_busy,
+    interruptible_sleep,
     set_continue_button,
 )
 
 
 def _run_search_keys(self, query: str) -> None:
-    enter_busy(self)
     try:
         with self.keyboard_lock:
             check_abort(self)
@@ -24,11 +22,11 @@ def _run_search_keys(self, query: str) -> None:
             keyboard.press_and_release("ctrl+a")
             keyboard.press_and_release("backspace")
             keyboard.write(query)
+            interruptible_sleep(self, 0.1)
+            check_abort(self)
             keyboard.press_and_release("enter")
     except AbortError:
         pass
-    finally:
-        exit_busy(self)
 
 
 def pre_check(self):
