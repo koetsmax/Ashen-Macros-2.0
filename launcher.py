@@ -276,13 +276,15 @@ class Launcher:
             """
             Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)
             Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
+            Abort key: Keyboard key that stops an in-progress staffcheck (e.g. escape, ctrl+f8). Uses the same names as the keyboard library.
             API URL: The URL of the API that the macro uses. Leave this default unless you know what you are doing.
             All of the delays need to be entered in seconds (ex. 2 or 2.5)
             """,
-            ["Delay initial command:", "Delay follow up:", "API URL:"],
-            ["COMMANDS", "COMMANDS", "API"],
-            ["initial_command", "follow_up", "api_url"],
-            ["2", "0.4", "https://ashen.api.famkoets.nl"],
+            ["Delay initial command:", "Delay follow up:", "Abort key:", "API URL:"],
+            ["COMMANDS", "COMMANDS", "COMMANDS", "API"],
+            ["initial_command", "follow_up", "abort_key", "api_url"],
+            ["2", "0.4", "escape", "https://ashen.api.famkoets.nl"],
+            ["abort_key"],
         ]
         # pylint enable=line-too-long
         widgets.CreateSettingsWindow(self.root, config)

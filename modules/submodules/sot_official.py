@@ -11,6 +11,7 @@ from .functions.settings import (  # pylint: disable=relative-beyond-top-level
 )
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
+from modules.submodules import staffcheck_abort
 
 
 def sot_official(self):
@@ -29,7 +30,8 @@ def sot_official(self):
     # )
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
-    modules.submodules.start_check.continue_to_next(self)
+    if not staffcheck_abort.is_abort_requested(self):
+        modules.submodules.start_check.continue_to_next(self)
 
 
 # def narrow_results(self):
@@ -66,6 +68,19 @@ def api_request(self):
     """
     This function makes the API request
     """
+    staffcheck_abort.enter_busy(self)
+    try:
+        _api_request_body(self)
+    finally:
+        staffcheck_abort.exit_busy(self)
+
+
+def _api_request_body(self):
+    """
+    This function makes the API request
+    """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     request_error = False
     self.sot_official_status_label.config(text="Sent...", foreground="orange")
     self.mainframe.update()
@@ -79,6 +94,8 @@ def api_request(self):
             headers=self.headers,
         )
 
+        if staffcheck_abort.is_abort_requested(self):
+            return
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":

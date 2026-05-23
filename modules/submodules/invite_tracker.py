@@ -14,6 +14,7 @@ from .functions.settings import (  # pylint: disable=relative-beyond-top-level
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
+from modules.submodules import staffcheck_abort
 
 
 def invite_tracker(self):
@@ -25,7 +26,8 @@ def invite_tracker(self):
         api_request(self)
 
     self.start_button.state(["!disabled"])
-    modules.submodules.start_check.continue_to_next(self)
+    if not staffcheck_abort.is_abort_requested(self):
+        modules.submodules.start_check.continue_to_next(self)
 
 
 def check_loghistory(self):
@@ -35,8 +37,12 @@ def check_loghistory(self):
     switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.inviters_ids:
+        if staffcheck_abort.is_abort_requested(self):
+            break
         command = ["/user_report", _id]
         execute_command(self, command[0], command[1:])
+        if staffcheck_abort.is_abort_requested(self):
+            break
         time.sleep(1.5)
 
     self.invited_by_loghistory_button.state(["disabled"])
@@ -49,8 +55,12 @@ def check_invited_users(self):
     switch_channel(self, self.channel.get())
     clear_typing_bar()
     for _id in self.invitees_ids:
+        if staffcheck_abort.is_abort_requested(self):
+            break
         command = ["/user_report", _id]
         execute_command(self, command[0], command[1:])
+        if staffcheck_abort.is_abort_requested(self):
+            break
         time.sleep(1.5)
 
     self.invited_users_loghistory_button.state(["disabled"])
@@ -60,6 +70,19 @@ def api_request(self):
     """
     This function makes the API request
     """
+    staffcheck_abort.enter_busy(self)
+    try:
+        _api_request_body(self)
+    finally:
+        staffcheck_abort.exit_busy(self)
+
+
+def _api_request_body(self):
+    """
+    This function makes the API request
+    """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     request_error = False
     self.invite_tracker_status_label.config(text="Sending", foreground="orange")
     self.mainframe.update()
@@ -70,6 +93,8 @@ def api_request(self):
             f"{config["api_url"]}/staffcheck/invite", json=payload, timeout=20, headers=self.headers
         )
 
+        if staffcheck_abort.is_abort_requested(self):
+            return
         if response.status_code != 200:
             request_error = True
         else:

@@ -4,7 +4,9 @@ This is a helper module for creating widgets.
 
 from tkinter import ttk
 import tkinter as tk
-from typing import List, Callable, Union
+from typing import List, Callable, Optional, Union
+
+import keyboard
 from .settings import (  # pylint: disable=relative-beyond-top-level
     read_config,
     set_custom_value,
@@ -110,7 +112,7 @@ class CreateSettingsWindow:
     def __init__(self, root: Union[tk.Toplevel, ttk.Frame], _config: List[str]):
         config = read_config()
 
-        # Extract config from list
+        # Extract config from list (optional 7th entry: variable names that get a Test key button)
         (
             window_title,
             explanation,
@@ -118,10 +120,15 @@ class CreateSettingsWindow:
             self.settings_segments,
             self.variables,
             self.defaults,
-        ) = _config
+        ) = _config[:6]
+        self.test_key_fields = list(_config[6]) if len(_config) > 6 else []
 
         master = root.winfo_toplevel()
         settings_window = tk.Toplevel(master)
+        self.settings_window = settings_window
+        self._key_test_hotkey = None
+        self._key_test_var: Optional[str] = None
+        self._key_test_status_labels: dict = {}
         theme.defer_dialog_show(settings_window)
         settings_window.title(window_title)
         theme.paint_toplevel(settings_window)
@@ -141,7 +148,8 @@ class CreateSettingsWindow:
         self.variables_dict = {}
         for i, var in enumerate(self.variables):
             try:
-                self.variables_dict[f"variable{i+1}"] = tk.StringVar(value=config[var])
+                default = self.defaults[i] if i < len(self.defaults) else ""
+                self.variables_dict[f"variable{i+1}"] = tk.StringVar(value=config.get(var, default))
             except (IndexError, AttributeError):
                 self.variables_dict[f"variable{i+1}"] = tk.StringVar(value="")
 
@@ -149,14 +157,32 @@ class CreateSettingsWindow:
         create_label(settings_window, explanation, 2, 1, "W", 2)
         for i, txt in enumerate(text):
             try:
+                var_name = self.variables[i]
                 create_label(settings_window, txt, 4 + i * 2, 1, "W")
+                entry_row = 5 + i * 2
                 self.__dict__[f"entry{i+1}"] = create_entry(
                     settings_window,
                     self.variables_dict[f"variable{i+1}"],
-                    5 + i * 2,
+                    entry_row,
                     1,
                     "E, W",
                 )
+                if var_name in self.test_key_fields:
+                    create_button(
+                        settings_window,
+                        "Test key",
+                        lambda v=var_name: self.test_key(v),
+                        entry_row,
+                        2,
+                        "W",
+                    )
+                    self._key_test_status_labels[var_name] = create_label(
+                        settings_window,
+                        "",
+                        entry_row,
+                        3,
+                        "W",
+                    )
             except (IndexError, AttributeError):
                 pass
 
@@ -181,13 +207,72 @@ class CreateSettingsWindow:
         for child in settings_window.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
+        settings_window.protocol("WM_DELETE_WINDOW", self._on_close)
         master.eval(f"tk::PlaceWindow {str(settings_window)} center")
         theme.present_dialog(settings_window)
+
+    def _set_key_test_status(self, var_name: str, message: str, color: str) -> None:
+        label = self._key_test_status_labels.get(var_name)
+        if label is not None:
+            label.config(text=message, foreground=color)
+
+    def _cancel_key_test(self) -> None:
+        if self._key_test_hotkey is not None:
+            try:
+                keyboard.remove_hotkey(self._key_test_hotkey)
+            except (KeyError, ValueError):
+                pass
+            self._key_test_hotkey = None
+        self._key_test_var = None
+
+    def _on_key_test_success(self, var_name: str) -> None:
+        self._cancel_key_test()
+        self._set_key_test_status(var_name, "Key recognized!", "green")
+        self.settings_window.after(
+            3000,
+            lambda: self._set_key_test_status(var_name, "", theme.label_foreground()),
+        )
+
+    def test_key(self, var_name: str) -> None:
+        """
+        Listen once for the configured key and show whether it was detected.
+        """
+        self._cancel_key_test()
+        for i, var in enumerate(self.variables):
+            if var != var_name:
+                continue
+            key = self.variables_dict[f"variable{i+1}"].get().strip()
+            break
+        else:
+            return
+
+        if not key:
+            self._set_key_test_status(var_name, "Enter a key first", "red")
+            return
+
+        try:
+
+            def _on_press() -> None:
+                self.settings_window.after(0, lambda: self._on_key_test_success(var_name))
+
+            self._key_test_hotkey = keyboard.add_hotkey(key, _on_press, suppress=False)
+        except ValueError as exc:
+            self._set_key_test_status(var_name, f"Invalid key name", "red")
+            print(f"Invalid abort key '{key}': {exc}")
+            return
+
+        self._key_test_var = var_name
+        self._set_key_test_status(var_name, "Press the key now...", "orange")
+
+    def _on_close(self) -> None:
+        self._cancel_key_test()
+        self.settings_window.destroy()
 
     def save_changes(self):
         """
         Saves the changes made in the settings window.
         """
+        self._cancel_key_test()
         for i, var in enumerate(self.variables):
             try:
                 entry_value = self.__dict__[f"entry{i+1}"].get()
