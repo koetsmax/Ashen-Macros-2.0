@@ -410,9 +410,16 @@ class App:
                 )
                 print("Permissions updated to 777")
             else:
-                # Re-run the program with admin rights
+                # Re-run the program with admin rights; the elevated child
+                # takes over from here. wait=False so this process doesn't
+                # block in WaitForSingleObject for the entire child session,
+                # and sys.exit prevents App.__init__ from continuing to use
+                # the now-destroyed root (which would raise TclError from
+                # option_add and surface as an unhandled exception dialog
+                # when the elevated child eventually closes).
                 self.root.destroy()
-                runAsAdmin()
+                runAsAdmin(wait=False)
+                sys.exit(0)
         except (AttributeError, FileNotFoundError, subprocess.CalledProcessError):
             print("Launcher folder not found")
 
