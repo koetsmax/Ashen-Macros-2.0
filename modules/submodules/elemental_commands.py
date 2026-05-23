@@ -66,23 +66,6 @@ def add_note(self):
     self.start_button.state(["!disabled"])
 
 
-# def check_notes_page(self):
-#     """
-#     Checks additional pages of notes if needed for the specified userID.
-#     """
-#     self.function_button.state(["disabled"])
-#     self.kill_button.state(["disabled"])
-#     self.start_button.state(["disabled"])
-#     notescheck = ["/list_notes", self.user_id.get(), f"page_number: {self.notespage}"]
-#     clear_typing_bar()
-#     execute_command(self, notescheck[0], notescheck[1:])
-#     self.notespage += 1
-#     self.kill_button.config(text=f"Check notes page {self.notespage}")
-#     self.function_button.state(["!disabled"])
-#     self.kill_button.state(["!disabled"])
-#     self.start_button.state(["!disabled"])
-
-
 def tell_to_link_xbox(self):
     """
     Tells the user to link their xbox account.

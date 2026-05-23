@@ -22,31 +22,11 @@ def sot_official(self):
     if self.method.get() == "SOT Official":
         api_request(self)
 
-    # self.function_button.config(
-    #     text="Narrow Search Results", command=lambda: narrow_results(self)
-    # )
-    # self.start_button.config(
-    #     text="Continue", command=lambda: modules.submodules.start_check.continue_to_next(self)
-    # )
     self.start_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
     if not staffcheck_abort.is_abort_requested(self):
         modules.submodules.start_check.continue_to_next(self)
 
-
-# def narrow_results(self):
-#     """
-#     This function narrows the search results if there are too many messages to check
-#     """
-#     self.function_button.state(["disabled"])
-#     self.start_button.state(["disabled"])
-#     clear_typing_bar()
-#     keyboard.press_and_release("ctrl+f")
-#     keyboard.press_and_release("ctrl+a")
-#     keyboard.press_and_release("backspace")
-#     keyboard.write(f"from: {self.user_id.get()} alliance")
-#     keyboard.press_and_release("enter")
-#     self.start_button.state(["!disabled"])
 
 
 def old_check(self):
