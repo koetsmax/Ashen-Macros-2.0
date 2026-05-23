@@ -199,7 +199,7 @@ def elemental_api_request(self):
                 issues = {
                     "Account Age": response_json["account_age"] < 60,
                     "Needs Warning Talk": response_json["needs_warning_talk"],
-                    "Gamertag in Notes": not response_json["gamertag_in_notes"],
+                    "Gamertag in Notes": not response_json["gamertag_in_notes"] and self.xbox_gt,
                     "Needs to be Spoken To": response_json["needs_to_be_spoken_to"],
                     "Needs Mic Check": response_json["needs_mic_check"],
                     "Anti Alliance Note": response_json["anti_alliance_note"],
