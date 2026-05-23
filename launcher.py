@@ -135,13 +135,9 @@ class Launcher:
                 1,
                 "E, W",
             )
-            self.verify_label = widgets.create_label(
-                self.mainframe, "Please verify your account", 1, 1, "W, E"
-            )
+            self.verify_label = widgets.create_label(self.mainframe, "Please verify your account", 1, 1, "W, E")
 
-        self.api_label = widgets.create_label(
-            self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange"
-        )
+        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")
         widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
@@ -263,10 +259,7 @@ class Launcher:
         """
         Commences the update.
         """
-        url = (
-            "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/"
-            + f"{self.online_version}/Ashen.Macro.installer.exe"
-        )
+        url = "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/" + f"{self.online_version}/Ashen.Macro.installer.exe"
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
@@ -403,9 +396,7 @@ class App:
         """Mirror the original installer permission check; runs once at startup only."""
         try:
             directory_path = "../launcher"
-            result = subprocess.run(
-                ["icacls", directory_path], capture_output=True, text=True, check=True
-            )
+            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)
             output = result.stdout.strip()
 
             if "Everyone:(OI)(CI)(F)" in output:
