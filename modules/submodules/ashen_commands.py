@@ -103,17 +103,6 @@ def ashen_api_request(self):
     """
     This function sends the API request to the ashen API
     """
-    staffcheck_abort.enter_busy(self)
-    try:
-        return _ashen_api_request_body(self)
-    finally:
-        staffcheck_abort.exit_busy(self)
-
-
-def _ashen_api_request_body(self):
-    """
-    This function sends the API request to the ashen API
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
     request_error = False

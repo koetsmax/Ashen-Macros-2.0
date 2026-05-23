@@ -37,12 +37,12 @@ def elemental_commands(self, *args):
     start_elemental_api_requests_thread(self)
 
     self.stop_button.state(["!disabled"])
-    self.function_button.state(["!disabled"])
 
     if not args and not staffcheck_abort.is_abort_requested(self):
         modules.submodules.start_check.continue_to_next(self)
     else:
         self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
+        self.function_button.state(["!disabled"])
         self.kill_button.config(
             text="Tell to verify",
             command=lambda: tell_to_verify(self),
@@ -76,7 +76,6 @@ def tell_to_link_xbox(self):
     verify = ["/verify", self.user_id.get(), "link_xbox"]
     clear_typing_bar()
     execute_command(self, verify[0], verify[1:])
-    self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
@@ -93,7 +92,6 @@ def tell_to_verify(self):
     verify = ["/verify", self.user_id.get(), "verify"]
     clear_typing_bar()
     execute_command(self, verify[0], verify[1:])
-    self.function_button.state(["!disabled"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
@@ -121,17 +119,6 @@ def start_elemental_api_requests_thread(self):
 
 
 def elemental_api_request(self):
-    """
-    This function sends an API request to the Elemental API.
-    """
-    staffcheck_abort.enter_busy(self)
-    try:
-        _elemental_api_request_body(self)
-    finally:
-        staffcheck_abort.exit_busy(self)
-
-
-def _elemental_api_request_body(self):
     """
     This function sends an API request to the Elemental API.
     """

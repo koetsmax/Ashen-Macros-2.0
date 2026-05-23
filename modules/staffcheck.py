@@ -89,8 +89,14 @@ class StaffCheck:
         self.check = BooleanVar(value=False)
         self.pre_check_button = widgets.create_checkbox(self.mainframe, "Check ID/GT in on-duty-chat", self.check, 5, 2, "W, E")
 
-        self.function_button = widgets.create_button(self.mainframe, "Cool Button", lambda: None, 5, 1, "W, E")
-        self.function_button.state(["disabled"])
+        self.function_button = widgets.create_button(
+            self.mainframe,
+            "Cool Button",
+            modules.submodules.start_check._button_noop,
+            5,
+            1,
+            "W, E",
+        )
 
         self.kill_button = widgets.create_button(self.mainframe, "Back to launcher", self.back, 6, 1, "W, E")
 
@@ -103,8 +109,16 @@ class StaffCheck:
             "W, E",
         )
 
-        self.function_button_2 = widgets.create_button(self.mainframe, "Re-run last check", lambda: None, 7, 1, "W, E")
-        self.function_button_2.state(["disabled"])
+        self.function_button_2 = widgets.create_button(
+            self.mainframe,
+            "Re-run last check",
+            modules.submodules.start_check._button_noop,
+            7,
+            1,
+            "W, E",
+        )
+        modules.submodules.start_check.disable_function_button(self)
+        modules.submodules.start_check.disable_function_button_2(self)
 
         self.stop_button = widgets.create_button(
             self.mainframe,

@@ -9,8 +9,6 @@ from .clear_typing_bar import (  # pylint: disable=relative-beyond-top-level
 from modules.submodules.staffcheck_abort import (  # pylint: disable=relative-beyond-top-level
     AbortError,
     check_abort,
-    enter_busy,
-    exit_busy,
     interruptible_sleep,
     is_abort_requested,
 )
@@ -20,9 +18,6 @@ def switch_channel(self, channel: str, *args, **kwargs):
     """
     This module attempts to switch between discord channels
     """
-    in_check = getattr(self, "check_in_progress", False)
-    if in_check:
-        enter_busy(self)
     try:
         with self.keyboard_lock:
             if is_abort_requested(self):
@@ -39,6 +34,3 @@ def switch_channel(self, channel: str, *args, **kwargs):
             interruptible_sleep(self, 2)
     except AbortError:
         pass
-    finally:
-        if in_check:
-            exit_busy(self)

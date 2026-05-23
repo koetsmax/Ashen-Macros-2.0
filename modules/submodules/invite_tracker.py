@@ -70,17 +70,6 @@ def api_request(self):
     """
     This function makes the API request
     """
-    staffcheck_abort.enter_busy(self)
-    try:
-        _api_request_body(self)
-    finally:
-        staffcheck_abort.exit_busy(self)
-
-
-def _api_request_body(self):
-    """
-    This function makes the API request
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
     request_error = False

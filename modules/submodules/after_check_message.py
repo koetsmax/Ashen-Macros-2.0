@@ -24,6 +24,7 @@ def after_check_message(self):
         text="Neither of these apply",
         command=lambda: modules.submodules.start_check.continue_to_next(self),
     )
+    self.function_button.state(["!disabled"])
     self.kill_button.config(text="Open modmail to unprivate Xbox", command=lambda: unprivate_xbox(self))
     self.start_button.config(text="Needs to join the AWR", command=lambda: join_awr(self))
     self.function_button_2.config(text="Needs to verify account", command=lambda: verify_account(self))
