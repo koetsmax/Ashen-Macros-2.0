@@ -135,13 +135,9 @@ class Launcher:
                 1,
                 "E, W",
             )
-            self.verify_label = widgets.create_label(
-                self.mainframe, "Please verify your account", 1, 1, "W, E"
-            )
+            self.verify_label = widgets.create_label(self.mainframe, "Please verify your account", 1, 1, "W, E")
 
-        self.api_label = widgets.create_label(
-            self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange"
-        )
+        self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")
         widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
 
         for child in self.mainframe.winfo_children():
@@ -263,10 +259,7 @@ class Launcher:
         """
         Commences the update.
         """
-        url = (
-            "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/"
-            + f"{self.online_version}/Ashen.Macro.installer.exe"
-        )
+        url = "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/" + f"{self.online_version}/Ashen.Macro.installer.exe"
         download = requests.get(url, allow_redirects=True, timeout=30)
         open("Ashen.Macro.Installer.exe", "wb").write(download.content)
         os.startfile("Ashen.Macro.Installer.exe")
@@ -283,13 +276,15 @@ class Launcher:
             """
             Delay Initial Command: The amount of time that the macro waits after doing the command (ex. /loghistory report)
             Delay follow up: The amount of time the macro waits after putting in the other variables (ex. the userID in /loghistory)
+            Abort key: Keyboard key that stops an in-progress staffcheck (e.g. escape, ctrl+f8). Uses the same names as the keyboard library.
             API URL: The URL of the API that the macro uses. Leave this default unless you know what you are doing.
             All of the delays need to be entered in seconds (ex. 2 or 2.5)
             """,
-            ["Delay initial command:", "Delay follow up:", "API URL:"],
-            ["COMMANDS", "COMMANDS", "API"],
-            ["initial_command", "follow_up", "api_url"],
-            ["2", "0.4", "https://ashen.api.famkoets.nl"],
+            ["Delay initial command:", "Delay follow up:", "Abort key:", "API URL:"],
+            ["COMMANDS", "COMMANDS", "COMMANDS", "API"],
+            ["initial_command", "follow_up", "abort_key", "api_url"],
+            ["2", "0.4", "escape", "https://ashen.api.famkoets.nl"],
+            ["abort_key"],
         ]
         # pylint enable=line-too-long
         widgets.CreateSettingsWindow(self.root, config)
@@ -403,9 +398,7 @@ class App:
         """Mirror the original installer permission check; runs once at startup only."""
         try:
             directory_path = "../launcher"
-            result = subprocess.run(
-                ["icacls", directory_path], capture_output=True, text=True, check=True
-            )
+            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)
             output = result.stdout.strip()
 
             if "Everyone:(OI)(CI)(F)" in output:
@@ -419,9 +412,16 @@ class App:
                 )
                 print("Permissions updated to 777")
             else:
-                # Re-run the program with admin rights
+                # Re-run the program with admin rights; the elevated child
+                # takes over from here. wait=False so this process doesn't
+                # block in WaitForSingleObject for the entire child session,
+                # and sys.exit prevents App.__init__ from continuing to use
+                # the now-destroyed root (which would raise TclError from
+                # option_add and surface as an unhandled exception dialog
+                # when the elevated child eventually closes).
                 self.root.destroy()
-                runAsAdmin()
+                runAsAdmin(wait=False)
+                sys.exit(0)
         except (AttributeError, FileNotFoundError, subprocess.CalledProcessError):
             print("Launcher folder not found")
 

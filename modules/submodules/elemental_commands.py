@@ -15,12 +15,15 @@ from .functions.settings import (  # pylint: disable=relative-beyond-top-level
 from .functions.clear_typing_bar import clear_typing_bar
 from .functions.execute_command import execute_command
 from .functions.switch_channel import switch_channel
+from modules.submodules import staffcheck_abort
 
 
 def elemental_commands(self, *args):
     """
     This function executes all elemental commands.
     """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     # create timestmap forced to UTC+0
     self.timestamp = int(time.time())
     print(self.timestamp)
@@ -29,12 +32,14 @@ def elemental_commands(self, *args):
     clear_typing_bar()
     loghistory = ["/user_report", self.user_id.get()]
     execute_command(self, loghistory[0], loghistory[1:])
+    if staffcheck_abort.is_abort_requested(self):
+        return
     start_elemental_api_requests_thread(self)
 
     self.stop_button.state(["!disabled"])
     self.function_button.state(["!disabled"])
 
-    if not args:
+    if not args and not staffcheck_abort.is_abort_requested(self):
         modules.submodules.start_check.continue_to_next(self)
     else:
         self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
@@ -61,23 +66,6 @@ def add_note(self):
     self.start_button.state(["!disabled"])
 
 
-# def check_notes_page(self):
-#     """
-#     Checks additional pages of notes if needed for the specified userID.
-#     """
-#     self.function_button.state(["disabled"])
-#     self.kill_button.state(["disabled"])
-#     self.start_button.state(["disabled"])
-#     notescheck = ["/list_notes", self.user_id.get(), f"page_number: {self.notespage}"]
-#     clear_typing_bar()
-#     execute_command(self, notescheck[0], notescheck[1:])
-#     self.notespage += 1
-#     self.kill_button.config(text=f"Check notes page {self.notespage}")
-#     self.function_button.state(["!disabled"])
-#     self.kill_button.state(["!disabled"])
-#     self.start_button.state(["!disabled"])
-
-
 def tell_to_link_xbox(self):
     """
     Tells the user to link their xbox account.
@@ -92,10 +80,7 @@ def tell_to_link_xbox(self):
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
-    self.start_button.config(
-        text="Continue",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
+    staffcheck_abort.set_continue_button(self)
 
 
 def tell_to_verify(self):
@@ -112,10 +97,7 @@ def tell_to_verify(self):
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
-    self.start_button.config(
-        text="Continue",
-        command=lambda: modules.submodules.start_check.continue_to_next(self),
-    )
+    staffcheck_abort.set_continue_button(self)
 
 
 def make_api_request(self):
@@ -142,6 +124,19 @@ def elemental_api_request(self):
     """
     This function sends an API request to the Elemental API.
     """
+    staffcheck_abort.enter_busy(self)
+    try:
+        _elemental_api_request_body(self)
+    finally:
+        staffcheck_abort.exit_busy(self)
+
+
+def _elemental_api_request_body(self):
+    """
+    This function sends an API request to the Elemental API.
+    """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     request_error = False
     if self.channel.get() == "#on-duty-commands":
         self.loghistory_status_label.config(text="Sending API request", foreground="orange")
@@ -156,14 +151,21 @@ def elemental_api_request(self):
                 "timestamp": self.timestamp,
             }
             config = read_config()
-            response = requests.post(
+            response = staffcheck_abort.post_json_abortable(
+                self,
                 f"{config["api_url"]}/staffcheck/elemental",
-                json=payload,
+                payload,
                 timeout=120,
                 headers=self.headers,
             )
 
-            if response.status_code != 200:
+            if response is None:
+                if staffcheck_abort.is_abort_requested(self):
+                    return
+                request_error = True
+            elif staffcheck_abort.is_abort_requested(self):
+                return
+            elif response.status_code != 200:
                 request_error = True
             elif response.json()["error"] != "none":
                 self.loghistory_status_label.config(text=response.json()["error"], foreground="red")
@@ -199,7 +201,7 @@ def elemental_api_request(self):
                 issues = {
                     "Account Age": response_json["account_age"] < 60,
                     "Needs Warning Talk": response_json["needs_warning_talk"],
-                    "Gamertag in Notes": not response_json["gamertag_in_notes"],
+                    "Gamertag in Notes": not response_json["gamertag_in_notes"] and self.xbox_gt,
                     "Needs to be Spoken To": response_json["needs_to_be_spoken_to"],
                     "Needs Mic Check": response_json["needs_mic_check"],
                     "Anti Alliance Note": response_json["anti_alliance_note"],

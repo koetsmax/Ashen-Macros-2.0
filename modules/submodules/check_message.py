@@ -12,6 +12,7 @@ from .functions.clear_typing_bar import clear_typing_bar
 from .functions.switch_channel import switch_channel
 from .functions.settings import read_config  # pylint: disable=relative-beyond-top-level
 from modules.submodules.functions import theme
+from modules.submodules import staffcheck_abort
 
 
 def check_message(self):
@@ -78,6 +79,9 @@ def stop_check(self):
     """
     This function stops the check process
     """
+    if getattr(self, "check_in_progress", False):
+        staffcheck_abort.abort_staffcheck(self)
+        return
     self.currentstate = "Done"
     modules.submodules.start_check.continue_to_next(self)
     self.start_button.state(["!disabled"])

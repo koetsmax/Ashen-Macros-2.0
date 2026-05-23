@@ -16,6 +16,7 @@ import modules.submodules.pre_check
 import modules.submodules.sot_official
 from modules.submodules.functions.settings import read_config
 from modules.submodules.functions import theme
+from modules.submodules import staffcheck_abort
 
 
 def validate_user_id(self) -> bool:
@@ -132,6 +133,7 @@ def continue_check(self, request_error):
         except (AttributeError, TclError):
             pass
         self.reason = ""
+        staffcheck_abort.start_check_session(self)
         self.kill_button.state(["!disabled"])
         self.menu_customize.entryconfigure("Good to check message", state=DISABLED)
         self.menu_customize.entryconfigure("Not good to check message", state=DISABLED)
@@ -151,6 +153,7 @@ def continue_check(self, request_error):
             determine_method(self)
     else:
         self.gamertag_label.config(text="Not linked")
+        staffcheck_abort.start_check_session(self)
         modules.submodules.elemental_commands.elemental_commands(self, 1)
 
 
@@ -158,6 +161,7 @@ def reset_ui(self):
     """
     This function resets the UI to its default state
     """
+    staffcheck_abort.end_check_session(self)
     previous_user_id = self.user_id.get()
     self.function_button_2.config(
         text="Re-run last check", command=lambda: self.user_id.set(previous_user_id)
@@ -215,7 +219,9 @@ def reset_ui(self):
     except AttributeError:
         pass
 
+    self.start_button.config(text="Start check!", command=lambda: start_check(self))
     self.start_button.state(["!disabled"])
+    self.kill_button.config(text="Back to launcher", command=self.back)
     self.kill_button.state(["!disabled"])
     try:
         self.save_button.state(["!disabled"])
@@ -244,6 +250,8 @@ def perform_next_command(self):
     """
     This function determines which section of the macro to run next
     """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     method = self.method.get()
     current_state = self.currentstate
 
@@ -258,12 +266,16 @@ def perform_next_command(self):
             modules.submodules.sot_official.sot_official(self)
         elif current_state == "SOTOfficial":
             modules.submodules.check_message.check_message(self)
+        if staffcheck_abort.is_abort_requested(self):
+            return
 
 
 def continue_to_next(self):
     """
     This function makes the program continue to the next step
     """
+    if staffcheck_abort.is_abort_requested(self):
+        return
     self.start_button.state(["disabled"])
     self.function_button.state(["disabled"])
     self.function_button_2.state(["disabled"])

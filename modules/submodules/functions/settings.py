@@ -13,10 +13,14 @@ def read_config() -> dict:
     """
     config = configparser.ConfigParser()
     with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):
+        file_missing = False
         try:
             _read_config_file(config)
         except (configparser.Error, FileNotFoundError):
-            _set_default_values(config)
+            file_missing = True
+
+        defaults_added = _set_default_values(config)
+        if file_missing or defaults_added:
             _write_config_file(config)
 
         return _read_config_values(config)
@@ -54,7 +58,8 @@ def _read_config_values(config) -> dict:
     return settings
 
 
-def _set_default_values(config):
+def _set_default_values(config) -> bool:
+    changed = False
     default_config = {
         "STAFFCHECK": {
             "good_to_check_message": "userID Good to check -- GT: xboxGT",
@@ -63,7 +68,7 @@ def _set_default_values(config):
             "unprivate_xbox_message": "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)",
             "verify_message": "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)",
         },
-        "COMMANDS": {"initial_command": "2", "follow_up": "0.4"},
+        "COMMANDS": {"initial_command": "2", "follow_up": "0.4", "abort_key": "escape"},
         "ADD_TO_BAN_LIST": {"delay": "15"},
         "WINDOW": {"x_offset": "0", "y_offset": "0"},
         "API": {"api_url": "https://ashen.api.famkoets.nl"},
@@ -73,10 +78,13 @@ def _set_default_values(config):
     for section, options in default_config.items():
         if section not in config:
             config[section] = options
+            changed = True
         else:
             for option, value in options.items():
                 if option not in config[section]:
                     config[section][option] = value
+                    changed = True
+    return changed
 
 
 def _write_config_file(config):
