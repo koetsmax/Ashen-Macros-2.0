@@ -39,12 +39,15 @@ def not_good_to_check(self):
     clear_typing_bar()
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
+    self.function_button.state(["disabled"])
     modules.submodules.start_check.disable_function_button_2(self)
     self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
     self.start_button.state(["!disabled"])
 
 
 def build_not_good_to_check(self):
+    self.start_button.state(["disabled"])
+    self.function_button.state(["disabled"])
     config = read_config()
     message = config["not_good_to_check_message"]
     message = message.replace("userID", f"<@{self.user_id.get()}>")
