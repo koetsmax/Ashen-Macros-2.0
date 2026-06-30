@@ -5,7 +5,6 @@ packaging
 requests
 pyuac
 pyautogui
-packaging
 python-socketio
 filelock
 keyring
