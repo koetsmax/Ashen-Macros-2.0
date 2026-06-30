@@ -4,8 +4,7 @@ This module checks if a previous check has been done on the user.
 
 import keyboard
 import modules.submodules.start_check
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
+from .functions.keyboard_helpers import clear_typing_bar, switch_channel
 from modules.submodules.staffcheck_abort import (
     AbortError,
     check_abort,

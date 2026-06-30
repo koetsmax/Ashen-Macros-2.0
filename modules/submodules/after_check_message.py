@@ -7,9 +7,7 @@ import requests
 import threading
 import keyboard
 import modules.submodules.start_check
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
-from .functions.execute_command import execute_command
+from .functions.keyboard_helpers import clear_typing_bar, execute_command, switch_channel
 from .functions.settings import (  # pylint: disable=relative-beyond-top-level
     read_config,
 )

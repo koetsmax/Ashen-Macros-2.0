@@ -8,9 +8,7 @@ import ast
 from typing import Callable, Optional
 from modules.submodules.functions import widgets
 from modules.submodules.functions import theme
-from modules.submodules.functions.execute_command import execute_command
-from modules.submodules.functions.clear_typing_bar import clear_typing_bar
-from modules.submodules.functions.switch_channel import switch_channel
+from modules.submodules.functions.keyboard_helpers import clear_typing_bar, execute_command, switch_channel
 
 
 class CommandExecutor:

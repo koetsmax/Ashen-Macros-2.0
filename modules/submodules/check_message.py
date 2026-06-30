@@ -5,13 +5,9 @@ It is responsible for sending whether or not the user is good to check.
 
 import keyboard
 import modules.submodules.start_check
-from .after_check_message import (  # pylint: disable=relative-beyond-top-level
-    after_check_message,
-)
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
-from .functions.settings import read_config  # pylint: disable=relative-beyond-top-level
-from modules.submodules.functions import theme
+from .after_check_message import after_check_message
+from .functions.keyboard_helpers import clear_typing_bar, switch_channel
+from .functions.settings import read_config
 from modules.submodules import staffcheck_abort
 
 

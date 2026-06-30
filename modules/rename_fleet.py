@@ -2,8 +2,7 @@ from tkinter import *
 from tkinter import ttk as tk
 from typing import Callable, Optional
 import launcher  # pylint: disable=unused-import
-from modules.submodules.functions.execute_command import execute_command
-from modules.submodules.functions.clear_typing_bar import clear_typing_bar
+from modules.submodules.functions.keyboard_helpers import clear_typing_bar, execute_command
 import modules.submodules.functions.window_positions as window_positions
 from modules.submodules.functions import theme
 

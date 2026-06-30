@@ -6,11 +6,8 @@ import keyboard
 import requests
 import modules.submodules.start_check
 
-from .functions.settings import (  # pylint: disable=relative-beyond-top-level
-    read_config,
-)
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
+from .functions.settings import read_config
+from .functions.keyboard_helpers import clear_typing_bar, switch_channel
 from modules.submodules import staffcheck_abort
 
 

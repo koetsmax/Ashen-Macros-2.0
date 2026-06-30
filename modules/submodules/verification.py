@@ -6,8 +6,7 @@ import keyring
 import time
 import keyboard
 from modules.submodules.functions import window_positions
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
+from .functions.keyboard_helpers import clear_typing_bar, switch_channel
 
 
 def start_verification(self):
