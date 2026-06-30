@@ -87,9 +87,6 @@ def start_check(self):
                     text="Warning: Has multiple accounts linked. Only showing the first one.",
                     foreground="Red",
                 )
-                print(
-                    f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one."
-                )
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         request_error = True
     if not request_error:
@@ -268,7 +265,7 @@ def continue_to_next(self):
     disable_function_button(self)
     disable_function_button_2(self)
     self.kill_button.config(text="Back to launcher", command=self.back)
-    self.start_button.config(text="Start Check!", command=lambda: start_check(self))
+    self.start_button.config(text="Start check!", command=lambda: start_check(self))
 
     if self.currentstate == "Done":
         reset_ui(self)
