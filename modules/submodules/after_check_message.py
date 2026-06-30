@@ -7,9 +7,7 @@ import requests
 import threading
 import keyboard
 import modules.submodules.start_check
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.switch_channel import switch_channel
-from .functions.execute_command import execute_command
+from .functions.keyboard_helpers import clear_typing_bar, execute_command, switch_channel
 from .functions.settings import (  # pylint: disable=relative-beyond-top-level
     read_config,
 )
@@ -78,7 +76,6 @@ def unprivate_api_request(self):
         # wait for the response
         while not response.json():
             time.sleep(0.1)
-        print(response.json())
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":

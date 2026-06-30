@@ -8,9 +8,7 @@ import ast
 from typing import Callable, Optional
 from modules.submodules.functions import widgets
 from modules.submodules.functions import theme
-from modules.submodules.functions.execute_command import execute_command
-from modules.submodules.functions.clear_typing_bar import clear_typing_bar
-from modules.submodules.functions.switch_channel import switch_channel
+from modules.submodules.functions.keyboard_helpers import clear_typing_bar, execute_command, switch_channel
 
 
 class CommandExecutor:
@@ -59,19 +57,14 @@ class CommandExecutor:
             child.grid_configure(padx=5, pady=5)
 
     def start_command_executor(self):
-        print(self.command.get())
-        print(self.params.get())
         time.sleep(5)
-        print(self.members.get())
         members = ast.literal_eval(self.members.get())
-        print(members)
 
         switch_channel(self, "#lieutenant-commands")
         clear_typing_bar()
         for member in members:
             member = str(member)
             command = [f"/{self.command.get()}", member]
-            print(command)
             execute_command(self, command[0], command[1:])
 
 

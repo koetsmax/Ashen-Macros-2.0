@@ -264,9 +264,6 @@ class StaffCheck:
 
         self.gamertag_exists_label = widgets.create_label(self.search_labelframe, "N/A", 1, 1, "E", 1, 2, foreground="orange")
         self.total_friends_label = widgets.create_label(self.search_labelframe, "N/A", 2, 2, "W, E", foreground="orange")
-        # self.ban_ratio_label = widgets.create_label(
-        #     self.search_labelframe, "N/A", 3, 2, "W, E", foreground="orange"
-        # )
         self.completion_label = widgets.create_label(self.search_labelframe, "N/A", 4, 2, "W, E", foreground="orange")
         self.total_matches_label = widgets.create_label(self.search_labelframe, "N/A", 5, 2, "W, E", foreground="orange")
         self.partial_matches_label = widgets.create_label(self.search_labelframe, "N/A", 6, 2, "W, E", foreground="orange")

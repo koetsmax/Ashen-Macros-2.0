@@ -1,81 +1,60 @@
-"""
-This module executes all elemental commands.
-"""
+"""Elemental /user_report staffcheck step."""
 
-import time
 import threading
+import time
 
 import requests
 
 import modules.submodules.start_check
 
-from .functions.settings import (  # pylint: disable=relative-beyond-top-level
-    read_config,
-)
-from .functions.clear_typing_bar import clear_typing_bar
-from .functions.execute_command import execute_command
-from .functions.switch_channel import switch_channel
+from .functions.settings import read_config
+from .functions.keyboard_helpers import clear_typing_bar, execute_command, switch_channel
 from modules.submodules import staffcheck_abort
 
 
 def elemental_commands(self, *args):
-    """
-    This function executes all elemental commands.
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
-    # create timestmap forced to UTC+0
+
     self.timestamp = int(time.time())
-    print(self.timestamp)
     self.currentstate = "ElementalCommands"
     switch_channel(self, self.channel.get())
     clear_typing_bar()
-    loghistory = ["/user_report", self.user_id.get()]
-    execute_command(self, loghistory[0], loghistory[1:])
+    execute_command(self, "/user_report", [self.user_id.get()])
     if staffcheck_abort.is_abort_requested(self):
         return
-    start_elemental_api_requests_thread(self)
 
+    start_elemental_api_requests_thread(self)
     self.stop_button.state(["!disabled"])
 
-    if not args and not staffcheck_abort.is_abort_requested(self):
-        modules.submodules.start_check.continue_to_next(self)
-    else:
-        self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
-        self.function_button.state(["!disabled"])
-        self.kill_button.config(
-            text="Tell to verify",
-            command=lambda: tell_to_verify(self),
-        )
-        self.start_button.state(["disabled"])
+    if not args:
+        if not staffcheck_abort.is_abort_requested(self):
+            modules.submodules.start_check.continue_to_next(self)
+        return
+
+    self.function_button.config(text="Tell to link xbox", command=lambda: tell_to_link_xbox(self))
+    self.function_button.state(["!disabled"])
+    self.kill_button.config(text="Tell to verify", command=lambda: tell_to_verify(self))
+    self.start_button.state(["disabled"])
 
 
 def add_note(self):
-    """
-    Adds note to specified userID and GT if needed.
-    """
     switch_channel(self, self.channel.get())
     clear_typing_bar()
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    noteadd = ["/add_note", self.user_id.get(), f"GT: {self.xbox_gt}"]
-    execute_command(self, noteadd[0], noteadd[1:])
-    self.function_button.state(["disabled"])
+    execute_command(self, "/add_note", [self.user_id.get(), f"GT: {self.xbox_gt}"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
 
 
 def tell_to_link_xbox(self):
-    """
-    Tells the user to link their xbox account.
-    """
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    verify = ["/verify", self.user_id.get(), "link_xbox"]
     clear_typing_bar()
-    execute_command(self, verify[0], verify[1:])
+    execute_command(self, "/verify", [self.user_id.get(), "link_xbox"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
@@ -83,15 +62,11 @@ def tell_to_link_xbox(self):
 
 
 def tell_to_verify(self):
-    """
-    Tells the user to verify and link their xbox account.
-    """
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    verify = ["/verify", self.user_id.get(), "verify"]
     clear_typing_bar()
-    execute_command(self, verify[0], verify[1:])
+    execute_command(self, "/verify", [self.user_id.get(), "verify"])
     self.kill_button.state(["!disabled"])
     self.start_button.state(["!disabled"])
     self.currentstate = "SOTOfficial"
@@ -99,38 +74,24 @@ def tell_to_verify(self):
 
 
 def make_api_request(self):
-    """
-    This function makes the API request
-    """
-    try:
-        if self.method.get() == "All Commands":
-            elemental_api_request(self)
-
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"API Request Error: {e}")
+    if self.method.get() == "All Commands":
+        elemental_api_request(self)
 
 
 def start_elemental_api_requests_thread(self):
-    """
-    This function starts the Elemental API requests in a separate thread.
-    """
-    api_thread = threading.Thread(target=make_api_request, args=(self,))
-    api_thread.start()
+    threading.Thread(target=make_api_request, args=(self,), daemon=True).start()
 
 
 def elemental_api_request(self):
-    """
-    This function sends an API request to the Elemental API.
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
+
     request_error = False
     if self.channel.get() == "#on-duty-commands":
         self.loghistory_status_label.config(text="Sending API request", foreground="orange")
         self.mainframe.update()
         try:
             #! Still perform the request even if the user has no gamertag.
-            #! So we can run the loghistory API
             self.loghistory_fix_issues_button.state(["disabled"])
             payload = {
                 "userID": self.user_id.get(),
@@ -146,12 +107,10 @@ def elemental_api_request(self):
                 headers=self.headers,
             )
 
-            if response is None:
-                if staffcheck_abort.is_abort_requested(self):
-                    return
-                request_error = True
-            elif staffcheck_abort.is_abort_requested(self):
+            if staffcheck_abort.is_abort_requested(self):
                 return
+            if response is None:
+                request_error = True
             elif response.status_code != 200:
                 request_error = True
             elif response.json()["error"] != "none":
@@ -183,7 +142,9 @@ def elemental_api_request(self):
                     foreground=("red" if response_json["anti_alliance_note"] else "green"),
                 )
                 self.jump_to_message_button.state(["!disabled"])
-                self.jump_to_message_button.config(command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True))
+                self.jump_to_message_button.config(
+                    command=lambda: switch_channel(self, response_json["jump_url"], kwargs=True)
+                )
 
                 issues = {
                     "Account Age": response_json["account_age"] < 60,
@@ -193,8 +154,6 @@ def elemental_api_request(self):
                     "Needs Mic Check": response_json["needs_mic_check"],
                     "Anti Alliance Note": response_json["anti_alliance_note"],
                 }
-
-                # Add the issues to the list
                 self.loghistory_issues = [issue for issue, has_issue in issues.items() if has_issue]
                 self.loghistory_status_label.config(
                     text=f"{len(self.loghistory_issues)} issue(s) found",
@@ -212,14 +171,10 @@ def elemental_api_request(self):
 
     if request_error:
         self.loghistory_status_label.config(text="Failed", foreground="red")
-        #! This will break if this ever gets expanded upon
         self.loghistory_fix_issues_button.state(["!disabled"])
 
 
 def fix_issues(self):
-    """
-    This function fixes all issues found in the loghistory API response.
-    """
     if "Gamertag in Notes" in self.loghistory_issues:
         add_note(self)
         self.loghistory_issues.remove("Gamertag in Notes")

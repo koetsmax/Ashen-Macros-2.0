@@ -208,7 +208,6 @@ class AddToBanList:
             # ignore the ban if it is empty
             if ban == "":
                 continue
-            print(ban)
 
             # Split the string by the '-' character
             parts = ban.split("-")
