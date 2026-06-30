@@ -57,19 +57,14 @@ class CommandExecutor:
             child.grid_configure(padx=5, pady=5)
 
     def start_command_executor(self):
-        print(self.command.get())
-        print(self.params.get())
         time.sleep(5)
-        print(self.members.get())
         members = ast.literal_eval(self.members.get())
-        print(members)
 
         switch_channel(self, "#lieutenant-commands")
         clear_typing_bar()
         for member in members:
             member = str(member)
             command = [f"/{self.command.get()}", member]
-            print(command)
             execute_command(self, command[0], command[1:])
 
 

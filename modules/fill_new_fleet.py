@@ -117,7 +117,6 @@ class FillNewFleet:
         # add all the ships to a list
 
         ships = [ship_1, ship_2, ship_3, ship_4, ship_5]
-        print(ships)
 
         members_in_queue = []
         self.count = 0
@@ -143,12 +142,6 @@ class FillNewFleet:
 
         members_in_queue.sort(key=lambda x: x.queuepos, reverse=False)
 
-        # print the list of members in queue
-        for member in members_in_queue:
-            print(member.queuepos, member.fleetnum, member.shipnum)
-
-        print("Number of members to be processed:" + str(len(members_in_queue)))
-
         # start processing members onto their respective ships
         current_change = 0
 
@@ -160,7 +153,6 @@ class FillNewFleet:
                 actual_queuepos,
                 f"{to_process.fleetnum} {to_process.shipnum}",
             ]
-            print(process)
             clear_typing_bar()
             execute_command(self, process[0], process[1:])
             current_change -= 1

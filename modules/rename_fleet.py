@@ -81,32 +81,8 @@ class RenameFleet:
         window_positions.save_window_position(self.root, 1)
 
     def start(self):
-        """
-        Starts the fill_new_fleet script.
-        """
+        """Rename fleet Discord automation is not yet implemented."""
         self.count = 0
-        ships = [
-            self.ship_1.get(),
-            self.ship_2.get(),
-            self.ship_3.get(),
-            self.ship_4.get(),
-            self.ship_5.get(),
-        ]
-        print(ships)
-
-        self.count = 0
-
-        for ship in ships:
-            self.count += 1
-            if ship != "":
-                rename = [
-                    "/editship_rename",
-                    f"{self.fleet.get()} {self.count}",
-                    f"activity: {ship}",
-                ]
-                print(rename)
-                # clear_typing_bar()
-                # execute_command(self, rename[0], rename[1:])
 
 
 def start_script():

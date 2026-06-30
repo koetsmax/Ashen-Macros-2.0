@@ -76,7 +76,6 @@ def unprivate_api_request(self):
         # wait for the response
         while not response.json():
             time.sleep(0.1)
-        print(response.json())
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":

@@ -29,8 +29,6 @@ class Queue:
         # create a stringvar with the value Initializing...
         self.active = StringVar(value="Initializing...")
 
-        print(self.active.get())
-
         # Create the variables for the queue options
         self.queue_total = IntVar(value=0)
         self.queue_any = IntVar(value=0)
@@ -168,8 +166,6 @@ class Queue:
         request_api_queue = requests.get("http://localhost:5000/queue/members", headers=self.headers)
 
         def queue(data):
-            print(f"queue: {data}")
-            print(data.get("active"))
             if data.get("active"):
                 self.active.set("Active")
             else:
@@ -239,7 +235,6 @@ class Queue:
             self.label_unk.config(text=f"Unknown ({self.ships_unk.get()}): {self.queue_unk.get()}")
 
         def info(data):
-            print(f"info: {data}")
             self.ships_total.set(len(data))
             self.ships_fotd.set(0)
             self.ships_we.set(0)
