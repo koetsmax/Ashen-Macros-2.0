@@ -20,7 +20,7 @@ from modules.submodules import staffcheck_abort
 
 
 def _button_noop() -> None:
-    """Placeholder command for disabled toolbar buttons."""
+    pass
 
 
 def disable_function_button(self) -> None:
@@ -34,19 +34,13 @@ def disable_function_button_2(self) -> None:
 
 
 def validate_user_id(self) -> bool:
-    """
-    This function validates the user input
-    """
     self.user_id.set(self.user_id.get().strip())
 
-    # Check if the user id is a number
-    if not isinstance(self.user_id.get(), str) or not self.user_id.get().isdigit():
+    if not self.user_id.get().isdigit():
         self.status_label.config(text="ID must be a number", foreground="Red")
         return False
 
-    # Check if the user id is the correct length
-    lengths = [17, 18, 19]
-    if len(self.user_id.get()) in lengths:
+    if len(self.user_id.get()) in (17, 18, 19):
         return True
 
     self.status_label.config(
@@ -57,9 +51,6 @@ def validate_user_id(self) -> bool:
 
 
 def start_check(self):
-    """
-    This function sets the currentstate to the appropriate value
-    """
     if not validate_user_id(self):
         return
 
@@ -91,7 +82,6 @@ def start_check(self):
                 self.xbox_gt = self.essential_data_response.json()["linked_xbox"][0]
             except IndexError:
                 self.xbox_gt = []
-            print(self.xbox_gt, len(self.essential_data_response.json()["linked_xbox"]))
             if len(self.essential_data_response.json()["linked_xbox"]) > 1:
                 self.status_label.config(
                     text="Warning: Has multiple accounts linked. Only showing the first one.",
@@ -100,9 +90,8 @@ def start_check(self):
                 print(
                     f"Warning: {self.user_name} has multiple accounts linked. Only showing the first one."
                 )
-    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as exc:
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         request_error = True
-        print(exc)
     if not request_error:
         continue_check(self, request_error)
     else:
@@ -121,9 +110,6 @@ def start_check(self):
 
 
 def continue_check(self, request_error):
-    """
-    This function continues the check process
-    """
     if request_error or not len(self.essential_data_response.json()["linked_xbox"]) > 1:
         self.status_label.config(text="Running Check", foreground=theme.label_foreground())
     self.mainframe.update()
@@ -174,9 +160,6 @@ def continue_check(self, request_error):
 
 
 def reset_ui(self):
-    """
-    This function resets the UI to its default state
-    """
     staffcheck_abort.end_check_session(self)
     previous_user_id = self.user_id.get()
     self.user_id.set("")
@@ -208,7 +191,6 @@ def reset_ui(self):
 
     self.gamertag_exists_label.config(text="N/A", foreground="orange")
     self.total_friends_label.config(text="N/A", foreground="orange")
-    # self.ban_ratio_label.config(text="N/A", foreground="orange")
     self.completion_label.config(text="N/A", foreground="orange")
     self.total_matches_label.config(text="N/A", foreground="orange")
     self.partial_matches_label.config(text="N/A", foreground="orange")
@@ -264,33 +246,22 @@ def reset_ui(self):
 
 
 def perform_next_command(self):
-    """
-    This function determines which section of the macro to run next
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
-    method = self.method.get()
-    current_state = self.currentstate
+    if self.method.get() != "All Commands":
+        return
 
-    if method == "All Commands":
-        if current_state == "PreCheck":
-            modules.submodules.elemental_commands.elemental_commands(self)
-        elif current_state == "ElementalCommands":
-            modules.submodules.ashen_commands.ashen_commands(self)
-        elif current_state == "AshenCommands":
-            modules.submodules.invite_tracker.invite_tracker(self)
-        elif current_state == "InviteTracker":
-            modules.submodules.sot_official.sot_official(self)
-        elif current_state == "SOTOfficial":
-            modules.submodules.check_message.check_message(self)
-        if staffcheck_abort.is_abort_requested(self):
-            return
+    next_step = {
+        "ElementalCommands": modules.submodules.ashen_commands.ashen_commands,
+        "AshenCommands": modules.submodules.invite_tracker.invite_tracker,
+        "InviteTracker": modules.submodules.sot_official.sot_official,
+        "SOTOfficial": modules.submodules.check_message.check_message,
+    }.get(self.currentstate)
+    if next_step is not None:
+        next_step(self)
 
 
 def continue_to_next(self):
-    """
-    This function makes the program continue to the next step
-    """
     if staffcheck_abort.is_abort_requested(self):
         return
     self.start_button.state(["disabled"])
@@ -303,31 +274,20 @@ def continue_to_next(self):
         reset_ui(self)
         return
 
-    if self.method.get() not in ["All Commands"]:
+    if self.method.get() != "All Commands":
         self.currentstate = "Done"
-        continue_to_next(self)
-    else:
-        perform_next_command(self)
+        reset_ui(self)
+        return
+
+    perform_next_command(self)
 
 
 def make_api_requests(self):
-    """
-    Make the api requests to the bot to get the data
-    from sea of thieves official and the invite tracker
-    """
-    try:
-        modules.submodules.invite_tracker.api_request(self)
-        modules.submodules.sot_official.api_request(self)
-        # Add more API requests as needed
-
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"API Request Error: {e}")
+    modules.submodules.invite_tracker.api_request(self)
+    modules.submodules.sot_official.api_request(self)
 
 
 def determine_method(self):
-    """
-    This function determines which method to use
-    """
     self.reason = StringVar(value="Reason for Not Good To Check")
     self.reason_entry = widgets.create_entry(self.mainframe, self.reason, 9, 1, "W, E", 55, 2)
     for child in self.mainframe.winfo_children():
@@ -347,5 +307,3 @@ def determine_method(self):
         modules.submodules.sot_official.sot_official(self)
     elif self.method.get() == "Check Message":
         modules.submodules.check_message.check_message(self)
-    else:
-        self.start_button.state(["!disabled"])

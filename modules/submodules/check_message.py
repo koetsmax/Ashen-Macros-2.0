@@ -1,9 +1,7 @@
-"""
-This module is the last module in the staff check process.
-It is responsible for sending whether or not the user is good to check.
-"""
+"""Final good-to-check / not-good-to-check messaging step."""
 
 import keyboard
+
 import modules.submodules.start_check
 from .after_check_message import after_check_message
 from .functions.keyboard_helpers import clear_typing_bar, switch_channel
@@ -12,11 +10,7 @@ from modules.submodules import staffcheck_abort
 
 
 def check_message(self):
-    """
-    This function makes changes to the GUI and applies commands to the buttons
-    """
     self.currentstate = "Done"
-
     self.kill_button.config(text="Not Good to Check", command=lambda: not_good_to_check(self))
     self.start_button.config(text="Good to Check", command=lambda: good_to_check(self))
     self.start_button.state(["!disabled"])
@@ -24,9 +18,6 @@ def check_message(self):
 
 
 def good_to_check(self):
-    """
-    This function builds the message to send to the on-duty chat if the user is good to check
-    """
     self.function_button.state(["disabled"])
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
@@ -34,51 +25,39 @@ def good_to_check(self):
     clear_typing_bar()
 
     config = read_config()
-    built_good_to_check_message = config["good_to_check_message"]
-    built_good_to_check_message = built_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_good_to_check_message = built_good_to_check_message.replace("xboxGT", f"{self.xbox_gt}")
-    keyboard.write(built_good_to_check_message)
+    message = config["good_to_check_message"]
+    message = message.replace("userID", f"<@{self.user_id.get()}>")
+    message = message.replace("xboxGT", f"{self.xbox_gt}")
+    keyboard.write(message)
     keyboard.press_and_release("enter")
     modules.submodules.start_check.continue_to_next(self)
 
 
 def not_good_to_check(self):
-    """
-    This function allows the user to enter the reason if the user is not good to check
-    """
     self.currentstate = "Done"
     switch_channel(self, "#on-duty-chat")
     clear_typing_bar()
     self.kill_button.state(["disabled"])
     self.start_button.state(["disabled"])
-    self.function_button_2.state(["disabled"])
+    modules.submodules.start_check.disable_function_button_2(self)
     self.start_button.config(text="Confirm Reason", command=lambda: build_not_good_to_check(self))
     self.start_button.state(["!disabled"])
 
 
 def build_not_good_to_check(self):
-    """
-    This function builds the message to send to the on-duty chat if the user is not good to check
-    """
     config = read_config()
-    built_not_good_to_check_message = config["not_good_to_check_message"]
-    built_not_good_to_check_message = built_not_good_to_check_message.replace("userID", f"<@{self.user_id.get()}>")
-    built_not_good_to_check_message = built_not_good_to_check_message.replace("xboxGT", f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}")
-    built_not_good_to_check_message = built_not_good_to_check_message.replace("Reason", f"{self.reason.get()}")
+    message = config["not_good_to_check_message"]
+    message = message.replace("userID", f"<@{self.user_id.get()}>")
+    message = message.replace(
+        "xboxGT",
+        f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}",
+    )
+    message = message.replace("Reason", f"{self.reason.get()}")
     clear_typing_bar()
-    keyboard.write(built_not_good_to_check_message)
+    keyboard.write(message)
     keyboard.press_and_release("enter")
     after_check_message(self)
 
 
 def stop_check(self):
-    """
-    This function stops the check process
-    """
-    if getattr(self, "check_in_progress", False):
-        staffcheck_abort.abort_staffcheck(self)
-        return
-    self.currentstate = "Done"
-    modules.submodules.start_check.continue_to_next(self)
-    self.start_button.state(["!disabled"])
-    self.status_label.config(text="Waiting for ID", foreground=theme.label_foreground())
+    staffcheck_abort.abort_staffcheck(self)

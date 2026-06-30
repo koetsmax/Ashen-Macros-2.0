@@ -1,20 +1,41 @@
-"""
-Abort support for an in-progress staffcheck (configurable hotkey only).
-"""
+"""Abort support for an in-progress staffcheck (configurable hotkey only)."""
 
 from __future__ import annotations
 
+import threading
 import time
-from typing import Any, Callable, Optional
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator, Optional
 
 import keyboard
 import requests
+from tkinter import TclError
 
 from modules.submodules.functions.settings import read_config
 
+_keyboard_automation_depth = 0
+_keyboard_automation_lock = threading.Lock()
+
+
+def is_keyboard_automation_active() -> bool:
+    with _keyboard_automation_lock:
+        return _keyboard_automation_depth > 0
+
+
+@contextmanager
+def keyboard_automation() -> Iterator[None]:
+    global _keyboard_automation_depth  # pylint: disable=global-statement
+    with _keyboard_automation_lock:
+        _keyboard_automation_depth += 1
+    try:
+        yield
+    finally:
+        with _keyboard_automation_lock:
+            _keyboard_automation_depth = max(0, _keyboard_automation_depth - 1)
+
 
 class AbortError(Exception):
-    """Raised when the user aborts keyboard automation or a blocking step."""
+    pass
 
 
 def is_abort_requested(self) -> bool:
@@ -35,15 +56,12 @@ def interruptible_sleep(self, duration: float, step: float = 0.05) -> None:
         check_abort(self)
         try:
             self.root.update_idletasks()
-        except Exception:  # pylint: disable=broad-except
+        except TclError:
             pass
         time.sleep(min(step, max(0, end - time.time())))
 
 
 def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, headers=None):
-    """
-    Single POST; returns None if aborted before the request or on connection failure.
-    """
     if is_abort_requested(self):
         return None
     try:
@@ -53,42 +71,46 @@ def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, hea
 
 
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
-    """Show Continue after keyboard steps."""
     from modules.submodules import start_check
 
     if is_abort_requested(self):
         return
     if command is None:
         command = lambda: start_check.continue_to_next(self)
-
     self.start_button.config(text="Continue", command=command)
     self.start_button.state(["!disabled"])
 
 
-def _hotkey_callback(self) -> None:
-    abort_staffcheck(self)
-
-
 def install_abort_hotkey(self) -> None:
     remove_abort_hotkey(self)
-    config = read_config()
-    key = config.get("abort_key", "escape").strip()
+    key = read_config().get("abort_key", "escape").strip()
     if not key:
         return
     try:
-        self._abort_hotkey = keyboard.add_hotkey(key, lambda: _hotkey_callback(self), suppress=False)
+        self._abort_hotkey = keyboard.add_hotkey(
+            key,
+            lambda: _on_abort_hotkey(self),
+            suppress=False,
+        )
     except ValueError as exc:
         print(f"Invalid abort key '{key}': {exc}")
 
 
+def _on_abort_hotkey(self) -> None:
+    if is_keyboard_automation_active():
+        return
+    abort_staffcheck(self)
+
+
 def remove_abort_hotkey(self) -> None:
     hotkey = getattr(self, "_abort_hotkey", None)
-    if hotkey is not None:
-        try:
-            keyboard.remove_hotkey(hotkey)
-        except (KeyError, ValueError):
-            pass
-        self._abort_hotkey = None
+    if hotkey is None:
+        return
+    try:
+        keyboard.remove_hotkey(hotkey)
+    except (KeyError, ValueError):
+        pass
+    self._abort_hotkey = None
 
 
 def start_check_session(self) -> None:
@@ -110,14 +132,13 @@ def abort_staffcheck(self) -> None:
         return
 
     self.abort_requested = True
-
-    if getattr(self, "_abort_finish_pending", False):
+    if self._abort_finish_pending:
         return
     self._abort_finish_pending = True
 
     try:
         self.root.after(0, lambda: _finish_abort(self))
-    except Exception:  # pylint: disable=broad-except
+    except TclError:
         _finish_abort(self)
 
 
