@@ -1,5 +1,3 @@
-"""Abort support for an in-progress staffcheck (configurable hotkey only)."""
-
 from __future__ import annotations
 
 import threading
@@ -9,9 +7,8 @@ from typing import Any, Callable, Iterator, Optional
 
 import keyboard
 import requests
-from tkinter import TclError
 
-from modules.submodules.functions.settings import read_config
+from core.settings import read_config
 
 _keyboard_automation_depth = 0
 _keyboard_automation_lock = threading.Lock()
@@ -24,7 +21,7 @@ def is_keyboard_automation_active() -> bool:
 
 @contextmanager
 def keyboard_automation() -> Iterator[None]:
-    global _keyboard_automation_depth  # pylint: disable=global-statement
+    global _keyboard_automation_depth
     with _keyboard_automation_lock:
         _keyboard_automation_depth += 1
     try:
@@ -54,10 +51,9 @@ def interruptible_sleep(self, duration: float, step: float = 0.05) -> None:
     end = time.time() + duration
     while time.time() < end:
         check_abort(self)
-        try:
-            self.root.update_idletasks()
-        except TclError:
-            pass
+        from staffcheck.qt_ui import flush
+
+        flush()
         time.sleep(min(step, max(0, end - time.time())))
 
 
@@ -71,14 +67,16 @@ def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, hea
 
 
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
-    from modules.submodules import start_check
+    from staffcheck import pipeline
 
     if is_abort_requested(self):
         return
     if command is None:
-        command = lambda: start_check.continue_to_next(self)
-    self.start_button.config(text="Continue", command=command)
-    self.start_button.state(["!disabled"])
+        command = lambda: pipeline.continue_to_next(self)
+    from staffcheck.qt_ui import btn_config, btn_enable
+
+    btn_config(self.start_button, "Continue", command)
+    btn_enable(self.start_button, True)
 
 
 def install_abort_hotkey(self) -> None:
@@ -136,17 +134,18 @@ def abort_staffcheck(self) -> None:
         return
     self._abort_finish_pending = True
 
-    try:
-        self.root.after(0, lambda: _finish_abort(self))
-    except TclError:
-        _finish_abort(self)
+    from PySide6.QtCore import QTimer
+
+    QTimer.singleShot(0, lambda: _finish_abort(self))
 
 
 def _finish_abort(self) -> None:
     self.currentstate = "Done"
     end_check_session(self)
 
-    from modules.submodules.start_check import reset_ui
+    from staffcheck.pipeline import reset_ui
 
     reset_ui(self)
-    self.status_label.config(text="Check aborted", foreground="red")
+    from staffcheck.qt_ui import label_set
+
+    label_set(self.status_label, "Check aborted", "red")

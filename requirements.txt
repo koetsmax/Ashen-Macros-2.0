@@ -1,10 +1,9 @@
 keyboard
 pywin32
-sv-ttk
+PySide6
+catppuccin
 packaging
 requests
 pyuac
-pyautogui
-python-socketio
 filelock
 keyring

@@ -1,4 +1,4 @@
-"""Discord keyboard automation: focus window, clear input, switch channel, run slash commands."""
+"""Discord keyboard automation."""
 
 import threading
 import time
@@ -8,8 +8,8 @@ import keyboard
 import win32con
 import win32gui
 
-from .settings import read_config
-from modules.submodules.staffcheck_abort import (
+from core.settings import read_config
+from staffcheck.abort import (
     AbortError,
     check_abort,
     interruptible_sleep,
@@ -26,7 +26,7 @@ def _window_enumeration_handler(hwnd, top_windows):
 def _reset_window_state():
     try:
         win32gui.SendMessage(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 0)
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         pass
 
 
@@ -55,7 +55,7 @@ def activate_window(window: str, timeout: float = 2.0):
             print(f"Could not activate window '{window}' within {timeout} seconds")
             _reset_window_state()
 
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         print(f"Window activation failed: {exc}")
         _reset_window_state()
 

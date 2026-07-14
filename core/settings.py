@@ -4,13 +4,10 @@ from filelock import FileLock
 
 CONFIG_FILE_PATH = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
 LOCK_FILE_PATH = CONFIG_FILE_PATH + ".lock"
-LOCK_TIMEOUT = 30  # Timeout duration in seconds
+LOCK_TIMEOUT = 30
 
 
 def read_config() -> dict:
-    """
-    Read the config file.
-    """
     config = configparser.ConfigParser()
     with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):
         file_missing = False
@@ -26,10 +23,19 @@ def read_config() -> dict:
         return _read_config_values(config)
 
 
+def read_section(section: str) -> dict:
+    config = configparser.ConfigParser()
+    with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):
+        try:
+            _read_config_file(config)
+        except (configparser.Error, FileNotFoundError):
+            _set_default_values(config)
+        if section not in config:
+            return {}
+        return dict(config.items(section))
+
+
 def set_custom_value(section, option, value):
-    """
-    Set a custom value in the config.
-    """
     config = configparser.ConfigParser()
     with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):
         try:
@@ -44,7 +50,6 @@ def set_custom_value(section, option, value):
 
 
 def _read_config_file(config) -> None:
-    # validate that the file exists
     if not os.path.exists(CONFIG_FILE_PATH):
         raise FileNotFoundError("Config file not found")
     config.read(CONFIG_FILE_PATH)
@@ -70,10 +75,22 @@ def _set_default_values(config) -> bool:
         },
         "COMMANDS": {"initial_command": "2", "follow_up": "0.4", "abort_key": "escape"},
         "ADD_TO_BAN_LIST": {"delay": "15"},
-        "WINDOW": {"x_offset": "0", "y_offset": "0"},
+        "WINDOW": {
+            "x": "0",
+            "y": "0",
+            "width": "0",
+            "height": "0",
+            "x_offset": "0",
+            "y_offset": "0",
+        },
+        "SESSION": {"open_apps": ""},
         "API": {"api_url": "https://ashen.api.famkoets.nl"},
-        "UI": {"dark_mode": "true"},
+        "UI": {"catppuccin_flavor": "mocha"},
     }
+
+    ui = config["UI"] if "UI" in config else {}
+    if "catppuccin_flavor" not in ui and "dark_mode" in ui:
+        default_config["UI"]["catppuccin_flavor"] = "mocha"
 
     for section, options in default_config.items():
         if section not in config:
