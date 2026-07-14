@@ -3,7 +3,7 @@ import threading
 import requests
 
 from core.settings import read_config
-from staffcheck import abort
+from staffcheck import abort, result_panel
 from staffcheck.qt_ui import Var, btn_config, btn_enable, flush, label_set
 
 
@@ -19,6 +19,37 @@ def disable_function_button(self):
 def disable_function_button_2(self):
     btn_config(self.function_button_2, "Re-run last check", _button_noop)
     btn_enable(self.function_button_2, False)
+
+
+def _reset_result_panels(self):
+    result_panel.reset_all(self)
+    self._user_report_data = None
+    self.loghistory_issues = []
+    self.search_issues = []
+    btn_enable(self.loghistory_fix_issues_button, False)
+    btn_enable(self.jump_to_message_button, False)
+    btn_enable(self.invited_by_loghistory_button, False)
+    btn_enable(self.invited_users_loghistory_button, False)
+    btn_enable(self.jump_to_message_search_button, False)
+    btn_enable(self.search_fix_issues_button, False)
+    btn_enable(self.check_for_yourself_button, False)
+
+
+def _clear_mutual_guilds(self):
+    self.mutual_guilds = []
+    result_panel.mutual_servers_reset(self)
+
+
+def prepare_for_new_check(self):
+    """Reset panels and gamertag when starting a new check."""
+    _reset_result_panels(self)
+    _clear_mutual_guilds(self)
+    label_set(self.gamertag_label, "Unknown")
+    self.clear_reason()
+
+
+def _api_only_method(self) -> bool:
+    return self.method.get() in ("Invite Tracker", "SOT Official")
 
 
 def validate_user_id(self) -> bool:
@@ -44,6 +75,8 @@ def start_check(self):
     if not validate_user_id(self):
         return
 
+    prepare_for_new_check(self)
+
     request_error = False
     payload = {"userID": self.user_id.get()}
     try:
@@ -62,12 +95,7 @@ def start_check(self):
         else:
             self.user_name = self.essential_data_response.json()["discord_name"]
             self.mutual_guilds = self.essential_data_response.json()["mutual_guilds"]
-            guild_list = "\n".join(self.mutual_guilds)
-            from PySide6.QtWidgets import QLabel
-
-            self.mutual_guilds_label = QLabel(f"Mutual guilds:\n{guild_list}")
-            self.mutual_guilds_label.setWordWrap(True)
-            self.input_layout.addWidget(self.mutual_guilds_label, 10, 0, 1, 2)
+            result_panel.mutual_servers_apply(self, self.mutual_guilds)
 
             try:
                 self.xbox_gt = self.essential_data_response.json()["linked_xbox"][0]
@@ -116,8 +144,11 @@ def continue_check(self, request_error):
         self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
         flush()
 
-    if self.xbox_gt != []:
-        label_set(self.gamertag_label, str(self.xbox_gt))
+    if self.xbox_gt != [] or _api_only_method(self):
+        if self.xbox_gt != []:
+            label_set(self.gamertag_label, str(self.xbox_gt))
+        else:
+            label_set(self.gamertag_label, "Not linked")
         btn_enable(self.start_button, False)
         btn_enable(self.stop_button, True)
         abort.start_check_session(self)
@@ -146,6 +177,33 @@ def continue_check(self, request_error):
         elemental_commands.elemental_commands(self, 1)
 
 
+def finish_single_method(self):
+    """End a one-off method check: keep results and gamertag, clear Discord ID."""
+    abort.end_check_session(self)
+    label_set(self.status_label, "Check complete")
+    btn_enable(self.stop_button, False)
+    btn_config(self.start_button, "Start check!", lambda: start_check(self))
+    btn_enable(self.start_button, True)
+    btn_enable(self.kill_button, False)
+    self.kill_button.setVisible(False)
+    self._set_customize_enabled(True)
+    self.user_id_entry.setEnabled(True)
+    self.channel_combo_box.setEnabled(True)
+    self.method_combo_box.setEnabled(True)
+    self.pre_check_button.setEnabled(True)
+    self.reason_entry.setEnabled(True)
+
+    previous_user_id = self.user_id.get()
+    self.user_id.set("")
+    disable_function_button(self)
+    btn_config(
+        self.function_button_2,
+        "Re-run last check",
+        lambda: self.user_id.set(previous_user_id),
+    )
+    btn_enable(self.function_button_2, True)
+
+
 def reset_ui(self):
     abort.end_check_session(self)
     previous_user_id = self.user_id.get()
@@ -157,56 +215,13 @@ def reset_ui(self):
     self.clear_reason()
     self.reason_entry.setEnabled(True)
 
-    for lbl in (
-        self.account_age_label,
-        self.needs_warning_talk_label,
-        self.gamertag_in_notes_label,
-        self.needs_to_be_spoken_to_label,
-        self.needs_mic_check_label,
-        self.anti_alliance_note_label,
-    ):
-        label_set(lbl, "N/A", "orange")
-    label_set(self.loghistory_status_label, "Waiting", "orange")
-    btn_enable(self.loghistory_fix_issues_button, False)
-    btn_enable(self.jump_to_message_button, False)
-
-    for lbl in (self.invited_by_label, self.times_invited_label, self.num_people_invited_label):
-        label_set(lbl, "N/A", "orange")
-    label_set(self.invite_tracker_status_label, "Waiting", "orange")
-    btn_enable(self.invited_by_loghistory_button, False)
-    btn_enable(self.invited_users_loghistory_button, False)
-
-    for lbl in (
-        self.gamertag_exists_label,
-        self.total_friends_label,
-        self.completion_label,
-        self.total_matches_label,
-        self.partial_matches_label,
-        self.exact_matches_label,
-        self.alts_found_label,
-    ):
-        label_set(lbl, "N/A", "orange")
-    label_set(self.search_status_label, "Waiting", "orange")
-    btn_enable(self.jump_to_message_search_button, False)
-    btn_enable(self.search_fix_issues_button, False)
-
-    for lbl in (
-        self.total_messages_label,
-        self.messages_with_alliance_label,
-        self.messages_with_hourglass_label,
-        self.messages_with_bad_words_label,
-    ):
-        label_set(lbl, "N/A", "orange")
-    label_set(self.sot_official_status_label, "N/A", "orange")
-    btn_enable(self.check_for_yourself_button, False)
+    _reset_result_panels(self)
 
     disable_function_button(self)
     btn_config(self.function_button_2, "Re-run last check", lambda: self.user_id.set(previous_user_id))
     btn_enable(self.function_button_2, True)
 
-    if hasattr(self, "mutual_guilds_label") and self.mutual_guilds_label:
-        self.mutual_guilds_label.deleteLater()
-        self.mutual_guilds_label = None
+    _clear_mutual_guilds(self)
 
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
     btn_enable(self.start_button, True)
@@ -251,7 +266,7 @@ def continue_to_next(self):
 
     if self.method.get() != "All Commands":
         self.currentstate = "Done"
-        reset_ui(self)
+        finish_single_method(self)
         return
 
     perform_next_command(self)

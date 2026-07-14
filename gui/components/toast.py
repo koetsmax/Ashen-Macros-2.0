@@ -186,12 +186,23 @@ class ToastStack(QWidget):
 
     def __init__(self, parent: QWidget):
         super().__init__(parent)
+        self.setFixedWidth(self.TOAST_WIDTH)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 12, 0)
         layout.setSpacing(8)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         self._layout = layout
         self._active: dict[str, Toast] = {}
+        self.setVisible(False)
+
+    def _notify_reposition(self):
+        window = self.window()
+        if hasattr(window, "_position_toast_stack"):
+            window._position_toast_stack()
+
+    def _update_visibility(self):
+        self.setVisible(bool(self._active))
+        self._notify_reposition()
 
     def show_toast(
         self,
@@ -205,6 +216,7 @@ class ToastStack(QWidget):
         if existing is not None:
             if not existing._dismissing:
                 existing.update_content(message, on_click, dismiss_ms, action_label)
+                self._update_visibility()
                 return
             existing._on_removed = None
             self._layout.removeWidget(existing)
@@ -222,11 +234,13 @@ class ToastStack(QWidget):
         def _removed(t=toast):
             if self._active.get(key) is t:
                 self._active.pop(key, None)
+            self._update_visibility()
 
         toast._on_removed = _removed
         self._layout.insertWidget(0, toast)
         self._active[key] = toast
         toast._sync_label_width()
+        self._update_visibility()
 
     def sync_toast_widths(self):
         for toast in self._active.values():

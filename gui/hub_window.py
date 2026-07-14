@@ -3,7 +3,7 @@ import threading
 
 from PySide6.QtCore import QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QCloseEvent, QShowEvent
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QVBoxLayout, QWidget
 from shiboken6 import isValid
 
 from core import auth, updates
@@ -59,7 +59,7 @@ class StaffcheckHub(QMainWindow):
         self._updates_action = None
 
         self.setWindowTitle("Ashen Macros")
-        self.setMinimumSize(960, 640)
+        self.setMinimumSize(960, 520)
         load_window_geometry(self)
         track_window_geometry(self)
 
@@ -107,7 +107,8 @@ class StaffcheckHub(QMainWindow):
         outer.addWidget(status_bar)
 
         self.staffcheck = StaffcheckView(self)
-        outer.addWidget(self.staffcheck)
+        outer.addWidget(self.staffcheck, stretch=0)
+        outer.addStretch()
 
         footer = QHBoxLayout()
         footer.addStretch()
@@ -167,10 +168,14 @@ class StaffcheckHub(QMainWindow):
     def _position_toast_stack(self):
         if hasattr(self, "toast_stack"):
             width = self.toast_stack.TOAST_WIDTH
-            self.toast_stack.setGeometry(
-                self.width() - width - 20, 36, width, self.height() - 80
-            )
             self.toast_stack.sync_toast_widths()
+            if not self.toast_stack.isVisible():
+                return
+            self.toast_stack.adjustSize()
+            height = max(self.toast_stack.sizeHint().height(), 1)
+            self.toast_stack.setGeometry(
+                self.width() - width - 20, 36, width, height
+            )
             self.toast_stack.raise_()
 
     def _set_welcome_text(self, username: str | None):
@@ -206,7 +211,8 @@ class StaffcheckHub(QMainWindow):
             self._verify_action = None
 
     def _open_settings(self):
-        SettingsDialog(self).exec()
+        if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
+            self.staffcheck.rebuild_results_panel()
 
     def _run_verify(self):
         self.toast_stack.show_toast(

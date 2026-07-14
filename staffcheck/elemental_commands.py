@@ -5,8 +5,9 @@ import requests
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
-from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, flush, label_set
+from staffcheck import abort, pipeline, result_panel
+from staffcheck.result_panel import _section
+from staffcheck.qt_ui import btn_config, btn_enable
 
 
 def elemental_commands(self, *args):
@@ -73,7 +74,7 @@ def tell_to_verify(self):
 
 
 def make_api_request(self):
-    if self.method.get() == "All Commands":
+    if self.method.get() in ("All Commands", "Elemental Commands"):
         elemental_api_request(self)
 
 
@@ -87,8 +88,7 @@ def elemental_api_request(self):
 
     request_error = False
     if self.channel.get() == "#on-duty-commands":
-        label_set(self.loghistory_status_label, "Sending API request", "orange")
-        flush()
+        result_panel.user_report_loading(self)
         try:
             btn_enable(self.loghistory_fix_issues_button, False)
             payload = {
@@ -112,58 +112,15 @@ def elemental_api_request(self):
             elif response.status_code != 200:
                 request_error = True
             elif response.json()["error"] != "none":
-                label_set(self.loghistory_status_label, response.json()["error"], "red")
+                result_panel.user_report_failed(self, response.json()["error"])
             else:
                 r = response.json()
-                label_set(
-                    self.account_age_label,
-                    f"{r['account_age']} Days",
-                    "red" if r["account_age"] < 60 else "green",
-                )
-                label_set(
-                    self.needs_warning_talk_label,
-                    f"{r['needs_warning_talk']}",
-                    "red" if r["needs_warning_talk"] else "green",
-                )
-                label_set(
-                    self.gamertag_in_notes_label,
-                    f"{r['gamertag_in_notes']}",
-                    "green" if r["gamertag_in_notes"] else "red",
-                )
-                label_set(
-                    self.needs_to_be_spoken_to_label,
-                    f"{r['needs_to_be_spoken_to']}",
-                    "red" if r["needs_to_be_spoken_to"] else "green",
-                )
-                label_set(
-                    self.needs_mic_check_label,
-                    f"{r['needs_mic_check']}",
-                    "red" if r["needs_mic_check"] else "green",
-                )
-                label_set(
-                    self.anti_alliance_note_label,
-                    f"{r['anti_alliance_note']}",
-                    "red" if r["anti_alliance_note"] else "green",
-                )
+                result_panel.user_report_apply(self, r, xbox_gt=self.xbox_gt)
+                self._loghistory_jump_url = r["jump_url"]
                 btn_enable(self.jump_to_message_button, True)
                 btn_config(
                     self.jump_to_message_button,
                     on_click=lambda: switch_channel(self, r["jump_url"], kwargs=True),
-                )
-
-                issues = {
-                    "Account Age": r["account_age"] < 60,
-                    "Needs Warning Talk": r["needs_warning_talk"],
-                    "Gamertag in Notes": not r["gamertag_in_notes"] and self.xbox_gt,
-                    "Needs to be Spoken To": r["needs_to_be_spoken_to"],
-                    "Needs Mic Check": r["needs_mic_check"],
-                    "Anti Alliance Note": r["anti_alliance_note"],
-                }
-                self.loghistory_issues = [k for k, v in issues.items() if v]
-                label_set(
-                    self.loghistory_status_label,
-                    f"{len(self.loghistory_issues)} issue(s) found",
-                    "red" if self.loghistory_issues else "green",
                 )
                 if self.loghistory_issues:
                     btn_enable(self.loghistory_fix_issues_button, True)
@@ -171,12 +128,11 @@ def elemental_api_request(self):
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
             request_error = True
     else:
-        label_set(self.loghistory_status_label, "Not sending request", "green")
-        self.loghistory_issues = ["Gamertag in Notes"]
+        result_panel.user_report_skipped(self)
         btn_enable(self.loghistory_fix_issues_button, True)
 
     if request_error:
-        label_set(self.loghistory_status_label, "Failed", "red")
+        result_panel.user_report_failed(self, "Failed")
         btn_enable(self.loghistory_fix_issues_button, True)
 
 
@@ -184,12 +140,14 @@ def fix_issues(self):
     if "Gamertag in Notes" in self.loghistory_issues:
         add_note(self)
         self.loghistory_issues.remove("Gamertag in Notes")
-        label_set(self.gamertag_in_notes_label, "True", "green")
-
-    label_set(
-        self.loghistory_status_label,
-        f"{len(self.loghistory_issues)} issue(s) found",
-        "red" if self.loghistory_issues else "green",
-    )
+        sec = _section(self, "user_report")
+        sec.set_field(
+            "gamertag_in_notes",
+            "Gamertag in notes",
+            "True",
+            is_issue=False,
+            detail="Gamertag in notes: True",
+        )
+        sec.set_state("success")
     if not self.loghistory_issues:
         btn_enable(self.loghistory_fix_issues_button, False)

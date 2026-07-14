@@ -8,7 +8,8 @@ import requests
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
 from staffcheck import pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, label_set  # noqa: F401 — label_set used in unprivate_api_request
+from staffcheck.qt_ui import btn_config, btn_enable, label_set
+from staffcheck.result_panel import format_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ def unprivate_api_request(self):
             request_error = True
         elif response.json()["error"] != "none":
             request_error = True
-            label_set(self.status_label, response.json()["error"], "red")
+            label_set(self.status_label, format_api_error(response.json()["error"]), "red")
         else:
             r = response.json()
             switch_channel(self, f"#{r['modmail_channel']}")

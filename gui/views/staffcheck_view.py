@@ -1,17 +1,18 @@
-from gui import theme
-from PySide6.QtCore import Qt, QEvent
+from gui.components.mutual_servers_section import MutualServersSection
+from gui.components.classic_result_section import ClassicResultSection
+from gui.components.result_section import ResultSection
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMenu,
     QPushButton,
-    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -25,6 +26,7 @@ from staffcheck.elemental_commands import fix_issues as elemental_fix
 from staffcheck.invite_tracker import check_invited_users, check_loghistory
 from staffcheck.qt_ui import Var, btn_config, btn_enable
 from staffcheck.sot_official import old_check
+from staffcheck.result_panel import SECTION_IDLE_TOOLTIPS
 
 REASON_PLACEHOLDER = "Reason for not good to check"
 FIELD_HEIGHT = 38
@@ -39,8 +41,13 @@ class StaffcheckView(QWidget):
         self.gt_entry_label = None
         self.gt_entry = None
         self.entered_gt_button = None
-        self.mutual_guilds_label = None
+        self.mutual_guilds = []
         self.customize_actions = {}
+        self.result_sections = {}
+        self.loghistory_issues = []
+        self.search_issues = []
+        self._user_report_data = None
+        self.check_in_progress = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 8, 12, 12)
@@ -48,20 +55,22 @@ class StaffcheckView(QWidget):
 
         body = QHBoxLayout()
         body.setSpacing(16)
+        body.setAlignment(Qt.AlignmentFlag.AlignTop)
         root.addLayout(body)
+        self._body_layout = body
 
         left = QWidget()
         left.setMinimumWidth(420)
+        left.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self.input_layout = QGridLayout(left)
         self.input_layout.setHorizontalSpacing(10)
         self.input_layout.setVerticalSpacing(8)
         self.input_layout.setColumnStretch(1, 1)
         body.addWidget(left, stretch=0)
 
-        self.results_scroll = self._build_results_panel()
-        self.results_scroll.installEventFilter(self)
-        self.results_scroll.viewport().installEventFilter(self)
-        body.addWidget(self.results_scroll, stretch=1)
+        self.results_panel = self._build_results_panel()
+        self.results_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        body.addWidget(self.results_panel, stretch=0)
 
         self._build_input_section()
         pipeline.disable_function_button(self)
@@ -69,15 +78,8 @@ class StaffcheckView(QWidget):
         btn_enable(self.stop_button, False)
         build_example_message(self, 99, self.status_label)
 
-    def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.Wheel and watched in (
-            self.results_scroll, self.results_scroll.viewport()
-        ):
-            bar = self.results_scroll.verticalScrollBar()
-            if bar.maximum() > 0:
-                bar.setValue(bar.value() - event.angleDelta().y() // 4)
-                return True
-        return super().eventFilter(watched, event)
+        root.addStretch()
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
     def _make_button(self, text, handler) -> QPushButton:
         btn = QPushButton(text)
@@ -173,163 +175,171 @@ class StaffcheckView(QWidget):
         self.input_layout.addLayout(btn_row3, row, 0, 1, 2)
         row += 1
 
-        self.input_layout.addWidget(self._input_field_label("Reason:"), row, 0)
         self.reason_entry = self._line_field()
         self.reason_entry.setPlaceholderText(REASON_PLACEHOLDER)
         self.reason = Var(self.get_reason, self.reason_entry.setText)
-        self.input_layout.addWidget(self.reason_entry, row, 1)
+        self.input_layout.addWidget(self.reason_entry, row, 0, 1, 2)
         row += 1
 
         self.status_label = QLabel("Waiting for ID")
         self.status_label.setObjectName("resultValue")
         self.input_layout.addWidget(self.status_label, row, 0, 1, 2)
 
-    def _waiting_label(self) -> QLabel:
-        lbl = QLabel("Waiting")
-        lbl.setObjectName("resultValue")
-        lbl.setStyleSheet(f"color: {theme.PEACH}; background: transparent;")
-        return lbl
+    @staticmethod
+    def use_compact_panels() -> bool:
+        return read_config().get("compact_panels", "true").lower() in ("1", "true", "yes")
 
-    def _add_section(self, parent: QVBoxLayout, title: str, rows: list[tuple[str, str]], status_attr: str, buttons: list):
-        parent.addWidget(self._header(title))
-        grid = QGridLayout()
-        grid.setColumnStretch(1, 1)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(3)
-
-        widgets = {}
-        for i, (label, key) in enumerate(rows):
-            grid.addWidget(self._result_field_label(label), i, 0)
-            val = QLabel("N/A")
-            val.setObjectName("resultValue")
-            val.setStyleSheet(f"color: {theme.PEACH}; background: transparent;")
-            grid.addWidget(val, i, 1)
-            widgets[key] = val
-
-        r = len(rows)
-        grid.addWidget(self._result_field_label("Status"), r, 0)
-        status = self._waiting_label()
-        grid.addWidget(status, r, 1)
-        setattr(self, status_attr, status)
-
-        section = QWidget()
-        section.setObjectName("resultSection")
-        section.setLayout(grid)
-        parent.addWidget(section)
-
-        if buttons:
-            btn_row = QHBoxLayout()
-            for btn in buttons:
-                btn_row.addWidget(btn)
-            parent.addLayout(btn_row)
-
-        parent.addWidget(self._divider())
-        return widgets
-
-    def _header(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setObjectName("sectionHeader")
-        return lbl
-
-    def _result_field_label(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setObjectName("resultLabel")
-        return lbl
-
-    def _divider(self) -> QFrame:
-        line = QFrame()
-        line.setObjectName("sectionDivider")
-        line.setFixedHeight(1)
-        return line
-
-    def _build_results_panel(self) -> QScrollArea:
-        scroll = QScrollArea()
-        scroll.setObjectName("resultsScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
-
-        content = QWidget()
-        content.setObjectName("resultsPanel")
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(4, 0, 8, 8)
-        layout.setSpacing(6)
-        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinAndMaxSize)
-
+    def _create_result_buttons(self):
         self.loghistory_fix_issues_button = self._make_button("Add GT note", lambda: elemental_fix(self))
         self.loghistory_fix_issues_button.setEnabled(False)
         self.jump_to_message_button = self._make_button("Jump to message", lambda: None)
         self.jump_to_message_button.setEnabled(False)
 
-        ur = self._add_section(layout, "User Report", [
-            ("Account age", "account_age"),
-            ("Needs warning talk", "needs_warning_talk"),
-            ("GT in notes", "gamertag_in_notes"),
-            ("Needs spoken to", "needs_to_be_spoken_to"),
-            ("Needs mic check", "needs_mic_check"),
-            ("Anti-alliance note", "anti_alliance_note"),
-        ], "loghistory_status_label", [self.loghistory_fix_issues_button, self.jump_to_message_button])
-        self.account_age_label = ur["account_age"]
-        self.needs_warning_talk_label = ur["needs_warning_talk"]
-        self.gamertag_in_notes_label = ur["gamertag_in_notes"]
-        self.needs_to_be_spoken_to_label = ur["needs_to_be_spoken_to"]
-        self.needs_mic_check_label = ur["needs_mic_check"]
-        self.anti_alliance_note_label = ur["anti_alliance_note"]
-
-        self.invited_by_loghistory_button = self._make_button("loghistory inviters", lambda: check_loghistory(self))
+        self.invited_by_loghistory_button = self._make_button(
+            "User report on inviters", lambda: check_loghistory(self),
+        )
         self.invited_by_loghistory_button.setEnabled(False)
-        self.invited_users_loghistory_button = self._make_button("loghistory invitees", lambda: check_invited_users(self))
+        self.invited_users_loghistory_button = self._make_button(
+            "User report on invited users", lambda: check_invited_users(self),
+        )
         self.invited_users_loghistory_button.setEnabled(False)
-
-        inv = self._add_section(layout, "Invite Tracker", [
-            ("Invited by", "invited_by"),
-            ("Has joined ashen", "times_invited"),
-            ("People invited", "num_invited"),
-        ], "invite_tracker_status_label", [self.invited_by_loghistory_button, self.invited_users_loghistory_button])
-        self.invited_by_label = inv["invited_by"]
-        self.times_invited_label = inv["times_invited"]
-        self.num_people_invited_label = inv["num_invited"]
 
         self.search_fix_issues_button = self._make_button("W.I.P.", lambda: None)
         self.search_fix_issues_button.setEnabled(False)
         self.jump_to_message_search_button = self._make_button("Jump to message", lambda: None)
         self.jump_to_message_search_button.setEnabled(False)
 
-        sr = self._add_section(layout, "Search", [
-            ("Gamertag exists", "gamertag_exists"),
-            ("Total friends", "total_friends"),
-            ("Completion", "completion"),
-            ("Total matches", "total_matches"),
-            ("Partial matches", "partial_matches"),
-            ("Exact matches", "exact_matches"),
-            ("Alts found", "alts_found"),
-        ], "search_status_label", [self.search_fix_issues_button, self.jump_to_message_search_button])
-        self.gamertag_exists_label = sr["gamertag_exists"]
-        self.total_friends_label = sr["total_friends"]
-        self.completion_label = sr["completion"]
-        self.total_matches_label = sr["total_matches"]
-        self.partial_matches_label = sr["partial_matches"]
-        self.exact_matches_label = sr["exact_matches"]
-        self.alts_found_label = sr["alts_found"]
-
         self.check_for_yourself_button = self._make_button("Check for yourself", lambda: old_check(self))
         self.check_for_yourself_button.setEnabled(False)
 
-        sot = self._add_section(layout, "SOT Official", [
-            ("Total messages", "total_messages"),
-            ("Alliance msgs", "alliance"),
-            ("Hourglass msgs", "hourglass"),
-            ("Bad word msgs", "bad_words"),
-        ], "sot_official_status_label", [self.check_for_yourself_button])
-        self.total_messages_label = sot["total_messages"]
-        self.messages_with_alliance_label = sot["alliance"]
-        self.messages_with_hourglass_label = sot["hourglass"]
-        self.messages_with_bad_words_label = sot["bad_words"]
+    def _build_mutual_servers_section(self):
+        self.result_sections["mutual_servers"] = MutualServersSection()
 
-        scroll.setWidget(content)
-        return scroll
+    def _build_compact_results(self, panel: QWidget) -> None:
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(4, 0, 8, 0)
+        layout.setSpacing(4)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        self._build_mutual_servers_section()
+
+        self.result_sections["user_report"] = ResultSection(
+            "User Report",
+            [self.loghistory_fix_issues_button, self.jump_to_message_button],
+            idle_tooltip=SECTION_IDLE_TOOLTIPS["user_report"],
+        )
+        self.result_sections["search"] = ResultSection(
+            "Search",
+            [self.search_fix_issues_button, self.jump_to_message_search_button],
+            idle_tooltip=SECTION_IDLE_TOOLTIPS["search"],
+        )
+        self.result_sections["invite_tracker"] = ResultSection(
+            "Invite Tracker",
+            [self.invited_by_loghistory_button, self.invited_users_loghistory_button],
+            idle_tooltip=SECTION_IDLE_TOOLTIPS["invite_tracker"],
+            show_all_results=True,
+        )
+        self.result_sections["sot_official"] = ResultSection(
+            "SOT Official",
+            [self.check_for_yourself_button],
+            idle_tooltip=SECTION_IDLE_TOOLTIPS["sot_official"],
+            always_show_keys=frozenset({"total_messages"}),
+        )
+
+        for key in ("mutual_servers", "user_report", "search", "invite_tracker", "sot_official"):
+            layout.addWidget(self.result_sections[key])
+
+    def _build_classic_results(self, panel: QWidget) -> None:
+        outer = QHBoxLayout(panel)
+        outer.setContentsMargins(4, 0, 8, 0)
+        outer.setSpacing(8)
+
+        left = QVBoxLayout()
+        left.setSpacing(8)
+        left.setAlignment(Qt.AlignmentFlag.AlignTop)
+        right = QVBoxLayout()
+        right.setSpacing(8)
+        right.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        self._build_mutual_servers_section()
+
+        self.result_sections["user_report"] = ClassicResultSection(
+            "User Report",
+            [
+                ("Account age", "account_age"),
+                ("Needs warning talk", "needs_warning_talk"),
+                ("Gamertag in notes", "gamertag_in_notes"),
+                ("Needs to be spoken to", "needs_to_be_spoken_to"),
+                ("Needs mic check", "needs_mic_check"),
+                ("Anti-alliance note", "anti_alliance_note"),
+            ],
+            [self.loghistory_fix_issues_button, self.jump_to_message_button],
+        )
+        self.result_sections["search"] = ClassicResultSection(
+            "Search",
+            [
+                ("Gamertag exists", "gamertag_exists"),
+                ("Total friends", "total_friends"),
+                ("Completion", "completion"),
+                ("Partial matches", "partial_matches"),
+                ("Exact matches", "exact_matches"),
+                ("Alts found", "alts_found"),
+                ("Has verified", "has_verified"),
+            ],
+            [self.search_fix_issues_button, self.jump_to_message_search_button],
+        )
+        self.result_sections["invite_tracker"] = ClassicResultSection(
+            "Invite Tracker",
+            [
+                ("Invited by", "invited_by"),
+                ("Has joined Ashen", "times_invited"),
+                ("People invited", "num_invited"),
+            ],
+            [self.invited_by_loghistory_button, self.invited_users_loghistory_button],
+        )
+        self.result_sections["sot_official"] = ClassicResultSection(
+            "SOT Official",
+            [
+                ("All messages", "total_messages"),
+                ("Alliance messages", "alliance"),
+                ("Hourglass messages", "hourglass"),
+                ("Other flagged messages", "bad_words"),
+            ],
+            [self.check_for_yourself_button],
+        )
+
+        left.addWidget(self.result_sections["mutual_servers"])
+        left.addWidget(self.result_sections["user_report"])
+        left.addWidget(self.result_sections["invite_tracker"])
+
+        right.addWidget(self.result_sections["search"])
+        right.addWidget(self.result_sections["sot_official"])
+
+        outer.addLayout(left, stretch=1)
+        outer.addLayout(right, stretch=1)
+
+    def _build_results_panel(self) -> QWidget:
+        panel = QWidget()
+        panel.setObjectName("resultsPanel")
+        self.result_sections = {}
+        self._create_result_buttons()
+        if self.use_compact_panels():
+            self._build_compact_results(panel)
+        else:
+            self._build_classic_results(panel)
+        return panel
+
+    def rebuild_results_panel(self):
+        if self.check_in_progress:
+            return
+        guilds = list(self.mutual_guilds)
+        old = self.results_panel
+        self.results_panel = self._build_results_panel()
+        self._body_layout.replaceWidget(old, self.results_panel)
+        old.deleteLater()
+        if guilds:
+            from staffcheck import result_panel
+            result_panel.mutual_servers_apply(self, guilds)
 
     def build_customize_menu(self, menu: QMenu):
         for label, handler in [
@@ -348,13 +358,12 @@ class StaffcheckView(QWidget):
             action.setEnabled(on)
 
     def set_ready(self, ready: bool):
+        if self.check_in_progress:
+            return
+
         for w in (
             self.user_id_entry, self.channel_combo_box, self.method_combo_box,
             self.pre_check_button, self.reason_entry,
-            self.loghistory_fix_issues_button,
-            self.jump_to_message_button, self.invited_by_loghistory_button,
-            self.invited_users_loghistory_button, self.search_fix_issues_button,
-            self.jump_to_message_search_button, self.check_for_yourself_button,
         ):
             w.setEnabled(ready)
         if ready:
@@ -367,6 +376,9 @@ class StaffcheckView(QWidget):
             btn_enable(self.kill_button, False)
             pipeline.disable_function_button(self)
             pipeline.disable_function_button_2(self)
+            for section in self.result_sections.values():
+                for btn in getattr(section, "_buttons", ()):
+                    btn.setEnabled(False)
 
     def edit_good_to_check(self):
         CustomizeDialog("good_to_check_message", "userID = Discord ID\nxboxGT = Gamertag", 0,

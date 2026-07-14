@@ -86,7 +86,7 @@ def _set_default_values(config) -> bool:
         },
         "SESSION": {"open_apps": ""},
         "API": {"api_url": "https://ashen.api.famkoets.nl"},
-        "UI": {"catppuccin_flavor": "mocha"},
+        "UI": {"catppuccin_flavor": "mocha", "compact_panels": "true"},
     }
 
     ui = config["UI"] if "UI" in config else {}

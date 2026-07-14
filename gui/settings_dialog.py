@@ -1,6 +1,7 @@
 import keyboard
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QGridLayout,
@@ -39,6 +40,16 @@ class SettingsDialog(QDialog):
         self.flavor_combo.currentIndexChanged.connect(self._on_flavor_changed)
         theme_row.addWidget(self.flavor_combo, stretch=1)
         layout.addLayout(theme_row)
+
+        self.compact_panels_check = QCheckBox("Compact panels")
+        self.compact_panels_check.setChecked(
+            config.get("compact_panels", "true").lower() in ("1", "true", "yes")
+        )
+        self.compact_panels_check.setToolTip(
+            "When enabled, result panels show a compact summary. "
+            "When disabled, a classic 2×2 grid shows every field with color-coded values."
+        )
+        layout.addWidget(self.compact_panels_check)
 
         layout.addWidget(QLabel(
             "Delay Initial Command: wait after the slash command.\n"
@@ -125,6 +136,11 @@ class SettingsDialog(QDialog):
     def _save(self):
         for key, (entry, section) in self.entries.items():
             set_custom_value(section, key, entry.text())
+        set_custom_value(
+            "UI",
+            "compact_panels",
+            "true" if self.compact_panels_check.isChecked() else "false",
+        )
         self.accept()
 
     def _reset(self):
@@ -132,6 +148,8 @@ class SettingsDialog(QDialog):
         for key, (entry, section) in self.entries.items():
             entry.setText(defaults[key])
             set_custom_value(section, key, defaults[key])
+        self.compact_panels_check.setChecked(True)
+        set_custom_value("UI", "compact_panels", "true")
 
     def closeEvent(self, event):
         if self._key_test_hotkey:

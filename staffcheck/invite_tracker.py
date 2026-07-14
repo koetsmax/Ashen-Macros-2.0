@@ -4,8 +4,8 @@ import requests
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
-from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, flush, label_set
+from staffcheck import abort, pipeline, result_panel
+from staffcheck.qt_ui import btn_config, btn_enable
 
 
 def invite_tracker(self):
@@ -43,8 +43,7 @@ def api_request(self):
         return
 
     request_error = False
-    label_set(self.invite_tracker_status_label, "Sending", "orange")
-    flush()
+    result_panel.invite_loading(self)
     try:
         config = read_config()
         response = requests.post(
@@ -60,23 +59,7 @@ def api_request(self):
             request_error = True
         else:
             r = response.json()
-            inviter = "Unknown"
-            for name in r["inviters_names"]:
-                if name != "Unknown":
-                    inviter = name
-                    break
-            label_set(self.invited_by_label, inviter, "green")
-            label_set(
-                self.times_invited_label,
-                f"{len(r['inviters_names'])} time(s)",
-                "green" if len(r["inviters_ids"]) < 5 else "orange",
-            )
-            label_set(
-                self.num_people_invited_label,
-                f"{len(r['invitees_ids'])}",
-                "green" if len(r["invitees_ids"]) < 5 else "orange",
-            )
-            label_set(self.invite_tracker_status_label, "Success", "green")
+            result_panel.invite_apply(self, r)
 
             if r["inviters_ids"]:
                 self.inviters_ids = list(dict.fromkeys(r["inviters_ids"]))
@@ -90,5 +73,4 @@ def api_request(self):
         request_error = True
 
     if request_error:
-        label_set(self.invite_tracker_status_label, "Failed", "red")
-    flush()
+        result_panel.invite_failed(self)

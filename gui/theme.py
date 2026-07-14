@@ -173,11 +173,27 @@ def _qss() -> str:
         background: transparent;
     }}
     QLabel#sectionHeader {{
-        color: {MAUVE};
         font-weight: 700;
         font-size: 9pt;
-        padding-top: 4px;
+        padding: 0;
         background: transparent;
+        color: {MAUVE};
+    }}
+    QLabel#sectionHeader[state="idle"],
+    QLabel#sectionHeader[state="loading"] {{
+        color: {PEACH};
+    }}
+    QLabel#sectionHeader[state="success"] {{
+        color: {GREEN};
+    }}
+    QLabel#sectionHeader[state="failed"] {{
+        color: {RED};
+    }}
+    QLabel#resultSectionSummary {{
+        color: {SUBTEXT0};
+        font-size: 9pt;
+        background: transparent;
+        padding: 0;
     }}
     QLabel#resultLabel {{
         color: {SUBTEXT0};
@@ -253,6 +269,11 @@ def _qss() -> str:
     QPushButton#primary:pressed {{
         background-color: {BLUE};
         color: {CRUST};
+    }}
+    QPushButton#classicPanelButton {{
+        padding: 4px 8px;
+        min-height: 22px;
+        font-size: 8pt;
     }}
     QCheckBox {{
         spacing: 8px;

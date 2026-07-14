@@ -5,9 +5,9 @@ import requests
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
-from staffcheck import abort, pipeline
+from staffcheck import abort, pipeline, result_panel
 from staffcheck.check_message import not_good_to_check
-from staffcheck.qt_ui import btn_config, btn_enable, flush, label_set
+from staffcheck.qt_ui import btn_config, btn_enable
 
 
 def ashen_commands(self):
@@ -53,7 +53,7 @@ def needs_to_verify(self):
 
 
 def make_api_request(self):
-    if self.method.get() == "All Commands":
+    if self.method.get() in ("All Commands", "Ashen Commands"):
         ashen_api_request(self)
 
 
@@ -67,11 +67,10 @@ def ashen_api_request(self):
 
     request_error = False
     if self.channel.get() != "#on-duty-commands":
-        label_set(self.search_status_label, "Not sending request", "green")
+        result_panel.search_skipped(self)
         return
 
-    label_set(self.search_status_label, "Sending API request", "orange")
-    flush()
+    result_panel.search_loading(self)
     try:
         btn_enable(self.search_fix_issues_button, False)
         payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
@@ -91,60 +90,14 @@ def ashen_api_request(self):
         elif response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":
-            label_set(self.search_status_label, response.json()["error"], "red")
+            result_panel.search_failed(self, response.json()["error"])
         else:
             r = response.json()
-            label_set(
-                self.gamertag_exists_label,
-                f"{r['gamertag_exists']}",
-                "green" if r["gamertag_exists"] else "red",
-            )
-            label_set(self.total_friends_label, f"{r['total_friends']}", "green")
-            label_set(
-                self.completion_label,
-                f"{r['completion_achieved']}",
-                "green" if r["completion_achieved"] else "red",
-            )
-            label_set(
-                self.total_matches_label,
-                f"{r['total_matches']}",
-                "green" if int(r["total_matches"]) == 0 else "red",
-            )
-            label_set(
-                self.partial_matches_label,
-                f"{r['partial_matches']}",
-                "green" if int(r["partial_matches"]) == 0 else "orange",
-            )
-            label_set(
-                self.exact_matches_label,
-                f"{r['exact_matches']}",
-                "green" if int(r["exact_matches"]) == 0 else "red",
-            )
-            label_set(
-                self.alts_found_label,
-                f"{r['alts_found']}",
-                "green" if r["alts_found"] == "0" else "red",
-            )
+            result_panel.search_apply(self, r)
             btn_enable(self.jump_to_message_search_button, True)
             btn_config(
                 self.jump_to_message_search_button,
                 on_click=lambda: switch_channel(self, r["jump_url"], kwargs=True),
-            )
-
-            issues = {
-                "Gamertag Exists": not r["gamertag_exists"],
-                "Completion": not r["completion_achieved"],
-                "Total Matches": int(r["total_matches"]) > 0,
-                "Partial Matches": int(r["partial_matches"]) > 0,
-                "Exact Matches": int(r["exact_matches"]) > 0,
-                "Alts Found": r["alts_found"] != "0",
-                "Has Verified": not r["has_verified"],
-            }
-            self.search_issues = [k for k, v in issues.items() if v]
-            label_set(
-                self.search_status_label,
-                f"{len(self.search_issues)} issue(s) found",
-                "red" if self.search_issues else "green",
             )
             if self.search_issues:
                 btn_enable(self.search_fix_issues_button, True)
@@ -153,7 +106,7 @@ def ashen_api_request(self):
         request_error = True
 
     if request_error:
-        label_set(self.search_status_label, "Failed", "red")
+        result_panel.search_failed(self)
 
 
 def fix_issues(self):

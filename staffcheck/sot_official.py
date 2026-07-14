@@ -3,8 +3,8 @@ import requests
 
 from core.keyboard import clear_typing_bar, switch_channel
 from core.settings import read_config
-from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_enable, flush, label_set
+from staffcheck import abort, pipeline, result_panel
+from staffcheck.qt_ui import btn_enable
 
 
 def sot_official(self):
@@ -31,8 +31,7 @@ def api_request(self):
         return
 
     request_error = False
-    label_set(self.sot_official_status_label, "Sent...", "orange")
-    flush()
+    result_panel.sot_loading(self)
     try:
         config = read_config()
         response = requests.post(
@@ -47,27 +46,13 @@ def api_request(self):
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":
-            label_set(self.sot_official_status_label, response.json()["error"], "red")
+            result_panel.sot_failed(self, response.json()["error"])
         else:
-            r = response.json()
-            label_set(self.total_messages_label, f"{r['total_messages']}", "green")
-            label_set(self.messages_with_alliance_label, f"{len(r['alliance_messages'])}", "green")
-            label_set(
-                self.messages_with_hourglass_label,
-                f"{len(r['hourglass_messages'])}",
-                "orange" if len(r["hourglass_messages"]) > 0 else "green",
-            )
-            label_set(
-                self.messages_with_bad_words_label,
-                f"{len(r['other_messages'])}",
-                "orange" if len(r["other_messages"]) > 0 else "green",
-            )
-            label_set(self.sot_official_status_label, "Success", "green")
+            result_panel.sot_apply(self, response.json())
             btn_enable(self.check_for_yourself_button, True)
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
 
     if request_error:
-        label_set(self.sot_official_status_label, "Failed", "red")
-    flush()
+        result_panel.sot_failed(self)
