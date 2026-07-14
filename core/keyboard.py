@@ -1,5 +1,6 @@
 """Discord keyboard automation."""
 
+import logging
 import threading
 import time
 from typing import List
@@ -16,6 +17,8 @@ from staffcheck.abort import (
     is_abort_requested,
     keyboard_automation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _window_enumeration_handler(hwnd, top_windows):
@@ -52,11 +55,11 @@ def activate_window(window: str, timeout: float = 2.0):
                 break
 
         if not success:
-            print(f"Could not activate window '{window}' within {timeout} seconds")
+            logger.warning("Could not activate window '%s' within %s seconds", window, timeout)
             _reset_window_state()
 
     except Exception as exc:
-        print(f"Window activation failed: {exc}")
+        logger.warning("Window activation failed: %s", exc)
         _reset_window_state()
 
     threading.Timer(0.5, _reset_window_state).start()

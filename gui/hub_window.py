@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from PySide6.QtCore import QThread, QTimer, Signal, Slot
@@ -13,6 +14,8 @@ from gui.components.version_badge import VersionBadge
 from gui.settings_dialog import SettingsDialog
 from gui.views.staffcheck_view import StaffcheckView
 from staffcheck import verification
+
+logger = logging.getLogger(__name__)
 
 
 class PollWorker(QThread):
@@ -102,6 +105,12 @@ class StaffcheckHub(QMainWindow):
         self._poll_status()
         self._check_updates()
         self._session_restored = False
+        logger.info(
+            "Hub initialized (version=%s, verified=%s, username=%s)",
+            local_version,
+            verified,
+            username or "none",
+        )
 
     def _build_menu(self):
         bar = self.menuBar()
@@ -176,6 +185,7 @@ class StaffcheckHub(QMainWindow):
 
     def _poll_status(self):
         if self._worker_running(self._poll_worker):
+            logger.debug("Skipping status poll; previous worker still running")
             return
         worker = PollWorker(self)
         worker.finished.connect(self._on_poll_result)
@@ -185,6 +195,12 @@ class StaffcheckHub(QMainWindow):
 
     @Slot(bool, bool, str)
     def _on_poll_result(self, connected: bool, verified: bool, username: str):
+        logger.debug(
+            "Status poll result: connected=%s verified=%s username=%s",
+            connected,
+            verified,
+            username or "none",
+        )
         self.connected = connected
         self.verified = verified
         if username:
@@ -218,7 +234,7 @@ class StaffcheckHub(QMainWindow):
     def _check_updates(self, silent: bool = True):
         if self._worker_running(self._update_worker):
             if not silent:
-                return
+                logger.debug("Skipping update check; previous worker still running")
             return
 
         self._update_request_id += 1
@@ -246,6 +262,7 @@ class StaffcheckHub(QMainWindow):
 
         kind = result.get("kind")
         self.toast_stack.dismiss("update_check")
+        logger.info("Update check result: kind=%s silent=%s", kind, silent)
 
         if kind == "outdated":
             self._online_version = result["online_version"]
@@ -292,6 +309,7 @@ class StaffcheckHub(QMainWindow):
 
         open_keys = [key for key, win in self._open_apps.items() if isValid(win)]
         set_custom_value("SESSION", "open_apps", ",".join(open_keys))
+        logger.info("Closing hub with %s open app(s): %s", len(open_keys), open_keys or "none")
 
         for win in list(self._open_apps.values()):
             if isValid(win):

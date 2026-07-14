@@ -1,3 +1,5 @@
+import logging
+
 from dataclasses import dataclass
 from typing import Type
 
@@ -18,6 +20,8 @@ from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
 from gui.views.ship_holder_window import ShipHolderWindow
 from gui.views.warning_window import WarningWindow
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,12 +49,14 @@ def open_app(hub, entry: AppEntry):
     existing = hub._open_apps.get(key)
     if existing is not None:
         if isValid(existing):
+            logger.debug("Focusing existing app window: %s", key)
             existing.show()
             existing.raise_()
             existing.activateWindow()
             return
         hub._open_apps.pop(key, None)
 
+    logger.info("Opening app window: %s", key)
     win = entry.window_cls()
     win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
     win._app_window_key = key
@@ -67,8 +73,9 @@ def restore_session_apps(hub):
     open_apps = read_section("SESSION").get("open_apps", "").strip()
     if not open_apps:
         return
-    for key in open_apps.split(","):
-        key = key.strip()
+    keys = [key.strip() for key in open_apps.split(",") if key.strip()]
+    logger.info("Restoring session apps: %s", keys)
+    for key in keys:
         entry = APP_BY_KEY.get(key)
         if entry:
             open_app(hub, entry)

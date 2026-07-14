@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from contextlib import contextmanager
@@ -9,6 +10,8 @@ import keyboard
 import requests
 
 from core.settings import read_config
+
+logger = logging.getLogger(__name__)
 
 _keyboard_automation_depth = 0
 _keyboard_automation_lock = threading.Lock()
@@ -91,7 +94,7 @@ def install_abort_hotkey(self) -> None:
             suppress=False,
         )
     except ValueError as exc:
-        print(f"Invalid abort key '{key}': {exc}")
+        logger.warning("Invalid abort key '%s': %s", key, exc)
 
 
 def _on_abort_hotkey(self) -> None:

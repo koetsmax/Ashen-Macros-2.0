@@ -1,9 +1,12 @@
+import logging
 import secrets
 
 import keyring
 import requests
 
 from core.settings import read_config
+
+logger = logging.getLogger(__name__)
 
 
 def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
@@ -16,7 +19,7 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
         if len(token) != 128:
             raise ValueError("Invalid token length")
     except ValueError:
-        print("Token not found or invalid. Creating new token...")
+        logger.info("Token not found or invalid; creating new token")
         token = secrets.token_hex(64)
         keyring.set_password("AshenMacros", "token", token)
 
@@ -29,12 +32,12 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
         )
 
         if response.status_code != 200:
-            print("Failed to validate token. Error code:", response.status_code)
+            logger.warning("Token validation failed with status %s", response.status_code)
             return True, "N/A"
         data = response.json()
 
         if data["error"] == "invalid token format":
-            print("Invalid token format. Creating new token...")
+            logger.info("Invalid token format; regenerating token")
             return check_login(True)
 
         if data["valid"] == "true":
@@ -43,7 +46,7 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
         if data["valid"] == "false":
             return False, None
     except Exception as e:
-        print(f"Failed to validate token: {e}")
+        logger.warning("Failed to validate token: %s", e)
         return True, "N/A"
 
     return True, "N/A"

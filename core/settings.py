@@ -2,7 +2,8 @@ import configparser
 import os
 from filelock import FileLock
 
-CONFIG_FILE_PATH = os.path.expanduser("~/Documents/Ashen Macros/settings.ini")
+DATA_DIR = os.path.expanduser("~/Documents/Ashen Macros")
+CONFIG_FILE_PATH = os.path.join(DATA_DIR, "settings.ini")
 LOCK_FILE_PATH = CONFIG_FILE_PATH + ".lock"
 LOCK_TIMEOUT = 30
 

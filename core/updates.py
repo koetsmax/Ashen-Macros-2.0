@@ -1,8 +1,11 @@
+import logging
 import os
 
 import requests
 from packaging import version
 from pyuac import isUserAdmin, runAsAdmin
+
+logger = logging.getLogger(__name__)
 
 GITHUB_RELEASES = "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest"
 
@@ -35,11 +38,12 @@ def check_for_updates(silent: bool = True) -> dict:
             return {"kind": "dev"}
         return {"kind": "noop"}
     except Exception as e:
-        print(f"Failed to check for updates: {e}")
+        logger.warning("Failed to check for updates: %s", e)
         return {"kind": "noop"}
 
 
 def download_update(online_version: str):
+    logger.info("Downloading update v%s", online_version)
     url = (
         f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/"
         f"{online_version}/Ashen.Macro.installer.exe"

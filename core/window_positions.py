@@ -1,7 +1,11 @@
+import logging
+
 from PySide6.QtCore import QEvent, QObject
 from PySide6.QtWidgets import QWidget
 
 from core.settings import read_section, set_custom_value
+
+logger = logging.getLogger(__name__)
 
 HUB_SECTION = "WINDOW"
 APP_SECTION_PREFIX = "APP_"
@@ -24,7 +28,7 @@ def save_window_geometry(window: QWidget):
         set_custom_value(section, "width", str(geometry.width()))
         set_custom_value(section, "height", str(geometry.height()))
     except PermissionError as e:
-        print("PermissionError: Could not save window geometry.\n", e)
+        logger.warning("Could not save window geometry: %s", e)
 
 
 def load_window_geometry(window: QWidget, default_size: tuple[int, int] | None = None):

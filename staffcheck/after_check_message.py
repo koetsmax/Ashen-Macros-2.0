@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 
@@ -8,6 +9,8 @@ from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
 from staffcheck import pipeline
 from staffcheck.qt_ui import btn_config, btn_enable, label_set  # noqa: F401 — label_set used in unprivate_api_request
+
+logger = logging.getLogger(__name__)
 
 
 def after_check_message(self):
@@ -29,7 +32,7 @@ def make_api_request(self):
     try:
         unprivate_api_request(self)
     except Exception as e:
-        print(f"API Request Error: {e}")
+        logger.exception("API request failed during unprivate flow")
 
 
 def start_unprivate_api_requests_thread(self):
