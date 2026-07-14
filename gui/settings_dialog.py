@@ -1,5 +1,6 @@
 import keyboard
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -113,7 +114,7 @@ class SettingsDialog(QDialog):
             self._key_test_label.setStyleSheet(f"color: {theme.RED};")
             return
         try:
-            self._key_test_hotkey = keyboard.add_hotkey(key, self._on_key_detected, suppress=False)
+            self._key_test_hotkey = keyboard.add_hotkey(key, self._on_key_detected, suppress=True)
             self._key_test_label.setText("Press the key now...")
             self._key_test_label.setStyleSheet(f"color: {theme.PEACH};")
         except ValueError:
@@ -129,6 +130,12 @@ class SettingsDialog(QDialog):
             except (KeyError, ValueError):
                 pass
             self._key_test_hotkey = None
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if self._key_test_hotkey is not None and event.key() == Qt.Key.Key_Escape:
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _reset_app_positions(self):
         reset_app_window_positions()

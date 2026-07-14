@@ -1,14 +1,14 @@
-from PySide6.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QWidget
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
+
+from gui.views.app_window import AppWindow
 
 
-class RenameFleetWindow(QMainWindow):
+class RenameFleetWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Rename Fleet")
+        super().__init__("Rename Fleet")
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         layout.addWidget(QLabel("Fleet:"), 0, 0)
         self.fleet_combo = QComboBox()

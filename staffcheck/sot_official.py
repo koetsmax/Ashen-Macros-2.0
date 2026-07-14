@@ -15,7 +15,7 @@ def sot_official(self):
         pipeline.continue_to_next(self)
 
 
-def old_check(self):
+def check_for_yourself(self):
     switch_channel(self, "#official-swag")
     clear_typing_bar()
     keyboard.press_and_release("ctrl+f")

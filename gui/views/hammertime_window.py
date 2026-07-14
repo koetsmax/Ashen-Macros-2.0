@@ -1,17 +1,17 @@
 import time
 
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QWidget
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
+
+from gui.views.app_window import AppWindow
 
 
-class HammertimeWindow(QMainWindow):
+class HammertimeWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Timestamp generator")
+        super().__init__("Timestamp generator")
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         self.values = (
             time.strftime("%m/%d/%Y", time.localtime()),

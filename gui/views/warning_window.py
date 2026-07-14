@@ -1,15 +1,7 @@
-from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QGridLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QPushButton,
-    QWidget,
-)
+from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from gui.views.app_window import AppWindow
 
 
 PRESET_REASONS = {
@@ -26,15 +18,12 @@ PRESET_REASONS = {
 }
 
 
-class WarningWindow(QMainWindow):
+class WarningWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Add Warning")
-        self.keyboard_lock = __import__("threading").Lock()
+        super().__init__("Add Warning", keyboard_lock=True)
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         layout.addWidget(QLabel("Channel:"), 0, 0)
         self.channel_combo = QComboBox()

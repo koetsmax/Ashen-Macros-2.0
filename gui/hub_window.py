@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from PySide6.QtCore import QThread, QTimer, Signal, Slot
+from PySide6.QtCore import Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QCloseEvent, QShowEvent
 from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QVBoxLayout, QWidget
 from shiboken6 import isValid
@@ -12,6 +12,7 @@ from gui.apps.registry import APP_REGISTRY, open_app, restore_session_apps
 from gui.components.toast import ToastStack
 from gui.components.version_badge import VersionBadge
 from gui.settings_dialog import SettingsDialog
+from gui.views.app_window import AppWindow
 from gui.views.staffcheck_view import StaffcheckView
 from staffcheck import verification
 
@@ -48,7 +49,7 @@ class StaffcheckHub(QMainWindow):
         self.username = username
         self.verified = verified
         self.connected = False
-        self._open_apps: dict[str, QMainWindow] = {}
+        self._open_apps: dict[str, AppWindow] = {}
         self._online_version = None
         self._update_worker = None
         self._poll_worker = None

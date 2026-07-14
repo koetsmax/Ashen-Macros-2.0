@@ -2,6 +2,7 @@ from gui.components.mutual_servers_section import MutualServersSection
 from gui.components.classic_result_section import ClassicResultSection
 from gui.components.result_section import ResultSection
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -13,6 +14,8 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QSizePolicy,
+    QStyle,
+    QStyleOptionButton,
     QVBoxLayout,
     QWidget,
 )
@@ -25,11 +28,52 @@ from staffcheck.check_message import stop_check
 from staffcheck.elemental_commands import fix_issues as elemental_fix
 from staffcheck.invite_tracker import check_invited_users, check_loghistory
 from staffcheck.qt_ui import Var, btn_config, btn_enable
-from staffcheck.sot_official import old_check
+from staffcheck.sot_official import check_for_yourself
 from staffcheck.result_panel import SECTION_IDLE_TOOLTIPS
 
 REASON_PLACEHOLDER = "Reason for not good to check"
 FIELD_HEIGHT = 38
+
+
+class RerunCheckButton(QPushButton):
+    _EXPANDED_LINES = 3
+    _VERTICAL_PADDING = 16
+
+    def setText(self, text: str) -> None:
+        super().setText(text)
+        if "\n" in text:
+            self._set_expanded()
+        else:
+            self._set_compact()
+
+    def _set_compact(self) -> None:
+        self.setMinimumHeight(0)
+        self.setMaximumHeight(16777215)
+
+    def _set_expanded(self) -> None:
+        metrics = self.fontMetrics()
+        height = metrics.lineSpacing() * self._EXPANDED_LINES + self._VERTICAL_PADDING
+        self.setMinimumHeight(height)
+        self.setMaximumHeight(height)
+
+    def paintEvent(self, event):
+        if "\n" not in self.text():
+            super().paintEvent(event)
+            return
+
+        opt = QStyleOptionButton()
+        self.initStyleOption(opt)
+        painter = QPainter(self)
+        style = self.style()
+        style.drawControl(QStyle.ControlElement.CE_PushButtonBevel, opt, painter, self)
+        contents = style.subElementRect(QStyle.SubElement.SE_PushButtonContents, opt, self)
+        group = QPalette.ColorGroup.Disabled if not self.isEnabled() else QPalette.ColorGroup.Active
+        painter.setPen(self.palette().color(group, QPalette.ColorRole.ButtonText))
+        painter.drawText(
+            contents,
+            int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter),
+            self.text(),
+        )
 
 
 class StaffcheckView(QWidget):
@@ -48,6 +92,8 @@ class StaffcheckView(QWidget):
         self.search_issues = []
         self._user_report_data = None
         self.check_in_progress = False
+        self.user_name = None
+        self.xbox_gt = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 8, 12, 12)
@@ -170,7 +216,10 @@ class StaffcheckView(QWidget):
         row += 1
 
         btn_row3 = QHBoxLayout()
-        self.function_button_2 = self._make_button("Re-run last check", pipeline._button_noop)
+        self.function_button_2 = RerunCheckButton("Re-run last check")
+        self.function_button_2.clicked.connect(pipeline._button_noop)
+        self.function_button_2.setObjectName("rerunCheckButton")
+        self.function_button_2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         btn_row3.addWidget(self.function_button_2)
         self.input_layout.addLayout(btn_row3, row, 0, 1, 2)
         row += 1
@@ -209,7 +258,9 @@ class StaffcheckView(QWidget):
         self.jump_to_message_search_button = self._make_button("Jump to message", lambda: None)
         self.jump_to_message_search_button.setEnabled(False)
 
-        self.check_for_yourself_button = self._make_button("Check for yourself", lambda: old_check(self))
+        self.check_for_yourself_button = self._make_button(
+            "Check for yourself", lambda: check_for_yourself(self),
+        )
         self.check_for_yourself_button.setEnabled(False)
 
     def _build_mutual_servers_section(self):

@@ -1,5 +1,7 @@
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
-from PySide6.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QWidget
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
+
+from gui.views.app_window import AppWindow
 
 
 class MemberInQueue:
@@ -9,15 +11,12 @@ class MemberInQueue:
         self.shipnum = shipnum
 
 
-class FillNewFleetWindow(QMainWindow):
+class FillNewFleetWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Fill New Fleet")
-        self.keyboard_lock = __import__("threading").Lock()
+        super().__init__("Fill New Fleet", keyboard_lock=True)
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         layout.addWidget(QLabel("Fleet:"), 0, 0)
         self.fleet_combo = QComboBox()

@@ -91,7 +91,7 @@ def install_abort_hotkey(self) -> None:
         self._abort_hotkey = keyboard.add_hotkey(
             key,
             lambda: _on_abort_hotkey(self),
-            suppress=False,
+            suppress=True,
         )
     except ValueError as exc:
         logger.warning("Invalid abort key '%s': %s", key, exc)

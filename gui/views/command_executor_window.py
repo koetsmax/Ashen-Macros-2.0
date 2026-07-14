@@ -2,28 +2,18 @@ import ast
 import threading
 import time
 
-from PySide6.QtWidgets import (
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QPushButton,
-    QWidget,
-)
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from gui.views.app_window import AppWindow
 
 
-class CommandExecutorWindow(QMainWindow):
+class CommandExecutorWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Command Executor")
-        self.keyboard_lock = threading.Lock()
+        super().__init__("Command Executor", keyboard_lock=True)
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         layout.addWidget(QLabel("Command:"), 0, 0)
         self.command_entry = QLineEdit()

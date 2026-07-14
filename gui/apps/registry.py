@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Type
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow
 from shiboken6 import isValid
 
 from core.window_positions import (
@@ -12,6 +11,7 @@ from core.window_positions import (
     load_window_geometry,
     track_window_geometry,
 )
+from gui.views.app_window import AppWindow
 from gui.views.ban_list_window import BanListWindow
 from gui.views.command_executor_window import CommandExecutorWindow
 from gui.views.fill_new_fleet_window import FillNewFleetWindow
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AppEntry:
     label: str
-    window_cls: Type[QMainWindow]
+    window_cls: Type[AppWindow]
 
 
 APP_REGISTRY = [

@@ -21,6 +21,25 @@ def disable_function_button_2(self):
     btn_enable(self.function_button_2, False)
 
 
+def _rerun_button_text(view) -> str:
+    name = getattr(view, "user_name", None) or "—"
+    gt = getattr(view, "xbox_gt", None)
+    if hasattr(gt, "get"):
+        gt_display = gt.get().strip() or "Not linked"
+    elif gt in ([], None, ""):
+        gt_display = "Not linked"
+    else:
+        gt_display = str(gt)
+    return f"Re-run last check\n{name}\n{gt_display}"
+
+
+def configure_rerun_button(view, on_click) -> None:
+    btn = view.function_button_2
+    btn.setObjectName("rerunCheckButton")
+    btn_config(btn, _rerun_button_text(view), on_click)
+    btn_enable(btn, True)
+
+
 def _reset_result_panels(self):
     result_panel.reset_all(self)
     self._user_report_data = None
@@ -45,6 +64,7 @@ def prepare_for_new_check(self):
     _reset_result_panels(self)
     _clear_mutual_guilds(self)
     label_set(self.gamertag_label, "Unknown")
+    self.user_name = None
     self.clear_reason()
 
 
@@ -196,12 +216,7 @@ def finish_single_method(self):
     previous_user_id = self.user_id.get()
     self.user_id.set("")
     disable_function_button(self)
-    btn_config(
-        self.function_button_2,
-        "Re-run last check",
-        lambda: self.user_id.set(previous_user_id),
-    )
-    btn_enable(self.function_button_2, True)
+    configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
 
 
 def reset_ui(self):
@@ -218,8 +233,7 @@ def reset_ui(self):
     _reset_result_panels(self)
 
     disable_function_button(self)
-    btn_config(self.function_button_2, "Re-run last check", lambda: self.user_id.set(previous_user_id))
-    btn_enable(self.function_button_2, True)
+    configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
 
     _clear_mutual_guilds(self)
 

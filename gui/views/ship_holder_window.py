@@ -1,11 +1,11 @@
-from PySide6.QtWidgets import QLabel, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel
+
+from gui.views.app_window import AppWindow
 
 
-class ShipHolderWindow(QMainWindow):
+class ShipHolderWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Ship Holder")
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
-        layout.addWidget(QLabel("Ship Holder — coming soon"))
+        super().__init__("Ship Holder")
+
+    def _build_ui(self) -> None:
+        self.root_layout.addWidget(QLabel("Ship Holder — coming soon"))

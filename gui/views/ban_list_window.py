@@ -3,20 +3,19 @@ import time
 import webbrowser
 
 import keyboard
-from PySide6.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QWidget
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
 from core.settings import read_config
+from gui.views.app_window import AppWindow
 
 
-class BanListWindow(QMainWindow):
+class BanListWindow(AppWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Add To Ban List")
+        super().__init__("Add To Ban List")
         self.delay = float(read_config().get("delay", "15"))
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QGridLayout(central)
+    def _build_ui(self) -> None:
+        layout = self.add_grid()
 
         layout.addWidget(QLabel("Entire Ban Entry as in AoA:"), 0, 0)
         self.requiem_entry = QLineEdit()

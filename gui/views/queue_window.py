@@ -2,32 +2,37 @@ import threading
 
 import requests
 from PySide6.QtCore import QTimer, Signal
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGroupBox, QLabel, QVBoxLayout
 
 from core.auth import get_token
+from gui.views.app_window import AppWindow
 
 
-class QueueWindow(QMainWindow):
+class QueueWindow(AppWindow):
     _queue_data = Signal(dict)
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Queue Monitor")
-        self.headers = {"Authorization": get_token()}
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QHBoxLayout(central)
+    def __init__(self):
+        super().__init__("Queue Monitor")
+        self.headers = {"Authorization": get_token()}
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._refresh)
+        self._timer.start(5000)
+        self._queue_data.connect(self._apply_queue)
+        self._refresh()
+
+    def _build_ui(self) -> None:
+        row = self.add_row()
 
         self.queue_box = QGroupBox("Queue Info")
         self.queue_layout = QVBoxLayout(self.queue_box)
         self.queue_labels = {}
-        layout.addWidget(self.queue_box)
+        row.addWidget(self.queue_box)
 
         self.ship_box = QGroupBox("Ship Info")
         self.ship_layout = QVBoxLayout(self.ship_box)
         self.ship_labels = {"active": QLabel("Ships: Initializing")}
         self.ship_layout.addWidget(self.ship_labels["active"])
-        layout.addWidget(self.ship_box)
+        row.addWidget(self.ship_box)
 
         for key in (
             "active", "total", "any", "fotd", "we", "gh", "mrcnt", "oos",
@@ -36,12 +41,6 @@ class QueueWindow(QMainWindow):
             lbl = QLabel(f"{key}: ...")
             self.queue_labels[key] = lbl
             self.queue_layout.addWidget(lbl)
-
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._refresh)
-        self._timer.start(5000)
-        self._queue_data.connect(self._apply_queue)
-        self._refresh()
 
     def _refresh(self):
         threading.Thread(target=self._fetch, daemon=True).start()
