@@ -1,9 +1,10 @@
 import threading
 
-import keyring
 import requests
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget
+
+from core.auth import get_token
 
 
 class QueueWindow(QMainWindow):
@@ -11,7 +12,7 @@ class QueueWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Queue Monitor")
-        self.headers = {"Authorization": keyring.get_password("AshenMacros", "token")}
+        self.headers = {"Authorization": get_token()}
 
         central = QWidget()
         self.setCentralWidget(central)

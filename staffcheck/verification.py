@@ -1,7 +1,6 @@
 import time
 
 import keyboard
-import keyring
 
 from core.auth import get_token
 from core.keyboard import clear_typing_bar, switch_channel
