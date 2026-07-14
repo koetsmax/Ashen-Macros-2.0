@@ -90,7 +90,7 @@ class StaffcheckView(QWidget):
     def clear_reason(self):
         self.reason_entry.clear()
 
-    def _field_label(self, text: str) -> QLabel:
+    def _input_field_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         lbl.setMinimumHeight(FIELD_HEIGHT)
@@ -110,18 +110,18 @@ class StaffcheckView(QWidget):
 
     def _build_input_section(self):
         row = 0
-        self.input_layout.addWidget(self._field_label("Discord ID:"), row, 0)
+        self.input_layout.addWidget(self._input_field_label("Discord ID:"), row, 0)
         self.user_id_entry = self._line_field()
         self.user_id = Var(self.user_id_entry.text, self.user_id_entry.setText)
         self.input_layout.addWidget(self.user_id_entry, row, 1)
         row += 1
 
-        self.input_layout.addWidget(self._field_label("GamerTag:"), row, 0)
+        self.input_layout.addWidget(self._input_field_label("GamerTag:"), row, 0)
         self.gamertag_label = self._value_field("Unknown")
         self.input_layout.addWidget(self.gamertag_label, row, 1)
         row += 1
 
-        self.input_layout.addWidget(self._field_label("Channel:"), row, 0)
+        self.input_layout.addWidget(self._input_field_label("Channel:"), row, 0)
         self.channel_combo_box = QComboBox()
         self.channel_combo_box.setMinimumHeight(FIELD_HEIGHT)
         self.channel_combo_box.addItems([
@@ -133,7 +133,7 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self.channel_combo_box, row, 1)
         row += 1
 
-        self.input_layout.addWidget(self._field_label("Method:"), row, 0)
+        self.input_layout.addWidget(self._input_field_label("Method:"), row, 0)
         self.method_combo_box = QComboBox()
         self.method_combo_box.setMinimumHeight(FIELD_HEIGHT)
         self.method_combo_box.addItems([
@@ -173,7 +173,7 @@ class StaffcheckView(QWidget):
         self.input_layout.addLayout(btn_row3, row, 0, 1, 2)
         row += 1
 
-        self.input_layout.addWidget(self._field_label("Reason:"), row, 0)
+        self.input_layout.addWidget(self._input_field_label("Reason:"), row, 0)
         self.reason_entry = self._line_field()
         self.reason_entry.setPlaceholderText(REASON_PLACEHOLDER)
         self.reason = Var(self.get_reason, self.reason_entry.setText)
@@ -199,7 +199,7 @@ class StaffcheckView(QWidget):
 
         widgets = {}
         for i, (label, key) in enumerate(rows):
-            grid.addWidget(self._field_label(label), i, 0)
+            grid.addWidget(self._result_field_label(label), i, 0)
             val = QLabel("N/A")
             val.setObjectName("resultValue")
             val.setStyleSheet(f"color: {theme.PEACH}; background: transparent;")
@@ -207,7 +207,7 @@ class StaffcheckView(QWidget):
             widgets[key] = val
 
         r = len(rows)
-        grid.addWidget(self._field_label("Status"), r, 0)
+        grid.addWidget(self._result_field_label("Status"), r, 0)
         status = self._waiting_label()
         grid.addWidget(status, r, 1)
         setattr(self, status_attr, status)
@@ -231,7 +231,7 @@ class StaffcheckView(QWidget):
         lbl.setObjectName("sectionHeader")
         return lbl
 
-    def _field_label(self, text: str) -> QLabel:
+    def _result_field_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setObjectName("resultLabel")
         return lbl
