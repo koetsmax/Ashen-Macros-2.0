@@ -33,7 +33,7 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
 
         if response.status_code != 200:
             logger.warning("Token validation failed with status %s", response.status_code)
-            return True, "N/A"
+            return False, None
         data = response.json()
 
         if data["error"] == "invalid token format":
@@ -47,9 +47,9 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
             return False, None
     except Exception as e:
         logger.warning("Failed to validate token: %s", e)
-        return True, "N/A"
+        return False, None
 
-    return True, "N/A"
+    return False, None
 
 
 def get_token() -> str | None:

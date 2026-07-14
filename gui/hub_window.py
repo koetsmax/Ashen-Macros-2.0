@@ -3,7 +3,7 @@ import threading
 
 from PySide6.QtCore import QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QCloseEvent, QShowEvent
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QVBoxLayout, QWidget
 from shiboken6 import isValid
 
 from core import auth, updates
@@ -53,6 +53,10 @@ class StaffcheckHub(QMainWindow):
         self._update_worker = None
         self._poll_worker = None
         self._update_request_id = 0
+        self._verify_action = None
+        self._apps_menu = None
+        self._settings_action = None
+        self._updates_action = None
 
         self.setWindowTitle("Ashen Macros")
         self.setMinimumSize(960, 640)
@@ -75,10 +79,30 @@ class StaffcheckHub(QMainWindow):
         self.status_label.setObjectName("hubApiStatus")
         bar_layout.addWidget(self.status_label)
 
+        welcome_header = QHBoxLayout()
+        welcome_header.setSpacing(10)
+
         self.welcome_label = QLabel()
         self.welcome_label.setObjectName("hubWelcome")
+        welcome_header.addWidget(self.welcome_label)
+
+        self.not_verified_label = QLabel("Not verified!")
+        self.not_verified_label.setObjectName("hubNotVerified")
+        welcome_header.addWidget(self.not_verified_label)
+
+        self.verify_button = QPushButton("Verify now!")
+        self.verify_button.setObjectName("hubHeaderButton")
+        self.verify_button.clicked.connect(self._run_verify)
+        welcome_header.addWidget(self.verify_button)
+
+        self.retry_connection_button = QPushButton("Retry connection")
+        self.retry_connection_button.setObjectName("hubHeaderButton")
+        self.retry_connection_button.clicked.connect(self._poll_status)
+        welcome_header.addWidget(self.retry_connection_button)
+
+        bar_layout.addLayout(welcome_header)
         self._set_welcome_text(username)
-        bar_layout.addWidget(self.welcome_label)
+        self._update_welcome_header()
         bar_layout.addStretch()
         outer.addWidget(status_bar)
 
@@ -100,7 +124,7 @@ class StaffcheckHub(QMainWindow):
 
         self._poll_timer = QTimer(self)
         self._poll_timer.timeout.connect(self._poll_status)
-        self._poll_timer.start(10000)
+        self._poll_timer.start(60000)
 
         self._poll_status()
         self._check_updates()
@@ -114,17 +138,20 @@ class StaffcheckHub(QMainWindow):
 
     def _build_menu(self):
         bar = self.menuBar()
-        apps_menu = bar.addMenu("Apps")
+        self._apps_menu = bar.addMenu("Apps")
+        self._app_actions = []
         for entry in APP_REGISTRY:
-            action = apps_menu.addAction(entry.label)
+            action = self._apps_menu.addAction(entry.label)
             action.triggered.connect(lambda checked=False, e=entry: open_app(self, e))
+            self._app_actions.append(action)
 
-        bar.addAction("Settings", self._open_settings)
-        bar.addAction("Check for updates", lambda: self._check_updates(silent=False))
+        self._settings_action = bar.addAction("Settings", self._open_settings)
+        self._updates_action = bar.addAction("Check for updates", lambda: self._check_updates(silent=False))
         if not self.verified:
-            bar.addAction("Verify account", self._run_verify)
+            self._verify_action = bar.addAction("Verify account", self._run_verify)
 
         self.customize_menu = bar.addMenu("Customize")
+        self._update_menu_gating()
 
     def showEvent(self, event: QShowEvent):
         super().showEvent(event)
@@ -139,9 +166,11 @@ class StaffcheckHub(QMainWindow):
 
     def _position_toast_stack(self):
         if hasattr(self, "toast_stack"):
+            width = self.toast_stack.TOAST_WIDTH
             self.toast_stack.setGeometry(
-                self.width() - 300, 36, 280, max(120, self.height() - 80)
+                self.width() - width - 20, 36, width, self.height() - 80
             )
+            self.toast_stack.sync_toast_widths()
             self.toast_stack.raise_()
 
     def _set_welcome_text(self, username: str | None):
@@ -152,10 +181,39 @@ class StaffcheckHub(QMainWindow):
             self.welcome_label.clear()
             self.welcome_label.setVisible(False)
 
+    def _update_welcome_header(self):
+        self.not_verified_label.setVisible(not self.verified)
+        self.verify_button.setVisible(not self.verified)
+        self.retry_connection_button.setVisible(not self.connected)
+
+    def _update_menu_gating(self):
+        menus_enabled = self.verified
+        if self._apps_menu is not None:
+            self._apps_menu.menuAction().setEnabled(menus_enabled)
+        for action in getattr(self, "_app_actions", []):
+            action.setEnabled(menus_enabled)
+        if self._settings_action is not None:
+            self._settings_action.setEnabled(menus_enabled)
+        if self._updates_action is not None:
+            self._updates_action.setEnabled(menus_enabled)
+        if hasattr(self, "customize_menu"):
+            self.customize_menu.menuAction().setEnabled(menus_enabled)
+        if hasattr(self, "staffcheck"):
+            self.staffcheck._set_customize_enabled(menus_enabled)
+
+        if self.verified and self._verify_action is not None:
+            self.menuBar().removeAction(self._verify_action)
+            self._verify_action = None
+
     def _open_settings(self):
         SettingsDialog(self).exec()
 
     def _run_verify(self):
+        self.toast_stack.show_toast(
+            "verify",
+            "Verification in progress. Do not touch your PC until it completes.",
+            dismiss_ms=0,
+        )
         threading.Thread(
             target=verification.start_verification,
             args=(self.staffcheck,),
@@ -167,8 +225,14 @@ class StaffcheckHub(QMainWindow):
         QTimer.singleShot(0, self._refresh_auth)
 
     def _refresh_auth(self):
-        self.verified, self.username = auth.check_login()
+        verified, username = auth.check_login()
+        self.verified = verified
+        self.username = username
+        if not verified:
+            self.username = None
+        self._set_welcome_text(self.username)
         self._apply_gating()
+        self._poll_status()
 
     def _worker_running(self, worker: QThread | None) -> bool:
         if worker is None:
@@ -203,8 +267,10 @@ class StaffcheckHub(QMainWindow):
         )
         self.connected = connected
         self.verified = verified
-        if username:
+        if verified and username:
             self.username = username
+        elif not verified:
+            self.username = None
         self._set_welcome_text(self.username)
         self._apply_gating()
 
@@ -220,12 +286,16 @@ class StaffcheckHub(QMainWindow):
             self.status_label.setObjectName("statusDisconnected")
         self.status_label.style().unpolish(self.status_label)
         self.status_label.style().polish(self.status_label)
+        self._update_welcome_header()
+        self._update_menu_gating()
 
         if not self.verified:
             self.toast_stack.show_toast(
                 "verify",
-                "Verify now to use the program",
+                "Verify your account to use the program.\n\n"
+                "After pressing Verify now, do not touch your PC until verification completes.",
                 on_click=self._run_verify,
+                action_label="Verify now",
                 dismiss_ms=0,
             )
         else:

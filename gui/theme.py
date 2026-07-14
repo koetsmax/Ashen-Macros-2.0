@@ -139,6 +139,27 @@ def _qss() -> str:
         color: {SUBTEXT0};
         background: transparent;
     }}
+    QLabel#hubNotVerified {{
+        color: {PEACH};
+        font-weight: 600;
+        background: transparent;
+    }}
+    QPushButton#hubHeaderButton {{
+        background-color: {SURFACE0};
+        border: 1px solid {SURFACE1};
+        border-radius: 6px;
+        padding: 4px 12px;
+        min-height: 22px;
+        color: {TEXT};
+        font-weight: 600;
+    }}
+    QPushButton#hubHeaderButton:hover {{
+        background-color: {SURFACE1};
+        border-color: {SURFACE2};
+    }}
+    QPushButton#hubHeaderButton:pressed {{
+        background-color: {SURFACE2};
+    }}
     QGroupBox {{
         background-color: {MANTLE};
         border: 1px solid {SURFACE0};
@@ -310,14 +331,21 @@ def _qss() -> str:
         background-color: {SURFACE1};
         color: {TEXT};
     }}
-    QPushButton#toastAction {{
-        color: {BLUE};
+    QFrame#toast QPushButton#toastAction {{
+        background-color: transparent;
         border: none;
+        color: {BLUE};
         padding: 2px 0;
         text-align: left;
+        font-weight: 600;
     }}
-    QPushButton#toastAction:hover {{
+    QFrame#toast QPushButton#toastAction:hover {{
+        background-color: transparent;
         color: {LAVENDER};
+    }}
+    QFrame#toast QPushButton#toastAction:pressed {{
+        background-color: transparent;
+        color: {MAUVE};
     }}
     QLabel#versionBadge {{
         color: {OVERLAY0};

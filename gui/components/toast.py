@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -18,6 +19,7 @@ class Toast(QFrame):
         on_click=None,
         on_removed=None,
         dismiss_ms: int = 8000,
+        action_label: str = "Open",
     ):
         super().__init__(parent)
         self.setObjectName("toast")
@@ -42,6 +44,10 @@ class Toast(QFrame):
         header.setSpacing(8)
         self.label = QLabel(message)
         self.label.setWordWrap(True)
+        self.label.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         header.addWidget(self.label, stretch=1)
 
         dismiss_btn = QPushButton("\u00d7")
@@ -54,25 +60,51 @@ class Toast(QFrame):
         header.addWidget(dismiss_btn, alignment=Qt.AlignmentFlag.AlignTop)
         self._layout.addLayout(header)
 
-        self._set_action_button(on_click)
+        self._set_action_button(on_click, action_label)
         self._set_auto_dismiss(dismiss_ms)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         self._fade_in()
+        QTimer.singleShot(0, self._sync_label_width)
 
-    def update_content(self, message: str, on_click=None, dismiss_ms: int = 8000):
+    def _content_width(self) -> int:
+        return ToastStack.TOAST_WIDTH - 28 - 22 - 8
+
+    def _sync_label_width(self):
+        width = ToastStack.TOAST_WIDTH
+        self.setFixedWidth(width)
+        self.label.setFixedWidth(self._content_width())
+        self.label.updateGeometry()
+        self.updateGeometry()
+
+    def update_content(
+        self,
+        message: str,
+        on_click=None,
+        dismiss_ms: int = 8000,
+        action_label: str = "Open",
+    ):
         if self._dismissing:
             return
         self.label.setText(message)
-        self._set_action_button(on_click)
+        self._set_action_button(on_click, action_label)
         self._set_auto_dismiss(dismiss_ms)
         self._opacity.setOpacity(1.0)
+        self._sync_label_width()
 
-    def _set_action_button(self, on_click):
+    def _set_action_button(self, on_click, action_label: str = "Open"):
         if on_click:
             if self._action_btn is None:
-                self._action_btn = QPushButton("Open")
+                self._action_btn = QPushButton(action_label)
                 self._action_btn.setObjectName("toastAction")
                 self._action_btn.setFlat(True)
+                self._action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                self._action_btn.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Fixed,
+                )
                 self._layout.addWidget(self._action_btn)
+            else:
+                self._action_btn.setText(action_label)
             try:
                 self._action_btn.clicked.disconnect()
             except RuntimeError:
@@ -150,6 +182,8 @@ class Toast(QFrame):
 
 
 class ToastStack(QWidget):
+    TOAST_WIDTH = 360
+
     def __init__(self, parent: QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -159,18 +193,31 @@ class ToastStack(QWidget):
         self._layout = layout
         self._active: dict[str, Toast] = {}
 
-    def show_toast(self, key: str, message: str, on_click=None, dismiss_ms: int = 8000):
+    def show_toast(
+        self,
+        key: str,
+        message: str,
+        on_click=None,
+        dismiss_ms: int = 8000,
+        action_label: str = "Open",
+    ):
         existing = self._active.get(key)
         if existing is not None:
             if not existing._dismissing:
-                existing.update_content(message, on_click, dismiss_ms)
+                existing.update_content(message, on_click, dismiss_ms, action_label)
                 return
             existing._on_removed = None
             self._layout.removeWidget(existing)
             existing.deleteLater()
             self._active.pop(key, None)
 
-        toast = Toast(message, self, on_click=on_click, dismiss_ms=dismiss_ms)
+        toast = Toast(
+            message,
+            self,
+            on_click=on_click,
+            dismiss_ms=dismiss_ms,
+            action_label=action_label,
+        )
 
         def _removed(t=toast):
             if self._active.get(key) is t:
@@ -179,6 +226,11 @@ class ToastStack(QWidget):
         toast._on_removed = _removed
         self._layout.insertWidget(0, toast)
         self._active[key] = toast
+        toast._sync_label_width()
+
+    def sync_toast_widths(self):
+        for toast in self._active.values():
+            toast._sync_label_width()
 
     def dismiss(self, key: str):
         toast = self._active.get(key)
