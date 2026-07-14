@@ -34,9 +34,14 @@ def setup_logging(level: int = logging.INFO) -> None:
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
 
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(level)
+
     root = logging.getLogger()
     root.setLevel(level)
     root.addHandler(file_handler)
+    root.addHandler(console_handler)
 
     sys.excepthook = _log_unhandled_exception
 
