@@ -1,6 +1,4 @@
-import keyboard
-
-from core.keyboard import clear_typing_bar, switch_channel
+from core.keyboard import clear_typing_bar, switch_channel, type_text
 from core.settings import read_config
 from staffcheck import abort, pipeline
 from staffcheck.after_check_message import after_check_message
@@ -20,22 +18,27 @@ def good_to_check(self):
     btn_enable(self.function_button, False)
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
-    switch_channel(self, "#on-duty-chat")
-    clear_typing_bar()
+    try:
+        switch_channel(self, "#on-duty-chat")
+        clear_typing_bar()
 
-    config = read_config()
-    message = config["good_to_check_message"]
-    message = message.replace("userID", f"<@{self.user_id.get()}>")
-    message = message.replace("xboxGT", f"{self.xbox_gt}")
-    keyboard.write(message)
-    keyboard.press_and_release("enter")
+        config = read_config()
+        message = config["good_to_check_message"]
+        message = message.replace("userID", f"<@{self.user_id.get()}>")
+        message = message.replace("xboxGT", f"{self.xbox_gt}")
+        type_text(self, message)
+    except abort.AbortError:
+        return
     pipeline.continue_to_next(self)
 
 
 def not_good_to_check(self):
     self.currentstate = "Done"
-    switch_channel(self, "#on-duty-chat")
-    clear_typing_bar()
+    try:
+        switch_channel(self, "#on-duty-chat")
+        clear_typing_bar()
+    except abort.AbortError:
+        return
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
     btn_enable(self.function_button, False)
@@ -55,9 +58,11 @@ def build_not_good_to_check(self):
         f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}",
     )
     message = message.replace("Reason", f"{self.reason.get()}")
-    clear_typing_bar()
-    keyboard.write(message)
-    keyboard.press_and_release("enter")
+    try:
+        clear_typing_bar()
+        type_text(self, message)
+    except abort.AbortError:
+        return
     after_check_message(self)
 
 

@@ -1,4 +1,3 @@
-import threading
 import time
 
 import requests
@@ -8,6 +7,7 @@ from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.check_message import not_good_to_check
 from staffcheck.qt_ui import btn_config, btn_enable
+from staffcheck.tasks import run_background
 
 
 def ashen_commands(self):
@@ -16,17 +16,22 @@ def ashen_commands(self):
 
     self.timestamp = int(time.time())
     self.currentstate = "AshenCommands"
-    if self.method.get() == "Ashen Commands":
-        switch_channel(self, self.channel.get())
-        clear_typing_bar()
+    try:
+        if self.method.get() == "Ashen Commands":
+            switch_channel(self, self.channel.get())
+            clear_typing_bar()
 
-    search_gt = self.xbox_gt.replace(" ", "")
-    search = ["/search ", f"member: {self.user_id.get()}", f"gamertag: {search_gt}"]
-    execute_command(self, search[0], search[1:])
+        search_gt = self.xbox_gt.replace(" ", "")
+        execute_command(
+            self,
+            f"/search member:{self.user_id.get()} gamertag:{search_gt}",
+        )
+    except abort.AbortError:
+        return
     if abort.is_abort_requested(self):
         return
 
-    start_ashen_api_requests_thread(self)
+    run_background(make_api_request, self)
     abort.set_continue_button(self)
     btn_config(self.function_button, "Needs to remove banned friends", lambda: needs_to_remove_friends(self))
     btn_enable(self.function_button, True)
@@ -57,10 +62,6 @@ def make_api_request(self):
         ashen_api_request(self)
 
 
-def start_ashen_api_requests_thread(self):
-    threading.Thread(target=make_api_request, args=(self,), daemon=True).start()
-
-
 def ashen_api_request(self):
     if abort.is_abort_requested(self):
         return
@@ -75,7 +76,7 @@ def ashen_api_request(self):
         btn_enable(self.search_fix_issues_button, False)
         payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
         config = read_config()
-        response = abort.post_json_abortable(
+        response = abort.post_json(
             self,
             f"{config['api_url']}/staffcheck/search",
             payload,

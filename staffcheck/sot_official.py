@@ -4,6 +4,7 @@ import requests
 from core.keyboard import clear_typing_bar, switch_channel
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
+from staffcheck.abort import check_abort, interruptible_sleep, keyboard_automation
 from staffcheck.qt_ui import btn_enable
 
 
@@ -16,13 +17,20 @@ def sot_official(self):
 
 
 def check_for_yourself(self):
-    switch_channel(self, "#official-swag")
-    clear_typing_bar()
-    keyboard.press_and_release("ctrl+f")
-    keyboard.press_and_release("ctrl+a")
-    keyboard.press_and_release("backspace")
-    keyboard.write(f"from: {self.user_id.get()}")
-    keyboard.press_and_release("enter")
+    try:
+        switch_channel(self, "#official-swag")
+        clear_typing_bar()
+        with keyboard_automation(), self.keyboard_lock:
+            check_abort(self)
+            keyboard.press_and_release("ctrl+f")
+            keyboard.press_and_release("ctrl+a")
+            keyboard.press_and_release("backspace")
+            keyboard.write(f"from: {self.user_id.get()}")
+            interruptible_sleep(self, 0.1)
+            check_abort(self)
+            keyboard.press_and_release("enter")
+    except abort.AbortError:
+        return
     btn_enable(self.check_for_yourself_button, False)
 
 

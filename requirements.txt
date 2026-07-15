@@ -7,3 +7,4 @@ requests
 pyuac
 filelock
 keyring
+pyperclip

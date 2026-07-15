@@ -112,11 +112,11 @@ class StaffcheckView(QWidget):
         self.input_layout.setHorizontalSpacing(10)
         self.input_layout.setVerticalSpacing(8)
         self.input_layout.setColumnStretch(1, 1)
-        body.addWidget(left, stretch=0)
+        body.addWidget(left, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.results_panel = self._build_results_panel()
         self.results_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        body.addWidget(self.results_panel, stretch=0)
+        body.addWidget(self.results_panel, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
         self._build_input_section()
         pipeline.disable_function_button(self)
@@ -268,9 +268,10 @@ class StaffcheckView(QWidget):
 
     def _build_compact_results(self, panel: QWidget) -> None:
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(4, 0, 8, 0)
+        layout.setContentsMargins(0, 0, 8, 0)
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinAndMaxSize)
 
         self._build_mutual_servers_section()
 
@@ -298,12 +299,15 @@ class StaffcheckView(QWidget):
         )
 
         for key in ("mutual_servers", "user_report", "search", "invite_tracker", "sot_official"):
-            layout.addWidget(self.result_sections[key])
+            section = self.result_sections[key]
+            section.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+            layout.addWidget(section, alignment=Qt.AlignmentFlag.AlignTop)
 
     def _build_classic_results(self, panel: QWidget) -> None:
         outer = QHBoxLayout(panel)
-        outer.setContentsMargins(4, 0, 8, 0)
+        outer.setContentsMargins(0, 0, 8, 0)
         outer.setSpacing(8)
+        outer.setSizeConstraint(QHBoxLayout.SizeConstraint.SetMinAndMaxSize)
 
         left = QVBoxLayout()
         left.setSpacing(8)
@@ -359,12 +363,12 @@ class StaffcheckView(QWidget):
             [self.check_for_yourself_button],
         )
 
-        left.addWidget(self.result_sections["mutual_servers"])
-        left.addWidget(self.result_sections["user_report"])
-        left.addWidget(self.result_sections["invite_tracker"])
+        left.addWidget(self.result_sections["mutual_servers"], alignment=Qt.AlignmentFlag.AlignTop)
+        left.addWidget(self.result_sections["user_report"], alignment=Qt.AlignmentFlag.AlignTop)
+        left.addWidget(self.result_sections["invite_tracker"], alignment=Qt.AlignmentFlag.AlignTop)
 
-        right.addWidget(self.result_sections["search"])
-        right.addWidget(self.result_sections["sot_official"])
+        right.addWidget(self.result_sections["search"], alignment=Qt.AlignmentFlag.AlignTop)
+        right.addWidget(self.result_sections["sot_official"], alignment=Qt.AlignmentFlag.AlignTop)
 
         outer.addLayout(left, stretch=1)
         outer.addLayout(right, stretch=1)

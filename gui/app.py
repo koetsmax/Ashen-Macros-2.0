@@ -26,6 +26,10 @@ class App:
         app = QApplication(sys.argv)
         theme.apply_theme(app)
 
+        from staffcheck.qt_ui import init_main_thread_bridge
+
+        init_main_thread_bridge()
+
         hub = StaffcheckHub(self.local_version, self.username, self.verified)
         hub.show()
 

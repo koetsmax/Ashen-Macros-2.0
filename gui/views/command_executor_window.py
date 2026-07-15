@@ -37,5 +37,4 @@ class CommandExecutorWindow(AppWindow):
         switch_channel(self, "#lieutenant-commands")
         clear_typing_bar()
         for member in members:
-            cmd = [f"/{self.command_entry.text()}", str(member)]
-            execute_command(self, cmd[0], cmd[1:])
+            execute_command(self, f"/{self.command_entry.text()}{member}")

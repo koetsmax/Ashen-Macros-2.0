@@ -1,5 +1,5 @@
 from core.settings import read_config
-from staffcheck.qt_ui import Var, btn_enable, flush, label_set
+from staffcheck.qt_ui import Var, btn_enable, label_set
 
 
 def build_example_message(self, id_: int, status_label):

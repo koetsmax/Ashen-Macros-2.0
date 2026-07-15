@@ -3,18 +3,18 @@
 import logging
 import threading
 import time
-from typing import List
+from contextlib import contextmanager
+from typing import Iterator
 
 import keyboard
+import pyperclip
 import win32con
 import win32gui
 
 from core.settings import read_config
 from staffcheck.abort import (
-    AbortError,
     check_abort,
     interruptible_sleep,
-    is_abort_requested,
     keyboard_automation,
 )
 
@@ -74,43 +74,57 @@ def clear_typing_bar():
         keyboard.press_and_release("backspace")
 
 
+@contextmanager
+def _clipboard_scope(text: str) -> Iterator[None]:
+    try:
+        previous = pyperclip.paste()
+    except pyperclip.PyperclipException:
+        previous = None
+
+    pyperclip.copy(text)
+    try:
+        yield
+    finally:
+        if previous is not None:
+            try:
+                pyperclip.copy(previous)
+            except pyperclip.PyperclipException:
+                logger.warning("Could not restore previous clipboard contents")
+
+
 def switch_channel(self, channel: str, *args, **kwargs):
-    try:
-        with keyboard_automation(), self.keyboard_lock:
-            if is_abort_requested(self):
-                return
-            if not args:
-                clear_typing_bar()
-            check_abort(self)
-            keyboard.press_and_release("ctrl+k")
-            interruptible_sleep(self, 0.18)
-            keyboard.write(channel)
-            interruptible_sleep(self, 0.8 if not kwargs else 5)
-            keyboard.press_and_release("enter")
-            interruptible_sleep(self, 2)
-    except AbortError:
-        pass
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        if not args:
+            clear_typing_bar()
+        check_abort(self)
+        keyboard.press_and_release("ctrl+k")
+        interruptible_sleep(self, 0.18)
+        keyboard.write(channel)
+        interruptible_sleep(self, 0.8 if not kwargs else 5)
+        keyboard.press_and_release("enter")
+        interruptible_sleep(self, 2)
 
 
-def execute_command(self, command: str, subcommands: List[str]):
-    try:
-        with keyboard_automation(), self.keyboard_lock:
-            if is_abort_requested(self):
-                return
-            config = read_config()
-            initial_command = float(config["initial_command"])
-            follow_up = float(config["follow_up"])
-            keyboard.write(command)
-            interruptible_sleep(self, initial_command)
-            keyboard.press_and_release("tab")
-            interruptible_sleep(self, follow_up)
-            for subcommand in subcommands:
-                check_abort(self)
-                keyboard.write(subcommand)
-                interruptible_sleep(self, follow_up)
-                keyboard.press_and_release("tab")
-            interruptible_sleep(self, follow_up)
+def execute_command(self, command: str):
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+
+        config = read_config()
+        paste_delay = float(config["follow_up"])
+
+        with _clipboard_scope(command):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, paste_delay)
             check_abort(self)
             keyboard.press_and_release("enter")
-    except AbortError:
-        pass
+
+
+def type_text(self, text: str, *, press_enter: bool = True) -> None:
+    """Type a free-text message (good-to-check, join AWR, etc.) with abort coverage."""
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        keyboard.write(text)
+        if press_enter:
+            check_abort(self)
+            keyboard.press_and_release("enter")

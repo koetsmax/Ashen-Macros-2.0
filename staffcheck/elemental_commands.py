@@ -1,4 +1,3 @@
-import threading
 import time
 
 import requests
@@ -8,6 +7,7 @@ from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.result_panel import _section
 from staffcheck.qt_ui import btn_config, btn_enable
+from staffcheck.tasks import run_background
 
 
 def elemental_commands(self, *args):
@@ -16,13 +16,16 @@ def elemental_commands(self, *args):
 
     self.timestamp = int(time.time())
     self.currentstate = "ElementalCommands"
-    switch_channel(self, self.channel.get())
-    clear_typing_bar()
-    execute_command(self, "/user_report", [self.user_id.get()])
+    try:
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
+        execute_command(self, f"/user_report member:{self.user_id.get()}")
+    except abort.AbortError:
+        return
     if abort.is_abort_requested(self):
         return
 
-    start_elemental_api_requests_thread(self)
+    run_background(make_api_request, self)
     btn_enable(self.stop_button, True)
 
     if not args:
@@ -39,12 +42,15 @@ def elemental_commands(self, *args):
 
 
 def add_note(self):
-    switch_channel(self, self.channel.get())
-    clear_typing_bar()
-    btn_enable(self.function_button, False)
-    btn_enable(self.kill_button, False)
-    btn_enable(self.start_button, False)
-    execute_command(self, "/add_note", [self.user_id.get(), f"GT: {self.xbox_gt}"])
+    try:
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
+        btn_enable(self.function_button, False)
+        btn_enable(self.kill_button, False)
+        btn_enable(self.start_button, False)
+        execute_command(self, f"/add_note member:{self.user_id.get()} content:GT: {self.xbox_gt}")
+    except abort.AbortError:
+        return
     btn_enable(self.kill_button, True)
     btn_enable(self.start_button, True)
 
@@ -53,8 +59,11 @@ def tell_to_link_xbox(self):
     btn_enable(self.function_button, False)
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
-    clear_typing_bar()
-    execute_command(self, "/verify", [self.user_id.get(), "link_xbox"])
+    try:
+        clear_typing_bar()
+        execute_command(self, f"/verify member:{self.user_id.get()} verify_type:link_xbox")
+    except abort.AbortError:
+        return
     btn_enable(self.kill_button, True)
     btn_enable(self.start_button, True)
     self.currentstate = "SOTOfficial"
@@ -65,8 +74,11 @@ def tell_to_verify(self):
     btn_enable(self.function_button, False)
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
-    clear_typing_bar()
-    execute_command(self, "/verify", [self.user_id.get(), "verify"])
+    try:
+        clear_typing_bar()
+        execute_command(self, f"/verify member:{self.user_id.get()} verify_type:verify")
+    except abort.AbortError:
+        return
     btn_enable(self.kill_button, True)
     btn_enable(self.start_button, True)
     self.currentstate = "SOTOfficial"
@@ -76,10 +88,6 @@ def tell_to_verify(self):
 def make_api_request(self):
     if self.method.get() in ("All Commands", "Elemental Commands"):
         elemental_api_request(self)
-
-
-def start_elemental_api_requests_thread(self):
-    threading.Thread(target=make_api_request, args=(self,), daemon=True).start()
 
 
 def elemental_api_request(self):
@@ -97,7 +105,7 @@ def elemental_api_request(self):
                 "timestamp": self.timestamp,
             }
             config = read_config()
-            response = abort.post_json_abortable(
+            response = abort.post_json(
                 self,
                 f"{config['api_url']}/staffcheck/elemental",
                 payload,

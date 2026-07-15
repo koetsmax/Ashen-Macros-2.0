@@ -1,10 +1,9 @@
-import threading
-
 import requests
 
 from core.settings import read_config
 from staffcheck import abort, result_panel
-from staffcheck.qt_ui import Var, btn_config, btn_enable, flush, label_set
+from staffcheck.qt_ui import Var, btn_config, btn_enable, label_set, on_main_thread
+from staffcheck.tasks import run_background
 
 
 def _button_noop():
@@ -96,12 +95,24 @@ def start_check(self):
         return
 
     prepare_for_new_check(self)
+    abort.start_check_session(self)
+    btn_enable(self.stop_button, True)
+    btn_enable(self.start_button, False)
+    self._set_customize_enabled(False)
+    self.user_id_entry.setEnabled(False)
+    self.channel_combo_box.setEnabled(False)
+    self.method_combo_box.setEnabled(False)
+    self.pre_check_button.setEnabled(False)
+    label_set(self.status_label, "Sending API request")
+    # Capture widget values on the main thread before the background request.
+    user_id = self.user_id.get()
+    run_background(_fetch_essential_data, self, user_id)
 
+
+def _fetch_essential_data(self, user_id: str):
     request_error = False
-    payload = {"userID": self.user_id.get()}
+    payload = {"userID": user_id}
     try:
-        label_set(self.status_label, "Sending API request")
-        flush()
         config = read_config()
         self.essential_data_response = requests.post(
             f"{config['api_url']}/staffcheck/essential_data",
@@ -112,46 +123,65 @@ def start_check(self):
 
         if self.essential_data_response.status_code != 200:
             request_error = True
-        else:
-            self.user_name = self.essential_data_response.json()["discord_name"]
-            self.mutual_guilds = self.essential_data_response.json()["mutual_guilds"]
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+        request_error = True
+    except Exception:
+        request_error = True
+
+    on_main_thread(lambda: _handle_essential_data(self, request_error))
+
+
+def _handle_essential_data(self, request_error: bool):
+    if abort.is_abort_requested(self):
+        return
+
+    if not request_error:
+        try:
+            data = self.essential_data_response.json()
+            self.user_name = data["discord_name"]
+            self.mutual_guilds = data["mutual_guilds"]
             result_panel.mutual_servers_apply(self, self.mutual_guilds)
 
+            linked = data.get("linked_xbox") or []
             try:
-                self.xbox_gt = self.essential_data_response.json()["linked_xbox"][0]
+                self.xbox_gt = linked[0]
             except IndexError:
                 self.xbox_gt = []
-            if len(self.essential_data_response.json()["linked_xbox"]) > 1:
+            if len(linked) > 1:
                 label_set(
                     self.status_label,
                     "Warning: Has multiple accounts linked. Only showing the first one.",
                     "red",
                 )
-    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-        request_error = True
+            continue_check(self, request_error)
+            return
+        except Exception:
+            request_error = True
 
-    if not request_error:
-        continue_check(self, request_error)
-    else:
-        label_set(self.status_label, "Error when trying to get GT. Enter GT manually instead!", "red")
-        self.xbox_gt = Var(lambda: "", lambda v: None)
-        from PySide6.QtWidgets import QLabel, QLineEdit
+    if abort.is_abort_requested(self):
+        return
 
-        self.gt_entry_label = QLabel("Enter GT:")
-        self.gt_entry = QLineEdit()
-        self.gt_entry.setMaxLength(30)
-        self.xbox_gt = Var(self.gt_entry.text, self.gt_entry.setText)
-        self.entered_gt_button = self._make_button("Entered GT", lambda: continue_check(self, request_error))
-        self.input_layout.addWidget(self.gt_entry_label, 9, 0)
-        self.input_layout.addWidget(self.gt_entry, 9, 1)
-        self.input_layout.addWidget(self.entered_gt_button, 10, 1)
-        self.gt_entry.setFocus()
+    label_set(self.status_label, "Error when trying to get GT. Enter GT manually instead!", "red")
+    self.xbox_gt = Var(lambda: "", lambda v: None)
+    from PySide6.QtWidgets import QLabel, QLineEdit
+
+    self.gt_entry_label = QLabel("Enter GT:")
+    self.gt_entry = QLineEdit()
+    self.gt_entry.setMaxLength(30)
+    self.xbox_gt = Var(self.gt_entry.text, self.gt_entry.setText)
+    self.entered_gt_button = self._make_button("Entered GT", lambda: continue_check(self, True))
+    self.input_layout.addWidget(self.gt_entry_label, 9, 0)
+    self.input_layout.addWidget(self.gt_entry, 9, 1)
+    self.input_layout.addWidget(self.entered_gt_button, 10, 1)
+    self.gt_entry.setFocus()
 
 
 def continue_check(self, request_error):
+    if abort.is_abort_requested(self):
+        return
+
     if request_error or not len(self.essential_data_response.json()["linked_xbox"]) > 1:
         label_set(self.status_label, "Running Check")
-    flush()
 
     if request_error:
         self.xbox_gt = self.xbox_gt.get().strip()
@@ -162,7 +192,6 @@ def continue_check(self, request_error):
         if self.entered_gt_button:
             self.entered_gt_button.deleteLater()
         self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
-        flush()
 
     if self.xbox_gt != [] or _api_only_method(self):
         if self.xbox_gt != []:
@@ -171,6 +200,7 @@ def continue_check(self, request_error):
             label_set(self.gamertag_label, "Not linked")
         btn_enable(self.start_button, False)
         btn_enable(self.stop_button, True)
+        # Session already started in start_check; keep hotkey alive if needed.
         abort.start_check_session(self)
         self._set_customize_enabled(False)
         self.user_id_entry.setEnabled(False)
@@ -180,7 +210,6 @@ def continue_check(self, request_error):
         self.reason_entry.setEnabled(True)
         disable_function_button(self)
         disable_function_button_2(self)
-        flush()
 
         self.currentstate = None
         if self.pre_check_button.isChecked():
@@ -219,8 +248,30 @@ def finish_single_method(self):
     configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
 
 
-def reset_ui(self):
-    abort.end_check_session(self)
+def _clear_manual_gt_widgets(self):
+    gt_label = getattr(self, "gt_entry_label", None)
+    gt_entry = getattr(self, "gt_entry", None)
+    gt_button = getattr(self, "entered_gt_button", None)
+    if gt_label:
+        gt_label.deleteLater()
+    if gt_entry:
+        gt_entry.deleteLater()
+    if gt_button:
+        gt_button.deleteLater()
+    self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
+
+
+def reset_ui(self, preserve_abort: bool = False):
+    if preserve_abort:
+        # Tear down session UI without wiping sticky abort_requested.
+        abort.remove_abort_hotkey(self)
+        self.check_in_progress = False
+        self._abort_finish_pending = False
+    else:
+        abort.end_check_session(self)
+
+    _clear_manual_gt_widgets(self)
+
     previous_user_id = self.user_id.get()
     self.user_id.set("")
     label_set(self.status_label, "Waiting for ID")
@@ -294,8 +345,11 @@ def make_api_requests(self):
 
 
 def determine_method(self):
+    if abort.is_abort_requested(self):
+        return
+
     if self.method.get() == "All Commands":
-        threading.Thread(target=make_api_requests, args=(self,), daemon=True).start()
+        run_background(make_api_requests, self)
         from staffcheck import elemental_commands
 
         elemental_commands.elemental_commands(self)

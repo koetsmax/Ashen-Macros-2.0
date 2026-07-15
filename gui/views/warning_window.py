@@ -71,9 +71,9 @@ class WarningWindow(AppWindow):
         clear_typing_bar()
         reason = self._reason_text()
         if self.nodm_check.isChecked():
-            execute_command(self, "/warn", [self.user_id_entry.text(), reason, "no_dm: Yes"])
+            execute_command(self, f"/warn member:{self.user_id_entry.text()} reason:{reason} no_dm: True")
         else:
-            execute_command(self, "/warn", [self.user_id_entry.text(), reason])
+            execute_command(self, f"/warn member:{self.user_id_entry.text()} reason:{reason}")
 
     def _stop(self):
         self.start_button.setText("Start")
@@ -88,7 +88,7 @@ class WarningWindow(AppWindow):
         if self.loghistory_check.isChecked():
             switch_channel(self, self.channel_combo.currentText())
             clear_typing_bar()
-            execute_command(self, "/user_report", [self.user_id_entry.text()])
+            execute_command(self, f"/user_report member:{self.user_id_entry.text()}")
             self.start_button.setText("Add warning")
             try:
                 self.start_button.clicked.disconnect()

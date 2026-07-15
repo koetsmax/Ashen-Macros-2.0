@@ -1,10 +1,9 @@
-import time
-
 import requests
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
+from staffcheck.abort import interruptible_sleep
 from staffcheck.qt_ui import btn_config, btn_enable
 
 
@@ -17,24 +16,30 @@ def invite_tracker(self):
 
 
 def check_loghistory(self):
-    switch_channel(self, self.channel.get())
-    clear_typing_bar()
-    for _id in self.inviters_ids:
-        if abort.is_abort_requested(self):
-            break
-        execute_command(self, "/user_report", [_id])
-        time.sleep(1.5)
+    try:
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
+        for _id in self.inviters_ids:
+            if abort.is_abort_requested(self):
+                break
+            execute_command(self, f"/user_report member:{_id}")
+            interruptible_sleep(self, 1.5)
+    except abort.AbortError:
+        return
     btn_enable(self.invited_by_loghistory_button, False)
 
 
 def check_invited_users(self):
-    switch_channel(self, self.channel.get())
-    clear_typing_bar()
-    for _id in self.invitees_ids:
-        if abort.is_abort_requested(self):
-            break
-        execute_command(self, "/user_report", [_id])
-        time.sleep(1.5)
+    try:
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
+        for _id in self.invitees_ids:
+            if abort.is_abort_requested(self):
+                break
+            execute_command(self, f"/user_report member:{_id}")
+            interruptible_sleep(self, 1.5)
+    except abort.AbortError:
+        return
     btn_enable(self.invited_users_loghistory_button, False)
 
 

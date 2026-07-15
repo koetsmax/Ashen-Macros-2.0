@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterator, Optional
 
 import keyboard
 import requests
+from PySide6.QtWidgets import QApplication
 
 from core.settings import read_config
 
@@ -52,15 +53,15 @@ def interruptible_sleep(self, duration: float, step: float = 0.05) -> None:
         check_abort(self)
         return
     end = time.time() + duration
+    app = QApplication.instance()
     while time.time() < end:
         check_abort(self)
-        from staffcheck.qt_ui import flush
-
-        flush()
+        if app is not None:
+            app.processEvents()
         time.sleep(min(step, max(0, end - time.time())))
 
 
-def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, headers=None):
+def post_json(self, url: str, payload: dict, timeout: float = 120, headers=None):
     if is_abort_requested(self):
         return None
     try:
@@ -71,13 +72,12 @@ def post_json_abortable(self, url: str, payload: dict, timeout: float = 120, hea
 
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
     from staffcheck import pipeline
+    from staffcheck.qt_ui import btn_config, btn_enable
 
     if is_abort_requested(self):
         return
     if command is None:
         command = lambda: pipeline.continue_to_next(self)
-    from staffcheck.qt_ui import btn_config, btn_enable
-
     btn_config(self.start_button, "Continue", command)
     btn_enable(self.start_button, True)
 
@@ -91,14 +91,16 @@ def install_abort_hotkey(self) -> None:
         self._abort_hotkey = keyboard.add_hotkey(
             key,
             lambda: _on_abort_hotkey(self),
-            suppress=True,
+            suppress=False,
         )
     except ValueError as exc:
         logger.warning("Invalid abort key '%s': %s", key, exc)
 
 
 def _on_abort_hotkey(self) -> None:
-    if is_keyboard_automation_active():
+    # Abort key only applies during keyboard automation (channel switch, paste,
+    # clear typing bar, typing messages). Idle / API wait uses Stop check instead.
+    if not is_keyboard_automation_active():
         return
     abort_staffcheck(self)
 
@@ -115,40 +117,45 @@ def remove_abort_hotkey(self) -> None:
 
 
 def start_check_session(self) -> None:
+    if getattr(self, "check_in_progress", False):
+        # Already started (e.g. at beginning of start_check); do not clear abort mid-check.
+        install_abort_hotkey(self)
+        return
     self.abort_requested = False
-    self.check_in_progress = True
     self._abort_finish_pending = False
+    self.check_in_progress = True
     install_abort_hotkey(self)
 
 
 def end_check_session(self) -> None:
     remove_abort_hotkey(self)
     self.check_in_progress = False
-    self.abort_requested = False
     self._abort_finish_pending = False
+    # Keep abort_requested sticky until the next start_check_session so in-flight
+    # interruptible_sleep / command loops still observe the abort.
 
 
 def abort_staffcheck(self) -> None:
-    if not getattr(self, "check_in_progress", False):
+    if not getattr(self, "check_in_progress", False) or is_abort_requested(self):
         return
 
     self.abort_requested = True
-    if self._abort_finish_pending:
-        return
     self._abort_finish_pending = True
 
-    from PySide6.QtCore import QTimer
+    from staffcheck.qt_ui import on_main_thread
 
-    QTimer.singleShot(0, lambda: _finish_abort(self))
+    on_main_thread(lambda: _finish_abort(self))
 
 
 def _finish_abort(self) -> None:
+    if not getattr(self, "_abort_finish_pending", False):
+        return
+    self._abort_finish_pending = False
+
     self.currentstate = "Done"
-    end_check_session(self)
 
     from staffcheck.pipeline import reset_ui
-
-    reset_ui(self)
     from staffcheck.qt_ui import label_set
 
+    reset_ui(self, preserve_abort=True)
     label_set(self.status_label, "Check aborted", "red")

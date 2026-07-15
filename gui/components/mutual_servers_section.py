@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
 class MutualServersSection(QWidget):
@@ -10,6 +10,7 @@ class MutualServersSection(QWidget):
     def __init__(self):
         super().__init__()
         self._state = "idle"
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -19,18 +20,11 @@ class MutualServersSection(QWidget):
         self._header.setObjectName("sectionHeader")
         outer.addWidget(self._header)
 
-        self._body = QWidget()
-        self._body.setObjectName("resultSection")
-        body_layout = QVBoxLayout(self._body)
-        body_layout.setContentsMargins(0, 0, 0, 0)
-        body_layout.setSpacing(0)
-
         self._list = QLabel("—")
         self._list.setObjectName("resultSectionSummary")
         self._list.setWordWrap(True)
         self._list.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        body_layout.addWidget(self._list)
-        outer.addWidget(self._body)
+        outer.addWidget(self._list)
 
         self._divider = QFrame()
         self._divider.setObjectName("sectionDivider")

@@ -31,8 +31,13 @@ class FillNewFleetWindow(AppWindow):
             layout.addWidget(entry, i + 1, 1)
 
         layout.addWidget(
-            QLabel("Make sure everyone is staffchecked before pressing start or you will have a bad time"),
-            6, 0, 1, 2,
+            QLabel(
+                "Make sure everyone is staffchecked before pressing start or you will have a bad time"
+            ),
+            6,
+            0,
+            1,
+            2,
         )
 
         start = QPushButton("Start")
@@ -63,7 +68,9 @@ class FillNewFleetWindow(AppWindow):
         current_change = 0
         for to_process in members_in_queue:
             actual_queuepos = str(to_process.queuepos + current_change)
-            process = ["/process", actual_queuepos, f"{to_process.fleetnum} {to_process.shipnum}"]
             clear_typing_bar()
-            execute_command(self, process[0], process[1:])
+            # execute_command(
+            #     self,
+            #     f"/process {actual_queuepos} {to_process.fleetnum} {to_process.shipnum}",
+            # )
             current_change -= 1
