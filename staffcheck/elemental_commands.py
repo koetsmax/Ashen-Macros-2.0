@@ -96,7 +96,7 @@ def elemental_api_request(self):
 
     request_error = False
     if self.channel.get() == "#on-duty-commands":
-        result_panel.user_report_loading(self)
+        self.result_sections["user_report"].set_loading()
         try:
             btn_enable(self.loghistory_fix_issues_button, False)
             payload = {

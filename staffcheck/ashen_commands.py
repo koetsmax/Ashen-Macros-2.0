@@ -71,7 +71,7 @@ def ashen_api_request(self):
         result_panel.search_skipped(self)
         return
 
-    result_panel.search_loading(self)
+    self.result_sections["search"].set_loading()
     try:
         btn_enable(self.search_fix_issues_button, False)
         payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
@@ -108,7 +108,3 @@ def ashen_api_request(self):
 
     if request_error:
         result_panel.search_failed(self)
-
-
-def fix_issues(self):
-    pass

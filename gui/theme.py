@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from catppuccin import PALETTE
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication, QPalette, QColor
@@ -5,8 +7,82 @@ from PySide6.QtWidgets import QApplication
 
 from core.settings import read_config, set_custom_value
 
-FLAVOR_IDS = tuple(flavor.identifier for flavor in PALETTE)
-PALETTE_FLAVORS = tuple(PALETTE)
+
+class _SimpleColor:
+    def __init__(self, hex: str):
+        self.hex = hex
+
+
+def _make_colors(**kwargs) -> SimpleNamespace:
+    return SimpleNamespace(**{key: _SimpleColor(value) for key, value in kwargs.items()})
+
+
+def _make_flavor(name: str, identifier: str, dark: bool, colors: dict) -> SimpleNamespace:
+    return SimpleNamespace(
+        name=name,
+        identifier=identifier,
+        dark=dark,
+        colors=_make_colors(**colors),
+    )
+
+
+MATRIX_FLAVOR = _make_flavor(
+    "Matrix",
+    "matrix",
+    True,
+    {
+        "crust": "#000000",
+        "base": "#050805",
+        "mantle": "#030503",
+        "surface0": "#0d140d",
+        "surface1": "#142014",
+        "surface2": "#1c2c1c",
+        "overlay0": "#2a402a",
+        "subtext0": "#00cc33",
+        "text": "#00ff41",
+        "lavender": "#66ff88",
+        "blue": "#00aa33",
+        "sapphire": "#008f2b",
+        "green": "#00ff41",
+        "yellow": "#99ff66",
+        "peach": "#55ff77",
+        "red": "#ff3355",
+        "mauve": "#00ff66",
+    },
+)
+
+ASHEN_FLAVOR = _make_flavor(
+    "Ashen",
+    "ashen",
+    True,
+    {
+        "crust": "#0a0a0a",
+        "base": "#121212",
+        "mantle": "#0e0e0e",
+        "surface0": "#1c1c1c",
+        "surface1": "#262626",
+        "surface2": "#303030",
+        "overlay0": "#4a4a4a",
+        "subtext0": "#a8a8a8",
+        "text": "#ececec",
+        "lavender": "#ff8533",
+        "blue": "#cc5200",
+        "sapphire": "#b34700",
+        "green": "#4ade80",
+        "yellow": "#ffaa33",
+        "peach": "#ff6700",
+        "red": "#ff4444",
+        "mauve": "#ff6700",
+    },
+)
+
+CUSTOM_FLAVORS = {
+    "matrix": MATRIX_FLAVOR,
+    "ashen": ASHEN_FLAVOR,
+}
+
+FLAVOR_IDS = tuple(flavor.identifier for flavor in PALETTE) + tuple(CUSTOM_FLAVORS)
+PALETTE_FLAVORS = tuple(PALETTE) + tuple(CUSTOM_FLAVORS.values())
 DEFAULT_FLAVOR = "mocha"
 
 SEMANTIC_KEYS = {
@@ -43,24 +119,24 @@ MAUVE = ""
 
 
 def get_flavor_identifier() -> str:
-    flavor = str(read_config().get("catppuccin_flavor", "")).strip().lower()
+    flavor = str(read_config().get("catppuccin_flavor", DEFAULT_FLAVOR)).strip().lower()
     if flavor in FLAVOR_IDS:
         return flavor
     return DEFAULT_FLAVOR
 
 
 def get_flavor():
-    return getattr(PALETTE, get_flavor_identifier())
+    identifier = get_flavor_identifier()
+    custom = CUSTOM_FLAVORS.get(identifier)
+    if custom is not None:
+        return custom
+    return getattr(PALETTE, identifier)
 
 
 def set_flavor(identifier: str):
     if identifier not in FLAVOR_IDS:
         identifier = DEFAULT_FLAVOR
     set_custom_value("UI", "catppuccin_flavor", identifier)
-
-
-def is_dark_flavor() -> bool:
-    return get_flavor().dark
 
 
 def resolve_color(name: str) -> str:
@@ -94,11 +170,6 @@ def _refresh_palette_exports():
     g["PEACH"] = colors.peach.hex
     g["RED"] = colors.red.hex
     g["MAUVE"] = colors.mauve.hex
-
-
-def apply_color_scheme():
-    scheme = Qt.ColorScheme.Dark if is_dark_flavor() else Qt.ColorScheme.Light
-    QGuiApplication.styleHints().setColorScheme(scheme)
 
 
 def _palette() -> QPalette:
@@ -399,7 +470,8 @@ def _qss() -> str:
 
 def apply_theme(app: QApplication):
     _refresh_palette_exports()
-    apply_color_scheme()
+    scheme = Qt.ColorScheme.Dark if get_flavor().dark else Qt.ColorScheme.Light
+    QGuiApplication.styleHints().setColorScheme(scheme)
     app.setStyle("Fusion")
     app.setPalette(_palette())
     app.setStyleSheet(_qss())

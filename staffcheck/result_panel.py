@@ -71,10 +71,6 @@ def user_report_idle(view, message: str = "—") -> None:
         sec._summary.setText(message)
 
 
-def user_report_loading(view) -> None:
-    _section(view, "user_report").set_loading()
-
-
 def user_report_failed(view, message: str) -> None:
     sec = _section(view, "user_report")
     sec.clear_fields()
@@ -173,10 +169,6 @@ def user_report_skipped(view) -> None:
     view.loghistory_issues = ["Gamertag in Notes"]
 
 
-def search_loading(view) -> None:
-    _section(view, "search").set_loading()
-
-
 def search_failed(view, message: str = "Failed") -> None:
     sec = _section(view, "search")
     sec.clear_fields()
@@ -272,10 +264,6 @@ def search_apply(view, response: dict) -> None:
     view.search_issues = [k for k, v in issues.items() if v]
 
 
-def invite_loading(view) -> None:
-    _section(view, "invite_tracker").set_loading()
-
-
 def invite_failed(view) -> None:
     sec = _section(view, "invite_tracker")
     sec.clear_fields()
@@ -318,10 +306,6 @@ def invite_apply(view, response: dict) -> None:
         detail=f"People invited: {invited_count}",
     )
     sec.set_state("success")
-
-
-def sot_loading(view) -> None:
-    _section(view, "sot_official").set_loading()
 
 
 def sot_failed(view, message: str = "Failed") -> None:

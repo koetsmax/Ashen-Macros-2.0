@@ -39,7 +39,7 @@ def api_request(self):
         return
 
     request_error = False
-    result_panel.sot_loading(self)
+    self.result_sections["sot_official"].set_loading()
     try:
         config = read_config()
         response = requests.post(

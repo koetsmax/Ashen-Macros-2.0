@@ -67,10 +67,6 @@ def prepare_for_new_check(self):
     self.clear_reason()
 
 
-def _api_only_method(self) -> bool:
-    return self.method.get() in ("Invite Tracker", "SOT Official")
-
-
 def validate_user_id(self) -> bool:
     uid = self.user_id.get().strip()
     self.user_id.set(uid)
@@ -193,7 +189,7 @@ def continue_check(self, request_error):
             self.entered_gt_button.deleteLater()
         self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
 
-    if self.xbox_gt != [] or _api_only_method(self):
+    if self.xbox_gt != [] or self.method.get() in ("Invite Tracker", "SOT Official"):
         if self.xbox_gt != []:
             label_set(self.gamertag_label, str(self.xbox_gt))
         else:

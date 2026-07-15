@@ -66,13 +66,20 @@ def track_window_geometry(window: QWidget, app_key: str | None = None):
     _GeometryTracker(window)
 
 
-def reset_app_window_positions():
+def reset_app_window_positions(hub=None):
     from gui.apps.registry import APP_REGISTRY
+    from shiboken6 import isValid
 
     for entry in APP_REGISTRY:
         section = f"{APP_SECTION_PREFIX}{entry.window_cls.__name__}"
         for option in ("x", "y", "width", "height"):
             set_custom_value(section, option, "0")
+
+    if hub is None:
+        return
+    for win in list(getattr(hub, "_open_apps", {}).values()):
+        if isValid(win):
+            win.move(0, 0)
 
 
 class _GeometryTracker(QObject):
@@ -91,7 +98,3 @@ class _GeometryTracker(QObject):
         ):
             save_window_geometry(self._window)
         return False
-
-
-save_window_position = save_window_geometry
-load_window_position = load_window_geometry

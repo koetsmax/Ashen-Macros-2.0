@@ -64,7 +64,3 @@ def build_not_good_to_check(self):
     except abort.AbortError:
         return
     after_check_message(self)
-
-
-def stop_check(self):
-    abort.abort_staffcheck(self)

@@ -138,7 +138,7 @@ class SettingsDialog(QDialog):
         super().keyPressEvent(event)
 
     def _reset_app_positions(self):
-        reset_app_window_positions()
+        reset_app_window_positions(self.parent())
 
     def _save(self):
         for key, (entry, section) in self.entries.items():
@@ -157,6 +157,13 @@ class SettingsDialog(QDialog):
             set_custom_value(section, key, defaults[key])
         self.compact_panels_check.setChecked(True)
         set_custom_value("UI", "compact_panels", "true")
+        theme.set_flavor(theme.DEFAULT_FLAVOR)
+        for i in range(self.flavor_combo.count()):
+            if self.flavor_combo.itemData(i) == theme.DEFAULT_FLAVOR:
+                self.flavor_combo.setCurrentIndex(i)
+                break
+        from PySide6.QtWidgets import QApplication
+        theme.apply_theme(QApplication.instance())
 
     def closeEvent(self, event):
         if self._key_test_hotkey:

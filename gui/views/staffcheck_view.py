@@ -22,9 +22,8 @@ from PySide6.QtWidgets import (
 
 from core.auth import get_token
 from core.settings import read_config, set_custom_value
-from staffcheck import pipeline
+from staffcheck import abort, pipeline
 from staffcheck.build_example_message import build_example_message
-from staffcheck.check_message import stop_check
 from staffcheck.elemental_commands import fix_issues as elemental_fix
 from staffcheck.invite_tracker import check_invited_users, check_loghistory
 from staffcheck.qt_ui import Var, btn_config, btn_enable
@@ -209,7 +208,7 @@ class StaffcheckView(QWidget):
         btn_row2 = QHBoxLayout()
         self.start_button = self._make_button("Start check!", lambda: pipeline.start_check(self))
         self.start_button.setObjectName("primary")
-        self.stop_button = self._make_button("Stop check!", lambda: stop_check(self))
+        self.stop_button = self._make_button("Stop check!", lambda: abort.abort_staffcheck(self))
         btn_row2.addWidget(self.start_button)
         btn_row2.addWidget(self.stop_button)
         self.input_layout.addLayout(btn_row2, row, 0, 1, 2)

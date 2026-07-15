@@ -20,15 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 class PollWorker(QThread):
-    finished = Signal(bool, bool, str)
+    finished = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
     def run(self):
         connected = auth.check_connection()
-        verified, username = auth.check_login()
-        self.finished.emit(connected, verified, username or "")
+        self.finished.emit(connected)
 
 
 class UpdateWorker(QThread):
@@ -264,21 +263,10 @@ class StaffcheckHub(QMainWindow):
         worker.start()
         self._poll_worker = worker
 
-    @Slot(bool, bool, str)
-    def _on_poll_result(self, connected: bool, verified: bool, username: str):
-        logger.debug(
-            "Status poll result: connected=%s verified=%s username=%s",
-            connected,
-            verified,
-            username or "none",
-        )
+    @Slot(bool)
+    def _on_poll_result(self, connected: bool):
+        logger.debug("Status poll result: connected=%s", connected)
         self.connected = connected
-        self.verified = verified
-        if verified and username:
-            self.username = username
-        elif not verified:
-            self.username = None
-        self._set_welcome_text(self.username)
         self._apply_gating()
 
     def _apply_gating(self):
