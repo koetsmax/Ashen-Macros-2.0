@@ -8,3 +8,4 @@ pyuac
 filelock
 keyring
 pyperclip
+websocket-client
