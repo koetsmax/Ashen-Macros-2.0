@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -60,6 +61,10 @@ class QueueWindow(AppWindow):
             on_status=lambda text: self._ws_status.emit(text),
         )
         self._client.start()
+        self._countdown_timer = QTimer(self)
+        self._countdown_timer.setInterval(1000)
+        self._countdown_timer.timeout.connect(self._tick_countdowns)
+        self._countdown_timer.start()
 
     def _build_ui(self) -> None:
         status_row = QHBoxLayout()
@@ -91,6 +96,18 @@ class QueueWindow(AppWindow):
         left = QWidget()
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
+        # Nested resizable panes:
+        # [ Full ships | Needs ]  [ Rejoins / Leaves / Pending ]
+        # [------------ Recommended processes ----------------]
+        self._left_panel_splitter = QSplitter(Qt.Orientation.Vertical)
+
+        top_cluster = QSplitter(Qt.Orientation.Horizontal)
+        self._top_cluster_splitter = top_cluster
+
+        fleet_col = QSplitter(Qt.Orientation.Vertical)
+        self._fleet_splitter = fleet_col
 
         full_box = QGroupBox("Full Ships")
         full_layout = QVBoxLayout(full_box)
@@ -100,8 +117,11 @@ class QueueWindow(AppWindow):
         self.full_ships_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        self.full_ships_label.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         full_layout.addWidget(self.full_ships_label)
-        left_layout.addWidget(full_box)
+        fleet_col.addWidget(full_box)
 
         needs_box = QGroupBox("Ships Requiring Crew")
         needs_layout = QVBoxLayout(needs_box)
@@ -111,14 +131,56 @@ class QueueWindow(AppWindow):
         self.needs_ships_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        self.needs_ships_label.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         needs_layout.addWidget(self.needs_ships_label)
-        left_layout.addWidget(needs_box)
+        fleet_col.addWidget(needs_box)
+        fleet_col.setStretchFactor(0, 1)
+        fleet_col.setStretchFactor(1, 1)
+        top_cluster.addWidget(fleet_col)
+
+        workflow_col = QSplitter(Qt.Orientation.Vertical)
+        self._workflow_splitter = workflow_col
+
+        rejoin_box = QGroupBox("Waiting to rejoin")
+        rejoin_layout = QVBoxLayout(rejoin_box)
+        self.rejoins_list = QListWidget()
+        self.rejoins_list.setWordWrap(True)
+        rejoin_layout.addWidget(self.rejoins_list)
+        workflow_col.addWidget(rejoin_box)
+
+        leaves_box = QGroupBox("Active leaves")
+        leaves_layout = QVBoxLayout(leaves_box)
+        self.leaves_list = QListWidget()
+        self.leaves_list.setWordWrap(True)
+        leaves_layout.addWidget(self.leaves_list)
+        workflow_col.addWidget(leaves_box)
+
+        pending_box = QGroupBox("Pending processes")
+        pending_layout = QVBoxLayout(pending_box)
+        self.outstanding_list = QListWidget()
+        self.outstanding_list.setWordWrap(True)
+        pending_layout.addWidget(self.outstanding_list)
+        workflow_col.addWidget(pending_box)
+        workflow_col.setStretchFactor(0, 1)
+        workflow_col.setStretchFactor(1, 1)
+        workflow_col.setStretchFactor(2, 2)
+        top_cluster.addWidget(workflow_col)
+
+        # Keep fleet column narrow; workflow absorbs growth when the main
+        # left panel is resized against the Queue table.
+        top_cluster.setStretchFactor(0, 0)
+        top_cluster.setStretchFactor(1, 1)
+        top_cluster.setSizes([160, 380])
+
+        self._left_panel_splitter.addWidget(top_cluster)
 
         rec_box = QGroupBox("Recommended processes")
         rec_layout = QVBoxLayout(rec_box)
         self.recommendations_list = QListWidget()
         self.recommendations_list.setWordWrap(True)
-        self.recommendations_list.setMinimumHeight(140)
+        self.recommendations_list.setMinimumHeight(100)
         self.recommendations_list.itemSelectionChanged.connect(
             self._on_recommendation_selection
         )
@@ -132,8 +194,11 @@ class QueueWindow(AppWindow):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
         rec_layout.addWidget(self.recommendation_detail)
-        left_layout.addWidget(rec_box)
-        left_layout.addStretch(1)
+        self._left_panel_splitter.addWidget(rec_box)
+        self._left_panel_splitter.setStretchFactor(0, 2)
+        self._left_panel_splitter.setStretchFactor(1, 3)
+
+        left_layout.addWidget(self._left_panel_splitter)
         splitter.addWidget(left)
 
         right = QWidget()
@@ -217,6 +282,10 @@ class QueueWindow(AppWindow):
         self.root_layout.addWidget(splitter, stretch=1)
         self._restore_splitter_sizes()
         splitter.splitterMoved.connect(self._save_splitter_sizes)
+        self._left_panel_splitter.splitterMoved.connect(self._save_splitter_sizes)
+        self._top_cluster_splitter.splitterMoved.connect(self._save_splitter_sizes)
+        self._fleet_splitter.splitterMoved.connect(self._save_splitter_sizes)
+        self._workflow_splitter.splitterMoved.connect(self._save_splitter_sizes)
 
         self.debug_box = QGroupBox("Raw messages (debug)")
         self.debug_box.setVisible(self._debug_visible)
@@ -272,24 +341,51 @@ class QueueWindow(AppWindow):
 
     def _restore_splitter_sizes(self) -> None:
         raw = read_config().get("queue_splitter_sizes", "").strip()
-        if not raw:
+        if raw:
+            try:
+                sizes = [int(part) for part in raw.split(",") if part.strip()]
+            except ValueError:
+                sizes = []
+            if len(sizes) >= 2 and all(size > 0 for size in sizes[:2]):
+                self._ships_splitter.setSizes(sizes[:2])
+
+        panel_raw = read_config().get("queue_panel_splitters", "").strip()
+        if not panel_raw:
             return
         try:
-            sizes = [int(part) for part in raw.split(",") if part.strip()]
-        except ValueError:
+            data = json.loads(panel_raw)
+        except Exception:
             return
-        if len(sizes) >= 2 and all(size > 0 for size in sizes[:2]):
-            self._ships_splitter.setSizes(sizes[:2])
+        mapping = (
+            ("left_panel", self._left_panel_splitter),
+            ("top_cluster", self._top_cluster_splitter),
+            ("fleet", self._fleet_splitter),
+            ("workflow", self._workflow_splitter),
+        )
+        for key, widget in mapping:
+            sizes = data.get(key)
+            if (
+                isinstance(sizes, list)
+                and len(sizes) == widget.count()
+                and all(isinstance(n, int) and n > 0 for n in sizes)
+            ):
+                widget.setSizes(sizes)
 
     def _save_splitter_sizes(self, *_args) -> None:
         sizes = self._ships_splitter.sizes()
-        if len(sizes) < 2:
-            return
-        set_custom_value(
-            "UI",
-            "queue_splitter_sizes",
-            ",".join(str(size) for size in sizes),
-        )
+        if len(sizes) >= 2:
+            set_custom_value(
+                "UI",
+                "queue_splitter_sizes",
+                ",".join(str(size) for size in sizes),
+            )
+        panel = {
+            "left_panel": self._left_panel_splitter.sizes(),
+            "top_cluster": self._top_cluster_splitter.sizes(),
+            "fleet": self._fleet_splitter.sizes(),
+            "workflow": self._workflow_splitter.sizes(),
+        }
+        set_custom_value("UI", "queue_panel_splitters", json.dumps(panel))
 
     def _toggle_debug(self) -> None:
         self._debug_visible = not self._debug_visible
@@ -690,6 +786,11 @@ class QueueWindow(AppWindow):
                     flags.append("Process together")
                 elif entry.get("process_together") == "separate":
                     flags.append("Process separately")
+                if entry.get("needs_prep"):
+                    flags.append("Needs prep")
+                prep_status = self._prep_status_for_user(str(entry.get("user_id") or ""))
+                if prep_status:
+                    flags.append(f"Prep: {prep_status}")
 
                 values = [
                     str(entry.get("display_name") or entry.get("user_id") or ""),
@@ -713,10 +814,254 @@ class QueueWindow(AppWindow):
                 self._selected_user_id = None
                 self._clear_editors()
 
+        self._apply_leaves(data)
+        self._apply_outstanding(data)
+        self._apply_rejoins(data)
         self._apply_recommendations(data)
 
         if self._debug_visible:
             self._apply_raw(data)
+
+    def _display_name_for_user(self, user_id: str, *, fallback: str = "") -> str:
+        if fallback:
+            return fallback
+        for entry in self._last_snapshot.get("queue") or []:
+            if str(entry.get("user_id")) == str(user_id):
+                return str(entry.get("display_name") or user_id)
+        return str(user_id)
+
+    def _prep_status_for_user(self, user_id: str) -> str | None:
+        if not user_id:
+            return None
+        for prep in self._last_snapshot.get("active_preps") or []:
+            if str(prep.get("user_id")) == user_id:
+                status = str(prep.get("status") or "open")
+                if status == "cancelled":
+                    continue
+                return status
+        return None
+
+    @staticmethod
+    def _format_duration(seconds: int) -> str:
+        seconds = abs(int(seconds))
+        minutes = seconds // 60
+        secs = seconds % 60
+        if minutes >= 60:
+            hours = minutes // 60
+            minutes = minutes % 60
+            return f"{hours}h {minutes:02d}m {secs:02d}s"
+        if minutes > 0:
+            return f"{minutes}m {secs:02d}s"
+        return f"{secs}s"
+
+    @classmethod
+    def _format_expiry(
+        cls,
+        expires_at: str | None,
+        *,
+        overdue_phrase: str | None = None,
+    ) -> str:
+        if not expires_at:
+            return ""
+        try:
+            value = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            seconds = int((value - now).total_seconds())
+            if seconds <= 0:
+                if overdue_phrase:
+                    return f"{overdue_phrase} {cls._format_duration(seconds)} ago"
+                return "expired"
+            return cls._format_duration(seconds)
+        except Exception:
+            return expires_at
+
+    def _ship_key_for_workflow(self, row: dict) -> str:
+        ship_id = str(row.get("ship_channel_id") or "").strip()
+        if ship_id:
+            return f"id:{ship_id}"
+        # Preps store target under target_ship_channel_id
+        target = str(row.get("target_ship_channel_id") or "").strip()
+        if target:
+            return f"id:{target}"
+        ship_name = (row.get("ship_name") or "").strip().lower()
+        if ship_name:
+            return f"name:{ship_name}"
+        return ""
+
+    def _pair_leaves_to_slots(
+        self, leaves: list, slots_by_ship: dict[str, int]
+    ) -> set[str]:
+        """Assign up to N slots per ship to oldest non-filled leaves. Returns user_ids."""
+        leaves_by_ship: dict[str, list[dict]] = {}
+        for leave in leaves:
+            if (leave.get("fill_status") or "open") == "filled":
+                continue
+            key = self._ship_key_for_workflow(leave)
+            if not key:
+                continue
+            leaves_by_ship.setdefault(key, []).append(leave)
+
+        paired: set[str] = set()
+        for key, ship_leaves in leaves_by_ship.items():
+            slots = slots_by_ship.get(key, 0)
+            if slots <= 0:
+                continue
+            ordered = sorted(
+                ship_leaves,
+                key=lambda row: str(row.get("created_at") or row.get("expires_at") or ""),
+            )
+            for leave in ordered[:slots]:
+                user_id = str(leave.get("user_id") or "")
+                if user_id:
+                    paired.add(user_id)
+        return paired
+
+    def _leave_status_by_user(self, data: dict) -> dict[str, str]:
+        """Map leave user_id -> unhandled|prepped|processing|taken."""
+        leaves = data.get("active_leaves") or []
+        processes = data.get("outstanding_processes") or []
+        preps = [
+            p
+            for p in (data.get("active_preps") or [])
+            if (p.get("status") or "open") in ("open", "ready")
+        ]
+        recommendations = data.get("recommendations") or []
+
+        status_by_user: dict[str, str] = {}
+        for leave in leaves:
+            user_id = str(leave.get("user_id") or "")
+            if not user_id:
+                continue
+            if (leave.get("fill_status") or "open") == "filled":
+                status_by_user[user_id] = "taken"
+            else:
+                status_by_user[user_id] = "unhandled"
+
+        process_slots: dict[str, int] = {}
+        for proc in processes:
+            key = self._ship_key_for_workflow(proc)
+            if key:
+                process_slots[key] = process_slots.get(key, 0) + 1
+        for user_id in self._pair_leaves_to_slots(leaves, process_slots):
+            if status_by_user.get(user_id) != "taken":
+                status_by_user[user_id] = "processing"
+
+        prep_slots: dict[str, int] = {}
+        for prep in preps:
+            key = self._ship_key_for_workflow(prep)
+            if key:
+                prep_slots[key] = prep_slots.get(key, 0) + 1
+        # Recommendations with action=prep also claim leave slots on that ship
+        # (prep channels often have no ship id yet).
+        prep_user_ids = {
+            str(p.get("user_id")) for p in preps if p.get("user_id")
+        }
+        for rec in recommendations:
+            if str(rec.get("action") or "") != "prep":
+                continue
+            ship = rec.get("ship") or {}
+            key = self._ship_key_for_workflow(ship)
+            if not key:
+                continue
+            # Only count if at least one rec member currently has an open prep,
+            # or no prep rows exist yet (prep recommended but channel not seen).
+            members = rec.get("members") or []
+            member_ids = {str(m.get("user_id")) for m in members if m.get("user_id")}
+            if prep_user_ids and not (member_ids & prep_user_ids):
+                continue
+            prep_slots[key] = prep_slots.get(key, 0) + max(1, len(member_ids) or 1)
+
+        open_leaves = [
+            leave
+            for leave in leaves
+            if status_by_user.get(str(leave.get("user_id") or "")) == "unhandled"
+        ]
+        for user_id in self._pair_leaves_to_slots(open_leaves, prep_slots):
+            status_by_user[user_id] = "prepped"
+
+        return status_by_user
+
+    def _tick_countdowns(self) -> None:
+        if not self._last_snapshot:
+            return
+        self._apply_leaves(self._last_snapshot)
+        self._apply_outstanding(self._last_snapshot)
+        self._apply_rejoins(self._last_snapshot)
+
+    def _apply_leaves(self, data: dict) -> None:
+        self.leaves_list.clear()
+        leaves = data.get("active_leaves") or []
+        if not data.get("active", True):
+            self.leaves_list.addItem("Queue closed")
+            return
+        if not leaves:
+            self.leaves_list.addItem("None")
+            return
+
+        colors = {
+            "unhandled": QColor(theme.RED or "#ff4444"),
+            "prepped": QColor(theme.YELLOW or "#ffaa33"),
+            "processing": QColor(theme.PEACH or "#ff8533"),
+            "taken": QColor(theme.GREEN or "#4ade80"),
+        }
+        status_by_user = self._leave_status_by_user(data)
+        for leave in leaves:
+            user_id = str(leave.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(leave.get("display_name") or "")
+            )
+            ship = leave.get("ship_name") or leave.get("ship_channel_id") or "?"
+            expiry = self._format_expiry(
+                leave.get("expires_at"),
+                overdue_phrase="should have left",
+            )
+            status = status_by_user.get(user_id, "unhandled")
+            bits = [f"{name} leaving {ship}", status]
+            if expiry:
+                bits.append(expiry)
+            item = QListWidgetItem(" — ".join(bits))
+            item.setForeground(colors.get(status, colors["unhandled"]))
+            self.leaves_list.addItem(item)
+
+    def _apply_outstanding(self, data: dict) -> None:
+        self.outstanding_list.clear()
+        processes = data.get("outstanding_processes") or []
+        if not data.get("active", True):
+            self.outstanding_list.addItem("Queue closed")
+            return
+        if not processes:
+            self.outstanding_list.addItem("None")
+            return
+        for proc in processes:
+            user_id = str(proc.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(proc.get("display_name") or "")
+            )
+            ship = proc.get("ship_name") or proc.get("ship_channel_id") or "?"
+            expiry = self._format_expiry(proc.get("expires_at"))
+            text = f"{name} → {ship}"
+            if expiry:
+                text = f"{text} ({expiry})"
+            self.outstanding_list.addItem(text)
+
+    def _apply_rejoins(self, data: dict) -> None:
+        self.rejoins_list.clear()
+        rejoins = data.get("pending_rejoins") or []
+        if not data.get("active", True):
+            self.rejoins_list.addItem("Queue closed")
+            return
+        if not rejoins:
+            self.rejoins_list.addItem("None")
+            return
+        for rejoin in rejoins:
+            user_id = str(rejoin.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(rejoin.get("display_name") or "")
+            )
+            ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
+            self.rejoins_list.addItem(f"{name} → {ship} (not a real vacancy)")
 
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
@@ -770,8 +1115,9 @@ class QueueWindow(AppWindow):
         needs_bit = f", needs {needs}" if needs is not None else ""
         reason = rec.get("reason_label") or rec.get("reason") or ""
         score = rec.get("score")
+        action = str(rec.get("action") or "process").capitalize()
         lines = [
-            f"Process: {names}",
+            f"{action}: {names}",
             f"Ship: {ship_name}{needs_bit}",
             f"Why: {reason}",
         ]
@@ -779,6 +1125,8 @@ class QueueWindow(AppWindow):
             lines.append(f"Score: {score}")
         if self._sim_enabled:
             lines.append("Sim: double-click to process")
+        else:
+            lines.append("Execute in alpha11")
         self.recommendation_detail.setText("\n".join(lines))
 
         # Highlight matching queue rows for the chosen recommendation.
@@ -832,6 +1180,8 @@ class QueueWindow(AppWindow):
         self.raw_queue.setPlainText(raw.get("queue") or "")
 
     def closeEvent(self, event):
+        if hasattr(self, "_countdown_timer") and self._countdown_timer is not None:
+            self._countdown_timer.stop()
         if self._client:
             self._client.stop()
             self._client = None

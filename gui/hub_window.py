@@ -491,9 +491,9 @@ class StaffcheckHub(QMainWindow):
 
         for win in list(self._open_apps.values()):
             if isValid(win):
-                save_window_geometry(win)
+                save_window_geometry(win, force=True)
                 win.close()
         self._open_apps.clear()
 
-        save_window_geometry(self)
+        save_window_geometry(self, force=True)
         super().closeEvent(event)
