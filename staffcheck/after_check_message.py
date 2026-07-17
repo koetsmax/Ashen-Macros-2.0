@@ -7,7 +7,6 @@ from core.keyboard import clear_typing_bar, execute_command, switch_channel, typ
 from core.settings import read_config
 from staffcheck import abort, pipeline
 from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
-from staffcheck.result_panel import format_api_error
 from staffcheck.tasks import run_background
 
 logger = logging.getLogger(__name__)
@@ -60,7 +59,7 @@ def unprivate_api_request(self):
             request_error = True
         elif response.json()["error"] != "none":
             request_error = True
-            label_set(self.status_label, format_api_error(response.json()["error"]), "red")
+            label_set(self.status_label, response.json()["error"], "red")
         else:
             r = response.json()
             try:

@@ -2,7 +2,7 @@ import requests
 
 from core.settings import read_config
 from staffcheck import abort, result_panel
-from staffcheck.qt_ui import Var, btn_config, btn_enable, label_set, on_main_thread
+from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
 from staffcheck.tasks import run_background
 
 
@@ -23,9 +23,7 @@ def disable_function_button_2(self):
 def _rerun_button_text(view) -> str:
     name = getattr(view, "user_name", None) or "—"
     gt = getattr(view, "xbox_gt", None)
-    if hasattr(gt, "get"):
-        gt_display = gt.get().strip() or "Not linked"
-    elif gt in ([], None, ""):
+    if gt in ([], None, ""):
         gt_display = "Not linked"
     else:
         gt_display = str(gt)
@@ -149,7 +147,7 @@ def _handle_essential_data(self, request_error: bool):
                     "Warning: Has multiple accounts linked. Only showing the first one.",
                     "red",
                 )
-            continue_check(self, request_error)
+            continue_check(self)
             return
         except Exception:
             request_error = True
@@ -157,37 +155,32 @@ def _handle_essential_data(self, request_error: bool):
     if abort.is_abort_requested(self):
         return
 
-    label_set(self.status_label, "Error when trying to get GT. Enter GT manually instead!", "red")
-    self.xbox_gt = Var(lambda: "", lambda v: None)
-    from PySide6.QtWidgets import QLabel, QLineEdit
+    label_set(
+        self.status_label,
+        "Could not load account data from the API. Fix the connection and try again.",
+        "red",
+    )
+    btn_enable(self.start_button, True)
+    btn_enable(self.stop_button, False)
+    self.user_id_entry.setEnabled(True)
+    self.channel_combo_box.setEnabled(True)
+    self.method_combo_box.setEnabled(True)
+    self.pre_check_button.setEnabled(True)
+    abort.end_check_session(self)
 
-    self.gt_entry_label = QLabel("Enter GT:")
-    self.gt_entry = QLineEdit()
-    self.gt_entry.setMaxLength(30)
-    self.xbox_gt = Var(self.gt_entry.text, self.gt_entry.setText)
-    self.entered_gt_button = self._make_button("Entered GT", lambda: continue_check(self, True))
-    self.input_layout.addWidget(self.gt_entry_label, 9, 0)
-    self.input_layout.addWidget(self.gt_entry, 9, 1)
-    self.input_layout.addWidget(self.entered_gt_button, 10, 1)
-    self.gt_entry.setFocus()
 
-
-def continue_check(self, request_error):
+def continue_check(self):
     if abort.is_abort_requested(self):
         return
 
-    if request_error or not len(self.essential_data_response.json()["linked_xbox"]) > 1:
-        label_set(self.status_label, "Running Check")
+    multi_xbox = False
+    try:
+        multi_xbox = len(self.essential_data_response.json().get("linked_xbox") or []) > 1
+    except Exception:
+        multi_xbox = False
 
-    if request_error:
-        self.xbox_gt = self.xbox_gt.get().strip()
-        if self.gt_entry_label:
-            self.gt_entry_label.deleteLater()
-        if self.gt_entry:
-            self.gt_entry.deleteLater()
-        if self.entered_gt_button:
-            self.entered_gt_button.deleteLater()
-        self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
+    if not multi_xbox:
+        label_set(self.status_label, "Running Check")
 
     if self.xbox_gt != [] or self.method.get() in ("Invite Tracker", "SOT Official"):
         if self.xbox_gt != []:
@@ -244,19 +237,6 @@ def finish_single_method(self):
     configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
 
 
-def _clear_manual_gt_widgets(self):
-    gt_label = getattr(self, "gt_entry_label", None)
-    gt_entry = getattr(self, "gt_entry", None)
-    gt_button = getattr(self, "entered_gt_button", None)
-    if gt_label:
-        gt_label.deleteLater()
-    if gt_entry:
-        gt_entry.deleteLater()
-    if gt_button:
-        gt_button.deleteLater()
-    self.gt_entry_label = self.gt_entry = self.entered_gt_button = None
-
-
 def reset_ui(self, preserve_abort: bool = False):
     if preserve_abort:
         # Tear down session UI without wiping sticky abort_requested.
@@ -265,8 +245,6 @@ def reset_ui(self, preserve_abort: bool = False):
         self._abort_finish_pending = False
     else:
         abort.end_check_session(self)
-
-    _clear_manual_gt_widgets(self)
 
     previous_user_id = self.user_id.get()
     self.user_id.set("")

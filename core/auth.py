@@ -9,7 +9,8 @@ from core.settings import read_config
 logger = logging.getLogger(__name__)
 
 
-def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
+def check_login(force_new_token: bool = False) -> tuple[bool, str | None, list[str]]:
+    """Return (verified, username, permissions)."""
     try:
         if force_new_token:
             raise ValueError("Force new token")
@@ -33,23 +34,25 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None]:
 
         if response.status_code != 200:
             logger.warning("Token validation failed with status %s", response.status_code)
-            return False, None
+            return False, None, []
         data = response.json()
 
-        if data["error"] == "invalid token format":
+        if data.get("error") == "invalid token format":
             logger.info("Invalid token format; regenerating token")
             return check_login(True)
 
-        if data["valid"] == "true":
-            return True, data["username"]
+        permissions = list(data.get("permissions") or [])
+        valid = data.get("valid")
+        if valid is True or valid == "true":
+            return True, data.get("username"), permissions
 
-        if data["valid"] == "false":
-            return False, None
+        if valid is False or valid == "false":
+            return False, None, []
     except Exception as e:
         logger.warning("Failed to validate token: %s", e)
-        return False, None
+        return False, None, []
 
-    return False, None
+    return False, None, []
 
 
 def get_token() -> str | None:

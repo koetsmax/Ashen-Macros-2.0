@@ -8,7 +8,7 @@ from shiboken6 import isValid
 
 from core import auth, updates
 from core.window_positions import load_window_geometry, save_window_geometry, track_window_geometry
-from gui.apps.registry import APP_REGISTRY, open_app, restore_session_apps
+from gui.apps.registry import APP_BY_KEY, APP_REGISTRY, open_app, restore_session_apps
 from gui.components.toast import ToastStack
 from gui.components.version_badge import VersionBadge
 from gui.settings_dialog import SettingsDialog
@@ -42,12 +42,20 @@ class UpdateWorker(QThread):
 
 
 class StaffcheckHub(QMainWindow):
-    def __init__(self, local_version: str, username: str | None, verified: bool):
+    def __init__(
+        self,
+        local_version: str,
+        username: str | None,
+        verified: bool,
+        permissions: list[str] | None = None,
+    ):
         super().__init__()
         self.local_version = local_version
         self.username = username
         self.verified = verified
+        self.permissions = list(permissions or [])
         self.connected = False
+        self._verification_in_progress = False
         self._open_apps: dict[str, AppWindow] = {}
         self._online_version = None
         self._update_worker = None
@@ -95,6 +103,11 @@ class StaffcheckHub(QMainWindow):
         self.verify_button.clicked.connect(self._run_verify)
         welcome_header.addWidget(self.verify_button)
 
+        self.recheck_permissions_button = QPushButton("Recheck permissions")
+        self.recheck_permissions_button.setObjectName("hubHeaderButton")
+        self.recheck_permissions_button.clicked.connect(self._recheck_permissions)
+        welcome_header.addWidget(self.recheck_permissions_button)
+
         self.retry_connection_button = QPushButton("Retry connection")
         self.retry_connection_button.setObjectName("hubHeaderButton")
         self.retry_connection_button.clicked.connect(self._poll_status)
@@ -131,10 +144,11 @@ class StaffcheckHub(QMainWindow):
         self._check_updates()
         self._session_restored = False
         logger.info(
-            "Hub initialized (version=%s, verified=%s, username=%s)",
+            "Hub initialized (version=%s, verified=%s, username=%s, permissions=%s)",
             local_version,
             verified,
             username or "none",
+            self.permissions,
         )
 
     def _build_menu(self):
@@ -144,6 +158,7 @@ class StaffcheckHub(QMainWindow):
         for entry in APP_REGISTRY:
             action = self._apps_menu.addAction(entry.label)
             action.triggered.connect(lambda checked=False, e=entry: open_app(self, e))
+            action.setProperty("permission", entry.permission)
             self._app_actions.append(action)
 
         self._settings_action = bar.addAction("Settings", self._open_settings)
@@ -168,15 +183,25 @@ class StaffcheckHub(QMainWindow):
     def _position_toast_stack(self):
         if hasattr(self, "toast_stack"):
             width = self.toast_stack.TOAST_WIDTH
-            self.toast_stack.sync_toast_widths()
             if not self.toast_stack.isVisible():
                 return
-            self.toast_stack.adjustSize()
-            height = max(self.toast_stack.sizeHint().height(), 1)
+            height = self.toast_stack.preferred_height()
             self.toast_stack.setGeometry(
                 self.width() - width - 20, 36, width, height
             )
             self.toast_stack.raise_()
+            # Re-measure after geometry settles (second toast often needs this).
+            QTimer.singleShot(0, self._relayout_toast_stack)
+
+    def _relayout_toast_stack(self):
+        if not hasattr(self, "toast_stack") or not self.toast_stack.isVisible():
+            return
+        width = self.toast_stack.TOAST_WIDTH
+        height = self.toast_stack.preferred_height()
+        self.toast_stack.setGeometry(
+            self.width() - width - 20, 36, width, height
+        )
+        self.toast_stack.raise_()
 
     def _set_welcome_text(self, username: str | None):
         if username and username != "N/A":
@@ -186,9 +211,25 @@ class StaffcheckHub(QMainWindow):
             self.welcome_label.clear()
             self.welcome_label.setVisible(False)
 
+    def _has_permission(self, key: str) -> bool:
+        return key in (self.permissions or [])
+
     def _update_welcome_header(self):
-        self.not_verified_label.setVisible(not self.verified)
-        self.verify_button.setVisible(not self.verified)
+        show_verify = self.connected and not self.verified
+        show_no_perms = self.connected and self.verified and not self.permissions
+        if show_no_perms:
+            self.not_verified_label.setText("No permissions granted")
+            self.not_verified_label.setVisible(True)
+        elif show_verify:
+            self.not_verified_label.setText("Not verified!")
+            self.not_verified_label.setVisible(True)
+        else:
+            self.not_verified_label.setVisible(False)
+        self.verify_button.setVisible(show_verify)
+        # Only useful while waiting for Max to grant the first permission(s).
+        self.recheck_permissions_button.setVisible(
+            self.connected and self.verified and not self.permissions
+        )
         self.retry_connection_button.setVisible(not self.connected)
 
     def _update_menu_gating(self):
@@ -196,25 +237,39 @@ class StaffcheckHub(QMainWindow):
         if self._apps_menu is not None:
             self._apps_menu.menuAction().setEnabled(menus_enabled)
         for action in getattr(self, "_app_actions", []):
-            action.setEnabled(menus_enabled)
+            perm = action.property("permission")
+            action.setEnabled(menus_enabled and bool(perm) and self._has_permission(str(perm)))
+            action.setVisible(not menus_enabled or (bool(perm) and self._has_permission(str(perm))))
         if self._settings_action is not None:
             self._settings_action.setEnabled(menus_enabled)
         if self._updates_action is not None:
             self._updates_action.setEnabled(menus_enabled)
         if hasattr(self, "customize_menu"):
-            self.customize_menu.menuAction().setEnabled(menus_enabled)
+            self.customize_menu.menuAction().setEnabled(
+                menus_enabled and self._has_permission("staffcheck")
+            )
         if hasattr(self, "staffcheck"):
-            self.staffcheck._set_customize_enabled(menus_enabled)
+            self.staffcheck._set_customize_enabled(
+                menus_enabled and self._has_permission("staffcheck")
+            )
 
         if self.verified and self._verify_action is not None:
             self.menuBar().removeAction(self._verify_action)
             self._verify_action = None
+        elif not self.verified:
+            if self._verify_action is None:
+                self._verify_action = self.menuBar().addAction("Verify account", self._run_verify)
+            self._verify_action.setEnabled(self.connected)
+            self._verify_action.setVisible(self.connected)
 
     def _open_settings(self):
         if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
             self.staffcheck.rebuild_results_panel()
 
     def _run_verify(self):
+        if not self.connected:
+            return
+        self._verification_in_progress = True
         self.toast_stack.show_toast(
             "verify",
             "Verification in progress. Do not touch your PC until it completes.",
@@ -230,15 +285,42 @@ class StaffcheckHub(QMainWindow):
     def _schedule_refresh_auth(self):
         QTimer.singleShot(0, self._refresh_auth)
 
-    def _refresh_auth(self):
-        verified, username = auth.check_login()
+    def _sync_auth_from_login(self, *, log: bool = False) -> None:
+        verified, username, permissions = auth.check_login()
         self.verified = verified
-        self.username = username
-        if not verified:
-            self.username = None
+        self.username = username if verified else None
+        self.permissions = list(permissions or []) if verified else []
         self._set_welcome_text(self.username)
+        if log:
+            logger.info(
+                "Auth sync: verified=%s username=%s permissions=%s",
+                self.verified,
+                self.username or "none",
+                self.permissions,
+            )
+
+    def _refresh_auth(self):
+        self._verification_in_progress = False
+        self._sync_auth_from_login()
         self._apply_gating()
-        self._poll_status()
+
+    def _recheck_permissions(self):
+        if not self.connected:
+            return
+        self._sync_auth_from_login(log=True)
+        self._apply_gating()
+        if self.verified and self.permissions:
+            self.toast_stack.show_toast(
+                "permissions_refresh",
+                f"Permissions updated: {', '.join(self.permissions)}",
+                dismiss_ms=5000,
+            )
+        elif self.verified:
+            self.toast_stack.show_toast(
+                "permissions_refresh",
+                "Still no permissions granted.",
+                dismiss_ms=4000,
+            )
 
     def _worker_running(self, worker: QThread | None) -> bool:
         if worker is None:
@@ -266,12 +348,17 @@ class StaffcheckHub(QMainWindow):
     @Slot(bool)
     def _on_poll_result(self, connected: bool):
         logger.debug("Status poll result: connected=%s", connected)
+        was_connected = self.connected
         self.connected = connected
+        if connected and not was_connected:
+            self._sync_auth_from_login(log=True)
         self._apply_gating()
 
     def _apply_gating(self):
-        ready = self.connected and self.verified
+        has_staffcheck = self._has_permission("staffcheck")
+        ready = self.connected and self.verified and has_staffcheck
         self.staffcheck.set_ready(ready)
+        self.staffcheck.setVisible(True)
 
         if self.connected:
             self.status_label.setText("Connected")
@@ -284,17 +371,43 @@ class StaffcheckHub(QMainWindow):
         self._update_welcome_header()
         self._update_menu_gating()
 
-        if not self.verified:
-            self.toast_stack.show_toast(
-                "verify",
-                "Verify your account to use the program.\n\n"
-                "After pressing Verify now, do not touch your PC until verification completes.",
-                on_click=self._run_verify,
-                action_label="Verify now",
-                dismiss_ms=0,
-            )
-        else:
+        if not self.connected:
             self.toast_stack.dismiss("verify")
+            self.toast_stack.dismiss("permissions")
+        elif not self.verified:
+            self.toast_stack.dismiss("permissions")
+            if not self._verification_in_progress:
+                self.toast_stack.show_toast(
+                    "verify",
+                    "Verify your account to use the program.\n\n"
+                    "After pressing Verify now, do not touch your PC until verification completes.",
+                    on_click=self._run_verify,
+                    action_label="Verify now",
+                    dismiss_ms=0,
+                )
+        else:
+            self._verification_in_progress = False
+            self.toast_stack.dismiss("verify")
+            if not self.permissions:
+                self.toast_stack.show_toast(
+                    "permissions",
+                    "You are verified, but you do not have any permissions yet.\n"
+                    "Ask Max to grant access, then press Recheck permissions.",
+                    dismiss_ms=0,
+                )
+            else:
+                self.toast_stack.dismiss("permissions")
+
+        self._close_unauthorized_apps()
+
+    def _close_unauthorized_apps(self):
+        allowed = set(self.permissions or [])
+        for key, win in list(self._open_apps.items()):
+            entry = APP_BY_KEY.get(key)
+            if entry is None or entry.permission not in allowed:
+                if isValid(win):
+                    win.close()
+                self._open_apps.pop(key, None)
 
     def _check_updates(self, silent: bool = True):
         if self._worker_running(self._update_worker):

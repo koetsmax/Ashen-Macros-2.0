@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 class App:
     def __init__(self):
         self.local_version = updates.read_local_version()
-        self.verified, self.username = auth.check_login()
+        self.verified, self.username, self.permissions = auth.check_login()
         logger.info(
-            "Login check complete: verified=%s username=%s",
+            "Login check complete: verified=%s username=%s permissions=%s",
             self.verified,
             self.username or "none",
+            self.permissions,
         )
 
     def run(self):
@@ -30,7 +31,12 @@ class App:
 
         init_main_thread_bridge()
 
-        hub = StaffcheckHub(self.local_version, self.username, self.verified)
+        hub = StaffcheckHub(
+            self.local_version,
+            self.username,
+            self.verified,
+            permissions=self.permissions,
+        )
         hub.show()
 
         exit_code = app.exec()

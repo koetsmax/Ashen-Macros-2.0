@@ -81,9 +81,6 @@ class StaffcheckView(QWidget):
         self.hub = hub
         self.headers = {"Authorization": get_token()}
         self.keyboard_lock = __import__("threading").Lock()
-        self.gt_entry_label = None
-        self.gt_entry = None
-        self.entered_gt_button = None
         self.mutual_guilds = []
         self.customize_actions = {}
         self.result_sections = {}

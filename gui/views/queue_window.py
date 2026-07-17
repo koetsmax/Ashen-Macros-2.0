@@ -32,29 +32,6 @@ from core.settings import read_config, set_custom_value
 from gui import theme
 from gui.views.app_window import AppWindow
 
-# Fallback if the bot has not sent known_activities yet
-_DEFAULT_ACTIVITIES = (
-    "World Events",
-    "Fort of the Damned",
-    "Athena",
-    "Reaper Voyages",
-    "Gold Hoarders",
-    "Order of Souls",
-    "Merchant",
-    "Sea Fort",
-    "Sunken Kingdom",
-    "Hunter's Call",
-    "Fishing",
-    "Tall Tale",
-    "Siren Song",
-    "Sanctuary of the Banished",
-    "Skeleton Camps",
-    "Smugglers' League",
-    "Garrisons",
-    "Devil's Roar",
-    "Anything",
-)
-
 
 def _queue_debug_enabled() -> bool:
     return read_config().get("queue_debug", "false").lower() in ("1", "true", "yes")
@@ -69,7 +46,7 @@ class QueueWindow(AppWindow):
         self._last_snapshot: dict = {}
         self._selected_user_id: str | None = None
         self._updating_editors = False
-        self._known_activities: list[str] = list(_DEFAULT_ACTIVITIES)
+        self._known_activities: list[str] = []
         self._activity_checks: dict[str, QCheckBox] = {}
         self._selected_recommendation_id: str | None = None
         self._sim_enabled = False

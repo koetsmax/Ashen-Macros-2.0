@@ -28,23 +28,28 @@ logger = logging.getLogger(__name__)
 class AppEntry:
     label: str
     window_cls: Type[AppWindow]
+    permission: str
 
 
 APP_REGISTRY = [
-    AppEntry("Queue monitor", QueueWindow),
-    AppEntry("Command executor", CommandExecutorWindow),
-    AppEntry("Add to ban list", BanListWindow),
-    AppEntry("Add warning", WarningWindow),
-    AppEntry("Rename fleet", RenameFleetWindow),
-    AppEntry("Fill new fleet", FillNewFleetWindow),
-    AppEntry("Timestamp generator", HammertimeWindow),
-    AppEntry("Ship Holder", ShipHolderWindow),
+    AppEntry("Queue monitor", QueueWindow, "queue_monitor"),
+    AppEntry("Command executor", CommandExecutorWindow, "command_executor"),
+    AppEntry("Add to ban list", BanListWindow, "ban_list"),
+    AppEntry("Add warning", WarningWindow, "warning"),
+    AppEntry("Rename fleet", RenameFleetWindow, "rename_fleet"),
+    AppEntry("Fill new fleet", FillNewFleetWindow, "fill_new_fleet"),
+    AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
+    AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
 ]
 
 APP_BY_KEY = {entry.window_cls.__name__: entry for entry in APP_REGISTRY}
 
 
 def open_app(hub, entry: AppEntry):
+    permissions = getattr(hub, "permissions", None) or []
+    if entry.permission not in permissions:
+        logger.info("Denied app open (missing %s): %s", entry.permission, entry.window_cls.__name__)
+        return
     key = entry.window_cls.__name__
     existing = hub._open_apps.get(key)
     if existing is not None:
@@ -74,8 +79,11 @@ def restore_session_apps(hub):
     if not open_apps:
         return
     keys = [key.strip() for key in open_apps.split(",") if key.strip()]
+    permissions = getattr(hub, "permissions", None) or []
     logger.info("Restoring session apps: %s", keys)
     for key in keys:
         entry = APP_BY_KEY.get(key)
-        if entry:
+        if entry and entry.permission in permissions:
             open_app(hub, entry)
+        elif entry:
+            logger.info("Skipping session restore for %s (no %s)", key, entry.permission)

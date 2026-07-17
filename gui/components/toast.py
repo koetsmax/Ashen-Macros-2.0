@@ -44,11 +44,12 @@ class Toast(QFrame):
         header.setSpacing(8)
         self.label = QLabel(message)
         self.label.setWordWrap(True)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.label.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Minimum,
         )
-        header.addWidget(self.label, stretch=1)
+        header.addWidget(self.label, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
 
         dismiss_btn = QPushButton("\u00d7")
         dismiss_btn.setObjectName("toastDismiss")
@@ -72,9 +73,14 @@ class Toast(QFrame):
     def _sync_label_width(self):
         width = ToastStack.TOAST_WIDTH
         self.setFixedWidth(width)
-        self.label.setFixedWidth(self._content_width())
-        self.label.updateGeometry()
+        content_w = self._content_width()
+        self.label.setFixedWidth(content_w)
+        # Word-wrapped QLabel needs an explicit height or HBox rows clip descenders / extra lines.
+        text_h = max(self.label.heightForWidth(content_w), self.label.fontMetrics().height())
+        self.label.setMinimumHeight(text_h)
+        self.label.adjustSize()
         self.updateGeometry()
+        self.adjustSize()
 
     def update_content(
         self,
@@ -188,12 +194,13 @@ class ToastStack(QWidget):
         super().__init__(parent)
         self.setFixedWidth(self.TOAST_WIDTH)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 12, 0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         self._layout = layout
         self._active: dict[str, Toast] = {}
         self.setVisible(False)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
 
     def _notify_reposition(self):
         window = self.window()
@@ -203,6 +210,23 @@ class ToastStack(QWidget):
     def _update_visibility(self):
         self.setVisible(bool(self._active))
         self._notify_reposition()
+
+    def preferred_height(self) -> int:
+        """Sum toast heights after wrapping so the stack geometry does not clip text."""
+        self.sync_toast_widths()
+        margins = self._layout.contentsMargins()
+        total = margins.top() + margins.bottom()
+        visible: list[Toast] = []
+        for i in range(self._layout.count()):
+            item = self._layout.itemAt(i)
+            widget = item.widget() if item is not None else None
+            if isinstance(widget, Toast) and widget.isVisible() and not widget._removed:
+                visible.append(widget)
+        for index, toast in enumerate(visible):
+            total += max(toast.sizeHint().height(), toast.minimumSizeHint().height())
+            if index:
+                total += self._layout.spacing()
+        return max(total, 1)
 
     def show_toast(
         self,
@@ -244,7 +268,8 @@ class ToastStack(QWidget):
 
     def sync_toast_widths(self):
         for toast in self._active.values():
-            toast._sync_label_width()
+            if not toast._removed:
+                toast._sync_label_width()
 
     def dismiss(self, key: str):
         toast = self._active.get(key)

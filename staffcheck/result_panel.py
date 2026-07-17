@@ -40,12 +40,6 @@ SECTION_IDLE_TOOLTIPS = {
 }
 
 
-def format_api_error(message: str) -> str:
-    if message.strip().lower().rstrip("!") == "no command found":
-        return "Command not found!"
-    return message
-
-
 def _section(view, key):
     return view.result_sections[key]
 
@@ -74,7 +68,7 @@ def user_report_idle(view, message: str = "—") -> None:
 def user_report_failed(view, message: str) -> None:
     sec = _section(view, "user_report")
     sec.clear_fields()
-    sec.set_state("failed", error_message=format_api_error(message))
+    sec.set_state("failed", error_message=message)
 
 
 def user_report_apply(view, response: dict, *, xbox_gt) -> None:
@@ -138,23 +132,6 @@ def user_report_apply(view, response: dict, *, xbox_gt) -> None:
     view._user_report_data = r
 
 
-def user_report_refresh_issues(view) -> None:
-    issues = list(getattr(view, "loghistory_issues", []))
-    if getattr(view, "_user_report_data", None):
-        user_report_apply(view, view._user_report_data, xbox_gt=view.xbox_gt)
-        view.loghistory_issues = issues
-        if "Gamertag in Notes" not in view.loghistory_issues:
-            sec = _section(view, "user_report")
-            sec.set_field(
-                "gamertag_in_notes",
-                "Gamertag in notes",
-                "True",
-                is_issue=False,
-                detail="Gamertag in notes: True",
-            )
-            sec.set_state("success")
-
-
 def user_report_skipped(view) -> None:
     sec = _section(view, "user_report")
     sec.clear_fields()
@@ -172,7 +149,7 @@ def user_report_skipped(view) -> None:
 def search_failed(view, message: str = "Failed") -> None:
     sec = _section(view, "search")
     sec.clear_fields()
-    sec.set_state("failed", error_message=format_api_error(message))
+    sec.set_state("failed", error_message=message)
 
 
 def search_skipped(view) -> None:
@@ -311,7 +288,7 @@ def invite_apply(view, response: dict) -> None:
 def sot_failed(view, message: str = "Failed") -> None:
     sec = _section(view, "sot_official")
     sec.clear_fields()
-    sec.set_state("failed", error_message=format_api_error(message))
+    sec.set_state("failed", error_message=message)
 
 
 def sot_apply(view, response: dict) -> None:
