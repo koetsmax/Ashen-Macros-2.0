@@ -15,6 +15,7 @@ from gui.views.app_window import AppWindow
 from gui.views.ban_list_window import BanListWindow
 from gui.views.command_executor_window import CommandExecutorWindow
 from gui.views.fill_new_fleet_window import FillNewFleetWindow
+from gui.views.gamertag_lookup_window import GamertagLookupWindow
 from gui.views.hammertime_window import HammertimeWindow
 from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
@@ -29,10 +30,23 @@ class AppEntry:
     label: str
     window_cls: Type[AppWindow]
     permission: str
+    # Extra keys that also unlock this app (e.g. staffcheck for lookup tools).
+    alt_permissions: tuple[str, ...] = ()
+
+
+def app_allowed(entry: AppEntry, permissions: list[str] | None) -> bool:
+    allowed = {entry.permission, *entry.alt_permissions}
+    return bool(allowed & set(permissions or []))
 
 
 APP_REGISTRY = [
     AppEntry("Queue monitor", QueueWindow, "queue_monitor"),
+    AppEntry(
+        "Gamertag / mutuals",
+        GamertagLookupWindow,
+        "gamertag_lookup",
+        alt_permissions=("staffcheck",),
+    ),
     AppEntry("Command executor", CommandExecutorWindow, "command_executor"),
     AppEntry("Add to ban list", BanListWindow, "ban_list"),
     AppEntry("Add warning", WarningWindow, "warning"),
@@ -47,7 +61,7 @@ APP_BY_KEY = {entry.window_cls.__name__: entry for entry in APP_REGISTRY}
 
 def open_app(hub, entry: AppEntry):
     permissions = getattr(hub, "permissions", None) or []
-    if entry.permission not in permissions:
+    if not app_allowed(entry, permissions):
         logger.info("Denied app open (missing %s): %s", entry.permission, entry.window_cls.__name__)
         return
     key = entry.window_cls.__name__
@@ -65,7 +79,8 @@ def open_app(hub, entry: AppEntry):
     win = entry.window_cls()
     win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
     win._app_window_key = key
-    load_window_geometry(win, default_size=DEFAULT_APP_SIZE)
+    default_size = getattr(entry.window_cls, "DEFAULT_SIZE", None) or DEFAULT_APP_SIZE
+    load_window_geometry(win, default_size=default_size)
     track_window_geometry(win)
     win.destroyed.connect(lambda *_args, k=key: hub._open_apps.pop(k, None))
     win.show()
@@ -83,7 +98,7 @@ def restore_session_apps(hub):
     logger.info("Restoring session apps: %s", keys)
     for key in keys:
         entry = APP_BY_KEY.get(key)
-        if entry and entry.permission in permissions:
+        if entry and app_allowed(entry, permissions):
             open_app(hub, entry)
         elif entry:
             logger.info("Skipping session restore for %s (no %s)", key, entry.permission)

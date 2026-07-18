@@ -8,7 +8,7 @@ from shiboken6 import isValid
 
 from core import auth, updates
 from core.window_positions import load_window_geometry, save_window_geometry, track_window_geometry
-from gui.apps.registry import APP_BY_KEY, APP_REGISTRY, open_app, restore_session_apps
+from gui.apps.registry import APP_BY_KEY, APP_REGISTRY, app_allowed, open_app, restore_session_apps
 from gui.components.toast import ToastStack
 from gui.components.version_badge import VersionBadge
 from gui.settings_dialog import SettingsDialog
@@ -158,7 +158,7 @@ class StaffcheckHub(QMainWindow):
         for entry in APP_REGISTRY:
             action = self._apps_menu.addAction(entry.label)
             action.triggered.connect(lambda checked=False, e=entry: open_app(self, e))
-            action.setProperty("permission", entry.permission)
+            action.setProperty("app_key", entry.window_cls.__name__)
             self._app_actions.append(action)
 
         self._settings_action = bar.addAction("Settings", self._open_settings)
@@ -237,9 +237,10 @@ class StaffcheckHub(QMainWindow):
         if self._apps_menu is not None:
             self._apps_menu.menuAction().setEnabled(menus_enabled)
         for action in getattr(self, "_app_actions", []):
-            perm = action.property("permission")
-            action.setEnabled(menus_enabled and bool(perm) and self._has_permission(str(perm)))
-            action.setVisible(not menus_enabled or (bool(perm) and self._has_permission(str(perm))))
+            entry = APP_BY_KEY.get(str(action.property("app_key") or ""))
+            allowed = entry is not None and app_allowed(entry, self.permissions)
+            action.setEnabled(menus_enabled and allowed)
+            action.setVisible(not menus_enabled or allowed)
         if self._settings_action is not None:
             self._settings_action.setEnabled(menus_enabled)
         if self._updates_action is not None:
@@ -401,10 +402,9 @@ class StaffcheckHub(QMainWindow):
         self._close_unauthorized_apps()
 
     def _close_unauthorized_apps(self):
-        allowed = set(self.permissions or [])
         for key, win in list(self._open_apps.items()):
             entry = APP_BY_KEY.get(key)
-            if entry is None or entry.permission not in allowed:
+            if entry is None or not app_allowed(entry, self.permissions):
                 if isValid(win):
                     win.close()
                 self._open_apps.pop(key, None)

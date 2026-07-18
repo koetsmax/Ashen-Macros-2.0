@@ -10,6 +10,8 @@ from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -53,6 +55,7 @@ class QueueWindow(AppWindow):
         self._sim_enabled = False
         self._sim_updating = False
         self._client: QueueWsClient | None = None
+        self._pending_report = False
         super().__init__("Queue Monitor")
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
@@ -76,12 +79,25 @@ class QueueWindow(AppWindow):
         self.queue_state_label.setObjectName("hubNotVerified")
         status_row.addWidget(self.queue_state_label)
 
+        self.private_queue_label = QLabel("Private queue: —")
+        status_row.addWidget(self.private_queue_label)
+
+        self.alliance_ping_label = QLabel("Alliance ping: —")
+        status_row.addWidget(self.alliance_ping_label)
+
         self.peers_label = QLabel("Staff online: —")
         status_row.addWidget(self.peers_label)
 
         refresh_btn = QPushButton("Refresh")
         refresh_btn.clicked.connect(self._request_refresh)
         status_row.addWidget(refresh_btn)
+
+        report_btn = QPushButton("Report state")
+        report_btn.setToolTip(
+            "Send a full fleet/queue snapshot + Ashen channel list .txt to #macro-logs"
+        )
+        report_btn.clicked.connect(self._open_state_report_dialog)
+        status_row.addWidget(report_btn)
         self.root_layout.addLayout(status_row)
 
         self.closed_banner = QLabel("Queue is closed")
@@ -114,12 +130,8 @@ class QueueWindow(AppWindow):
         self.full_ships_label = QLabel("—")
         self.full_ships_label.setWordWrap(True)
         self.full_ships_label.setTextFormat(Qt.TextFormat.RichText)
-        self.full_ships_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        self.full_ships_label.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
+        self.full_ships_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.full_ships_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         full_layout.addWidget(self.full_ships_label)
         fleet_col.addWidget(full_box)
 
@@ -128,12 +140,8 @@ class QueueWindow(AppWindow):
         self.needs_ships_label = QLabel("—")
         self.needs_ships_label.setWordWrap(True)
         self.needs_ships_label.setTextFormat(Qt.TextFormat.RichText)
-        self.needs_ships_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        self.needs_ships_label.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
+        self.needs_ships_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.needs_ships_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         needs_layout.addWidget(self.needs_ships_label)
         fleet_col.addWidget(needs_box)
         fleet_col.setStretchFactor(0, 1)
@@ -163,9 +171,18 @@ class QueueWindow(AppWindow):
         self.outstanding_list.setWordWrap(True)
         pending_layout.addWidget(self.outstanding_list)
         workflow_col.addWidget(pending_box)
+
+        preps_box = QGroupBox("Pending preps")
+        preps_layout = QVBoxLayout(preps_box)
+        self.preps_list = QListWidget()
+        self.preps_list.setWordWrap(True)
+        preps_layout.addWidget(self.preps_list)
+        workflow_col.addWidget(preps_box)
+
         workflow_col.setStretchFactor(0, 1)
         workflow_col.setStretchFactor(1, 1)
         workflow_col.setStretchFactor(2, 2)
+        workflow_col.setStretchFactor(3, 2)
         top_cluster.addWidget(workflow_col)
 
         # Keep fleet column narrow; workflow absorbs growth when the main
@@ -181,12 +198,8 @@ class QueueWindow(AppWindow):
         self.recommendations_list = QListWidget()
         self.recommendations_list.setWordWrap(True)
         self.recommendations_list.setMinimumHeight(100)
-        self.recommendations_list.itemSelectionChanged.connect(
-            self._on_recommendation_selection
-        )
-        self.recommendations_list.itemDoubleClicked.connect(
-            self._on_recommendation_double_clicked
-        )
+        self.recommendations_list.itemSelectionChanged.connect(self._on_recommendation_selection)
+        self.recommendations_list.itemDoubleClicked.connect(self._on_recommendation_double_clicked)
         rec_layout.addWidget(self.recommendations_list)
         self.recommendation_detail = QLabel("No recommendations yet")
         self.recommendation_detail.setWordWrap(True)
@@ -467,9 +480,7 @@ class QueueWindow(AppWindow):
     def _apply_sim_meta(self, sim: dict) -> None:
         self._sim_updating = True
         scenarios = sim.get("scenarios") or []
-        current_ids = [
-            self.sim_scenario.itemData(i) for i in range(self.sim_scenario.count())
-        ]
+        current_ids = [self.sim_scenario.itemData(i) for i in range(self.sim_scenario.count())]
         new_ids = [s.get("id") for s in scenarios]
         if current_ids != new_ids:
             self.sim_scenario.clear()
@@ -493,6 +504,58 @@ class QueueWindow(AppWindow):
         if self._client:
             self._client.request_refresh()
 
+    def _open_state_report_dialog(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Report queue state")
+        dialog.setMinimumWidth(420)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(
+            QLabel(
+                "Sends the bot’s current fleet/queue snapshot,\n"
+                "plus a .txt listing every Ashen server channel.\n"
+                "Optionally describe what’s wrong so I can fix it faster."
+            )
+        )
+        layout.addWidget(QLabel("Feedback (optional):"))
+        feedback = QPlainTextEdit()
+        feedback.setPlaceholderText(
+            "e.g. Ship X shows Needs 1 but voice is full / wrong prep linked / …"
+        )
+        feedback.setMinimumHeight(120)
+        layout.addWidget(feedback)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Send report")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        if not self._client:
+            self._set_status("Not connected — cannot send report")
+            return
+        text = feedback.toPlainText().strip()
+        self._pending_report = True
+        self._set_status("Sending state report…")
+        self._client.send({"type": "submit_state_report", "feedback": text})
+
+    def _handle_report_ack(self, data: dict) -> None:
+        if not getattr(self, "_pending_report", False):
+            return
+        if data.get("request") != "submit_state_report":
+            return
+        self._pending_report = False
+        if data.get("type") == "ack":
+            self._set_status("State report sent to #macro-logs")
+            return
+        err = data.get("error") or "unknown"
+        if err == "report_rate_limited":
+            self._set_status("Report rate-limited — wait ~30s and try again")
+        else:
+            self._set_status(f"State report failed: {err}")
+
     def _set_status(self, text: str) -> None:
         self.status_label.setText(text)
 
@@ -515,11 +578,15 @@ class QueueWindow(AppWindow):
         if msg_type == "ack":
             if "sim" in data:
                 self._apply_sim_meta(data.get("sim") or {})
+            self._handle_report_ack(data)
             return
         if msg_type == "pong":
             return
         if msg_type == "error":
-            self._set_status(f"Server: {data.get('error', 'error')}")
+            if data.get("request") == "submit_state_report":
+                self._handle_report_ack(data)
+            else:
+                self._set_status(f"Server: {data.get('error', 'error')}")
 
     def _maybe_update_known_activities(self, activities) -> None:
         if not activities or not isinstance(activities, list):
@@ -552,11 +619,7 @@ class QueueWindow(AppWindow):
         )
 
     def _selected_activity_labels(self) -> list[str]:
-        return [
-            label
-            for label, check in self._activity_checks.items()
-            if check.isChecked()
-        ]
+        return [label for label, check in self._activity_checks.items() if check.isChecked()]
 
     def _apply_manual_activities(self) -> None:
         if not self._selected_user_id or not self._client:
@@ -646,11 +709,7 @@ class QueueWindow(AppWindow):
         self.apply_activities_btn.setEnabled(True)
         self.clear_activities_btn.setEnabled(True)
         activity_text = str(entry.get("activity") or "")
-        parts = {
-            part.strip().lower()
-            for part in activity_text.split(",")
-            if part.strip()
-        }
+        parts = {part.strip().lower() for part in activity_text.split(",") if part.strip()}
         for label, check in self._activity_checks.items():
             check.setEnabled(True)
             check.setChecked(label.lower() in parts)
@@ -662,7 +721,7 @@ class QueueWindow(AppWindow):
 
     def _on_process_together_changed(self, _index: int) -> None:
         if self._updating_editors or not self._selected_user_id or not self._client:
-                return
+            return
         self._client.send(
             {
                 "type": "set_process_together",
@@ -698,21 +757,16 @@ class QueueWindow(AppWindow):
 
         detail = f" — Needs {needs}" if needs is not None else ""
         color = self._ship_fill_color(fill)
-        safe_label = (
-            str(label)
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-        safe_detail = (
-            detail.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        )
+        safe_label = str(label).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        safe_detail = detail.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         return f'<span style="color:{color}">{safe_label}{safe_detail}</span>'
 
     def _apply_snapshot(self, data: dict) -> None:
         scraped = self._format_scraped(data.get("scraped_at"))
         peers = data.get("peers") or []
         self._apply_peers(peers)
+        self._apply_private_queue_header(data)
+        self._apply_alliance_ping_header(data)
 
         active = data.get("active", True)
         sim = data.get("sim") or {}
@@ -744,12 +798,8 @@ class QueueWindow(AppWindow):
             self.full_ships_label.setText("Queue closed — no fleet info")
             self.needs_ships_label.setText("Queue closed — no fleet info")
         else:
-            self.full_ships_label.setText(
-                "<br>".join(full_lines) if full_lines else "None"
-            )
-            self.needs_ships_label.setText(
-                "<br>".join(needs_lines) if needs_lines else "None"
-            )
+            self.full_ships_label.setText("<br>".join(full_lines) if full_lines else "None")
+            self.needs_ships_label.setText("<br>".join(needs_lines) if needs_lines else "None")
 
         selected = self._selected_user_id
         queue = data.get("queue") or []
@@ -795,7 +845,7 @@ class QueueWindow(AppWindow):
                 values = [
                     str(entry.get("display_name") or entry.get("user_id") or ""),
                     str(entry.get("activity") or entry.get("current_queue_request") or ""),
-                    str(entry.get("time_in_queue", "")),
+                    "",  # Minutes — filled below with change-age
                     ", ".join(flags),
                     str(entry.get("current_queue_request") or ""),
                 ]
@@ -804,6 +854,11 @@ class QueueWindow(AppWindow):
                     if col == 0:
                         item.setData(Qt.ItemDataRole.UserRole, entry.get("user_id"))
                     self.queue_table.setItem(row, col, item)
+                minutes_text, minutes_tip = self._format_queue_minutes(entry)
+                minutes_item = self.queue_table.item(row, 2)
+                if minutes_item is not None:
+                    minutes_item.setText(minutes_text)
+                    minutes_item.setToolTip(minutes_tip)
                 if selected and str(entry.get("user_id")) == str(selected):
                     restore_row = row
 
@@ -816,6 +871,7 @@ class QueueWindow(AppWindow):
 
         self._apply_leaves(data)
         self._apply_outstanding(data)
+        self._apply_preps(data)
         self._apply_rejoins(data)
         self._apply_recommendations(data)
 
@@ -890,9 +946,7 @@ class QueueWindow(AppWindow):
             return f"name:{ship_name}"
         return ""
 
-    def _pair_leaves_to_slots(
-        self, leaves: list, slots_by_ship: dict[str, int]
-    ) -> set[str]:
+    def _pair_leaves_to_slots(self, leaves: list, slots_by_ship: dict[str, int]) -> set[str]:
         """Assign up to N slots per ship to oldest non-filled leaves. Returns user_ids."""
         leaves_by_ship: dict[str, list[dict]] = {}
         for leave in leaves:
@@ -955,9 +1009,7 @@ class QueueWindow(AppWindow):
                 prep_slots[key] = prep_slots.get(key, 0) + 1
         # Recommendations with action=prep also claim leave slots on that ship
         # (prep channels often have no ship id yet).
-        prep_user_ids = {
-            str(p.get("user_id")) for p in preps if p.get("user_id")
-        }
+        prep_user_ids = {str(p.get("user_id")) for p in preps if p.get("user_id")}
         for rec in recommendations:
             if str(rec.get("action") or "") != "prep":
                 continue
@@ -988,7 +1040,121 @@ class QueueWindow(AppWindow):
             return
         self._apply_leaves(self._last_snapshot)
         self._apply_outstanding(self._last_snapshot)
+        self._apply_preps(self._last_snapshot)
         self._apply_rejoins(self._last_snapshot)
+        self._apply_alliance_ping_header(self._last_snapshot)
+        self._refresh_queue_minutes_column()
+
+    def _format_queue_minutes(self, entry: dict) -> tuple[str, str]:
+        """Return (display text, tooltip) for the Minutes column."""
+        try:
+            in_queue = int(entry.get("time_in_queue") or 0)
+        except (TypeError, ValueError):
+            in_queue = 0
+            raw = entry.get("time_in_queue")
+            if raw is not None and str(raw).strip() != "":
+                return str(raw), "Minutes in queue"
+
+        changed_raw = entry.get("time_last_queue_request_changed")
+        if not changed_raw:
+            return str(in_queue), "Minutes in queue"
+
+        try:
+            text = str(changed_raw).replace("Z", "+00:00")
+            dt = datetime.fromisoformat(text)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            age_seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+            since_change = age_seconds // 60
+        except (TypeError, ValueError):
+            return str(in_queue), "Minutes in queue"
+
+        display = f"{in_queue} ({since_change})"
+        tip = (
+            f"{in_queue} minute{'s' if in_queue != 1 else ''} in queue.\n"
+            f"Last changed queue request {since_change} minute"
+            f"{'s' if since_change != 1 else ''} ago."
+        )
+        return display, tip
+
+    def _refresh_queue_minutes_column(self) -> None:
+        if not self._last_snapshot.get("active", True):
+            return
+        queue = self._last_snapshot.get("queue") or []
+        by_id = {str(e.get("user_id") or ""): e for e in queue}
+        for row in range(self.queue_table.rowCount()):
+            name_item = self.queue_table.item(row, 0)
+            minutes_item = self.queue_table.item(row, 2)
+            if name_item is None or minutes_item is None:
+                continue
+            user_id = str(name_item.data(Qt.ItemDataRole.UserRole) or "")
+            entry = by_id.get(user_id)
+            if entry is None:
+                continue
+            text, tip = self._format_queue_minutes(entry)
+            if minutes_item.text() != text:
+                minutes_item.setText(text)
+            minutes_item.setToolTip(tip)
+
+    def _apply_private_queue_header(self, data: dict) -> None:
+        private = data.get("private_queue") or []
+        count = len(private)
+        self.private_queue_label.setText(f"Private queue: {count}")
+        tip_lines = []
+        for entry in private:
+            name = entry.get("display_name") or entry.get("user_id") or "?"
+            tip_lines.append(str(name))
+        self.private_queue_label.setToolTip(
+            "\n".join(tip_lines) if tip_lines else "No one in the private ship queue"
+        )
+
+    def _apply_alliance_ping_header(self, data: dict) -> None:
+        raw = data.get("last_alliance_ping_at")
+        if not raw:
+            self.alliance_ping_label.setText("Alliance ping: unknown")
+            self.alliance_ping_label.setStyleSheet(f"color: {theme.GREEN or '#4ade80'};")
+            self.alliance_ping_label.setToolTip("No alliance ping found yet")
+            return
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            self.alliance_ping_label.setText("Alliance ping: —")
+            self.alliance_ping_label.setStyleSheet("")
+            return
+
+        age_seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+        age_text = self._format_age(age_seconds)
+        self.alliance_ping_label.setText(f"Alliance ping: {age_text} ago")
+
+        # Cadence is every 2 hours: red while too soon, orange near due, green when ready.
+        two_h = 2 * 60 * 60
+        three_h = 3 * 60 * 60
+        if age_seconds < two_h:
+            color = theme.RED or "#ff4444"
+        elif age_seconds < three_h:
+            color = theme.PEACH or "#ff8533"
+        else:
+            color = theme.GREEN or "#4ade80"
+        self.alliance_ping_label.setStyleSheet(f"color: {color};")
+
+        local = dt.astimezone()
+        self.alliance_ping_label.setToolTip(f"Last ping: {local.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+
+    @staticmethod
+    def _format_age(seconds: int) -> str:
+        if seconds < 60:
+            return f"{seconds}s"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m"
+        hours = minutes // 60
+        rem = minutes % 60
+        if hours < 48:
+            return f"{hours}h {rem}m" if rem else f"{hours}h"
+        days = hours // 24
+        return f"{days}d"
 
     def _apply_leaves(self, data: dict) -> None:
         self.leaves_list.clear()
@@ -1046,6 +1212,32 @@ class QueueWindow(AppWindow):
                 text = f"{text} ({expiry})"
             self.outstanding_list.addItem(text)
 
+    def _apply_preps(self, data: dict) -> None:
+        self.preps_list.clear()
+        preps = data.get("active_preps") or []
+        if not data.get("active", True):
+            self.preps_list.addItem("Queue closed")
+            return
+        # Show open/ready preps; hide terminal states cluttering the panel.
+        live = [p for p in preps if str(p.get("status") or "open") in ("open", "ready")]
+        if not live:
+            self.preps_list.addItem("None")
+            return
+        for prep in live:
+            user_id = str(prep.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(prep.get("display_name") or "")
+            )
+            status = str(prep.get("status") or "open")
+            ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
+            expiry = self._format_expiry(prep.get("expires_at"))
+            bits = [name, status]
+            if ship:
+                bits.append(f"→ {ship}")
+            if expiry:
+                bits.append(expiry)
+            self.preps_list.addItem(" — ".join(bits))
+
     def _apply_rejoins(self, data: dict) -> None:
         self.rejoins_list.clear()
         rejoins = data.get("pending_rejoins") or []
@@ -1093,9 +1285,7 @@ class QueueWindow(AppWindow):
             self.recommendations_list.setCurrentRow(restore_row)
         else:
             self._selected_recommendation_id = None
-            self.recommendation_detail.setText(
-                f"{len(recs)} option(s) — select one to inspect"
-            )
+            self.recommendation_detail.setText(f"{len(recs)} option(s) — select one to inspect")
 
     def _on_recommendation_selection(self) -> None:
         items = self.recommendations_list.selectedItems()
@@ -1107,9 +1297,7 @@ class QueueWindow(AppWindow):
         self._selected_recommendation_id = str(rec.get("id") or "") or None
         ship = rec.get("ship") or {}
         members = rec.get("members") or []
-        names = ", ".join(
-            str(m.get("display_name") or m.get("user_id") or "?") for m in members
-        )
+        names = ", ".join(str(m.get("display_name") or m.get("user_id") or "?") for m in members)
         ship_name = ship.get("channel_name") or ship.get("channel_id") or "?"
         needs = ship.get("needs")
         needs_bit = f", needs {needs}" if needs is not None else ""
@@ -1148,11 +1336,7 @@ class QueueWindow(AppWindow):
         rec = item.data(Qt.ItemDataRole.UserRole) or {}
         ship = rec.get("ship") or {}
         channel_id = str(ship.get("channel_id") or "")
-        user_ids = [
-            str(m.get("user_id"))
-            for m in (rec.get("members") or [])
-            if m.get("user_id")
-        ]
+        user_ids = [str(m.get("user_id")) for m in (rec.get("members") or []) if m.get("user_id")]
         if not channel_id or not user_ids:
             self._set_status("Sim: recommendation missing ship or members")
             return
