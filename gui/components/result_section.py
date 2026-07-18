@@ -92,7 +92,8 @@ class ResultSection(QWidget):
         self._header.setText(f"{self._title} — Checking…")
         self._summary.setText("—")
         self._apply_header_style("loading")
-        self._apply_tooltip(f"{self._title}\nWaiting for API response.")
+        # No tooltip while empty placeholder is showing.
+        self._apply_tooltip("")
 
     def set_state(self, state: str, *, error_message: str = "") -> None:
         self._state = state
@@ -100,6 +101,11 @@ class ResultSection(QWidget):
         self._header.setText(self._title)
         self._apply_header_style(state)
         self._refresh()
+
+    def set_success_or_issues(self) -> None:
+        """Green when clean; orange when any field is flagged as an issue."""
+        has_issues = any(f.is_issue for f in self._fields.values())
+        self.set_state("issues" if has_issues else "success")
 
     def set_field(
         self,
@@ -130,7 +136,7 @@ class ResultSection(QWidget):
         self._header.setText(self._title)
         self._summary.setText("—")
         self._apply_header_style("idle")
-        self._apply_tooltip(self._idle_tooltip)
+        self._apply_tooltip("")
         for btn in self._buttons:
             btn.setEnabled(False)
 
@@ -140,7 +146,17 @@ class ResultSection(QWidget):
         self._header.style().polish(self._header)
 
     def _apply_tooltip(self, text: str) -> None:
-        self._header.setToolTip(text)
+        """Tooltip only when there is real content — never on empty '—' placeholders."""
+        tip = (text or "").strip()
+        if self._state in ("idle", "loading"):
+            tip = ""
+        elif self._state in ("success", "issues") and not self._fields:
+            tip = ""
+        # Header + section so hover over summary/"—" area only tips when populated.
+        self.setToolTip(tip)
+        self._header.setToolTip(tip)
+        self._summary_host.setToolTip(tip)
+        self._summary.setToolTip(tip)
         for btn in self._buttons:
             btn.setToolTip("")
 
@@ -153,7 +169,7 @@ class ResultSection(QWidget):
         if self._state == "failed":
             return self._error_message or "Failed"
 
-        if self._state != "success":
+        if self._state not in ("success", "issues"):
             return "—"
 
         fields = self._ordered_fields()
@@ -184,15 +200,17 @@ class ResultSection(QWidget):
 
     def _build_tooltip(self) -> str:
         if self._state == "loading":
-            return f"{self._title}\nWaiting for API response."
+            return ""
         if self._state == "idle":
-            return self._idle_tooltip
+            return ""
 
         lines = [self._title]
         if self._state == "failed":
             lines.append(self._error_message or "Request failed.")
             return "\n".join(lines)
 
+        if not self._fields:
+            return ""
         for field in self._ordered_fields():
             lines.append(field.detail)
         return "\n".join(lines)

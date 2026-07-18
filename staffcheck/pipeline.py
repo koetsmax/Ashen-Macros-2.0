@@ -63,6 +63,7 @@ def prepare_for_new_check(self):
     label_set(self.gamertag_label, "Unknown")
     self.user_name = None
     self.clear_reason()
+    self.check_id = None
 
 
 def validate_user_id(self) -> bool:
@@ -105,7 +106,16 @@ def start_check(self):
 
 def _fetch_essential_data(self, user_id: str):
     request_error = False
-    payload = {"userID": user_id}
+    from staffcheck import analytics as sc_analytics
+
+    payload = sc_analytics.attach_check_id(
+        self,
+        {
+            "userID": user_id,
+            "method": self.method.get() if hasattr(self, "method") else "",
+            "channel": self.channel.get() if hasattr(self, "channel") else "",
+        },
+    )
     try:
         config = read_config()
         self.essential_data_response = requests.post(
@@ -131,7 +141,10 @@ def _handle_essential_data(self, request_error: bool):
 
     if not request_error:
         try:
+            from staffcheck import analytics as sc_analytics
+
             data = self.essential_data_response.json()
+            sc_analytics.store_check_id_from_response(self, data)
             self.user_name = data["discord_name"]
             self.mutual_guilds = data["mutual_guilds"]
             result_panel.mutual_servers_apply(self, self.mutual_guilds)

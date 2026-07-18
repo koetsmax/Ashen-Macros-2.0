@@ -257,6 +257,9 @@ def _qss() -> str:
     QLabel#sectionHeader[state="success"] {{
         color: {GREEN};
     }}
+    QLabel#sectionHeader[state="issues"] {{
+        color: {PEACH};
+    }}
     QLabel#sectionHeader[state="failed"] {{
         color: {RED};
     }}

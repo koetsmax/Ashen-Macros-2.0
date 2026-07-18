@@ -91,6 +91,11 @@ class ClassicResultSection(QWidget):
         self._apply_header_style(state)
         self._refresh()
 
+    def set_success_or_issues(self) -> None:
+        """Green when clean; orange when any field is flagged as an issue."""
+        has_issues = any(f.is_issue for f in self._fields.values())
+        self.set_state("issues" if has_issues else "success")
+
     def set_field(
         self,
         key: str,
@@ -165,7 +170,7 @@ class ClassicResultSection(QWidget):
             return "Waiting", "orange"
         issues = [f for f in self._ordered_fields() if f.is_issue]
         if issues:
-            return f"{len(issues)} issue(s) found", "red"
+            return f"{len(issues)} issue(s) found", "orange"
         return "OK", "green"
 
     def _ordered_fields(self) -> list[ResultField]:

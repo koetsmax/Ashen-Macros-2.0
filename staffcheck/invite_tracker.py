@@ -51,9 +51,11 @@ def api_request(self):
     self.result_sections["invite_tracker"].set_loading()
     try:
         config = read_config()
+        from staffcheck import analytics as sc_analytics
+
         response = requests.post(
             f"{config['api_url']}/staffcheck/invite",
-            json={"userID": self.user_id.get()},
+            json=sc_analytics.attach_check_id(self, {"userID": self.user_id.get()}),
             timeout=20,
             headers=self.headers,
         )

@@ -20,6 +20,7 @@ from gui.views.hammertime_window import HammertimeWindow
 from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
 from gui.views.ship_holder_window import ShipHolderWindow
+from gui.views.stats_window import StatsWindow
 from gui.views.warning_window import WarningWindow
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,7 @@ def app_allowed(entry: AppEntry, permissions: list[str] | None) -> bool:
 
 APP_REGISTRY = [
     AppEntry("Queue monitor", QueueWindow, "queue_monitor"),
-    AppEntry(
-        "Gamertag / mutuals",
-        GamertagLookupWindow,
-        "gamertag_lookup",
-        alt_permissions=("staffcheck",),
-    ),
+    AppEntry("Gamertag / mutuals", GamertagLookupWindow, "staffcheck"),
     AppEntry("Command executor", CommandExecutorWindow, "command_executor"),
     AppEntry("Add to ban list", BanListWindow, "ban_list"),
     AppEntry("Add warning", WarningWindow, "warning"),
@@ -54,6 +50,7 @@ APP_REGISTRY = [
     AppEntry("Fill new fleet", FillNewFleetWindow, "fill_new_fleet"),
     AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
     AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
+    AppEntry("Stats", StatsWindow, "stats"),
 ]
 
 APP_BY_KEY = {entry.window_cls.__name__: entry for entry in APP_REGISTRY}

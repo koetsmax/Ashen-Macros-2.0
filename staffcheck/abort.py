@@ -154,6 +154,13 @@ def _finish_abort(self) -> None:
 
     self.currentstate = "Done"
 
+    try:
+        from staffcheck import analytics as sc_analytics
+
+        sc_analytics.report_outcome(self, outcome="aborted")
+    except Exception:
+        logger.exception("Failed to report aborted staffcheck")
+
     from staffcheck.pipeline import reset_ui
     from staffcheck.qt_ui import label_set
 

@@ -82,6 +82,9 @@ class QueueWindow(AppWindow):
         self.private_queue_label = QLabel("Private queue: —")
         status_row.addWidget(self.private_queue_label)
 
+        self.private_ships_label = QLabel("Private ships: —")
+        status_row.addWidget(self.private_ships_label)
+
         self.alliance_ping_label = QLabel("Alliance ping: —")
         status_row.addWidget(self.alliance_ping_label)
 
@@ -92,7 +95,7 @@ class QueueWindow(AppWindow):
         refresh_btn.clicked.connect(self._request_refresh)
         status_row.addWidget(refresh_btn)
 
-        report_btn = QPushButton("Report state")
+        report_btn = QPushButton("Report")
         report_btn.setToolTip(
             "Send a full fleet/queue snapshot + Ashen channel list .txt to #macro-logs"
         )
@@ -165,19 +168,19 @@ class QueueWindow(AppWindow):
         leaves_layout.addWidget(self.leaves_list)
         workflow_col.addWidget(leaves_box)
 
-        pending_box = QGroupBox("Pending processes")
-        pending_layout = QVBoxLayout(pending_box)
-        self.outstanding_list = QListWidget()
-        self.outstanding_list.setWordWrap(True)
-        pending_layout.addWidget(self.outstanding_list)
-        workflow_col.addWidget(pending_box)
-
         preps_box = QGroupBox("Pending preps")
         preps_layout = QVBoxLayout(preps_box)
         self.preps_list = QListWidget()
         self.preps_list.setWordWrap(True)
         preps_layout.addWidget(self.preps_list)
         workflow_col.addWidget(preps_box)
+
+        pending_box = QGroupBox("Pending processes")
+        pending_layout = QVBoxLayout(pending_box)
+        self.outstanding_list = QListWidget()
+        self.outstanding_list.setWordWrap(True)
+        pending_layout.addWidget(self.outstanding_list)
+        workflow_col.addWidget(pending_box)
 
         workflow_col.setStretchFactor(0, 1)
         workflow_col.setStretchFactor(1, 1)
@@ -840,6 +843,8 @@ class QueueWindow(AppWindow):
                     flags.append("Needs prep")
                 prep_status = self._prep_status_for_user(str(entry.get("user_id") or ""))
                 if prep_status:
+                    if prep_status == "ready":
+                        prep_status = "accepted"
                     flags.append(f"Prep: {prep_status}")
 
                 values = [
@@ -879,11 +884,14 @@ class QueueWindow(AppWindow):
             self._apply_raw(data)
 
     def _display_name_for_user(self, user_id: str, *, fallback: str = "") -> str:
-        if fallback:
-            return fallback
+        """Prefer Ashen nick from the live queue; only then stored workflow fallback."""
         for entry in self._last_snapshot.get("queue") or []:
             if str(entry.get("user_id")) == str(user_id):
-                return str(entry.get("display_name") or user_id)
+                name = str(entry.get("display_name") or "").strip()
+                if name:
+                    return name
+        if fallback:
+            return fallback
         return str(user_id)
 
     def _prep_status_for_user(self, user_id: str) -> str | None:
@@ -1005,10 +1013,20 @@ class QueueWindow(AppWindow):
         prep_slots: dict[str, int] = {}
         for prep in preps:
             key = self._ship_key_for_workflow(prep)
+            if not key:
+                # Prep channel often has no ship yet — infer from recommendations.
+                uid = str(prep.get("user_id") or "")
+                for rec in recommendations:
+                    members = rec.get("members") or []
+                    if not any(str(m.get("user_id") or "") == uid for m in members):
+                        continue
+                    key = self._ship_key_for_workflow(rec.get("ship") or {})
+                    if key:
+                        break
             if key:
                 prep_slots[key] = prep_slots.get(key, 0) + 1
         # Recommendations with action=prep also claim leave slots on that ship
-        # (prep channels often have no ship id yet).
+        # (prep recommended but channel not seen yet).
         prep_user_ids = {str(p.get("user_id")) for p in preps if p.get("user_id")}
         for rec in recommendations:
             if str(rec.get("action") or "") != "prep":
@@ -1017,11 +1035,13 @@ class QueueWindow(AppWindow):
             key = self._ship_key_for_workflow(ship)
             if not key:
                 continue
-            # Only count if at least one rec member currently has an open prep,
-            # or no prep rows exist yet (prep recommended but channel not seen).
             members = rec.get("members") or []
             member_ids = {str(m.get("user_id")) for m in members if m.get("user_id")}
+            # Count when prep rows exist for these members, or no prep rows yet.
             if prep_user_ids and not (member_ids & prep_user_ids):
+                continue
+            # Avoid double-counting ships already claimed by bound prep rows.
+            if key in prep_slots and (member_ids & prep_user_ids):
                 continue
             prep_slots[key] = prep_slots.get(key, 0) + max(1, len(member_ids) or 1)
 
@@ -1107,6 +1127,39 @@ class QueueWindow(AppWindow):
         self.private_queue_label.setToolTip(
             "\n".join(tip_lines) if tip_lines else "No one in the private ship queue"
         )
+
+        stats = data.get("private_ship_stats") or {}
+        total = int(stats.get("total") or 0)
+        priv = int(stats.get("private") or 0)
+        max_allowed = int(stats.get("max_allowed") or 0)
+        max_ratio = float(stats.get("max_ratio") or 0.5)
+        pct = int(round(100 * max_ratio))
+        if total <= 0:
+            self.private_ships_label.setText("Private ships: —")
+            self.private_ships_label.setStyleSheet("")
+            self.private_ships_label.setToolTip("No fleet ships yet")
+        else:
+            self.private_ships_label.setText(f"Private ships: {priv}/{max_allowed}")
+            tip = (
+                f"Across all fleets: {priv} private of {total} ships.\n"
+                f"Cap is {pct}% ({max_allowed} ships). "
+                f"One FL can be all-private if others make up for it."
+            )
+            limits = data.get("activity_ship_limits") or {}
+            counts = data.get("activity_ship_counts") or {}
+            limit_bits = []
+            for act, lim in limits.items():
+                limit_bits.append(f"{act}: {counts.get(act, 0)}/{lim}")
+            if limit_bits:
+                tip += "\n\nActivity ship limits:\n" + "\n".join(limit_bits)
+            self.private_ships_label.setToolTip(tip)
+            if stats.get("over_limit"):
+                color = theme.RED or "#ff4444"
+            elif stats.get("at_limit"):
+                color = theme.PEACH or "#ff8533"
+            else:
+                color = theme.GREEN or "#4ade80"
+            self.private_ships_label.setStyleSheet(f"color: {color};")
 
     def _apply_alliance_ping_header(self, data: dict) -> None:
         raw = data.get("last_alliance_ping_at")
@@ -1223,20 +1276,26 @@ class QueueWindow(AppWindow):
         if not live:
             self.preps_list.addItem("None")
             return
+        ready_color = QColor(theme.GREEN or "#4ade80")
         for prep in live:
             user_id = str(prep.get("user_id") or "")
             name = self._display_name_for_user(
                 user_id, fallback=str(prep.get("display_name") or "")
             )
             status = str(prep.get("status") or "open")
+            # Bot-notices "is ready" → show as accepted (green).
+            display_status = "accepted" if status == "ready" else status
             ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
             expiry = self._format_expiry(prep.get("expires_at"))
-            bits = [name, status]
+            bits = [name, display_status]
             if ship:
                 bits.append(f"→ {ship}")
             if expiry:
                 bits.append(expiry)
-            self.preps_list.addItem(" — ".join(bits))
+            item = QListWidgetItem(" — ".join(bits))
+            if status == "ready":
+                item.setForeground(ready_color)
+            self.preps_list.addItem(item)
 
     def _apply_rejoins(self, data: dict) -> None:
         self.rejoins_list.clear()
@@ -1253,7 +1312,7 @@ class QueueWindow(AppWindow):
                 user_id, fallback=str(rejoin.get("display_name") or "")
             )
             ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
-            self.rejoins_list.addItem(f"{name} → {ship} (not a real vacancy)")
+            self.rejoins_list.addItem(f"{name} → {ship}")
 
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id

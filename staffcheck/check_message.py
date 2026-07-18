@@ -19,6 +19,9 @@ def good_to_check(self):
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
     try:
+        from staffcheck import analytics as sc_analytics
+
+        sc_analytics.report_outcome(self, outcome="good")
         switch_channel(self, "#on-duty-chat")
         clear_typing_bar()
 
@@ -59,6 +62,11 @@ def build_not_good_to_check(self):
     )
     message = message.replace("Reason", f"{self.reason.get()}")
     try:
+        from staffcheck import analytics as sc_analytics
+
+        sc_analytics.report_outcome(
+            self, outcome="not_good", reason=self.reason.get()
+        )
         clear_typing_bar()
         type_text(self, message)
     except abort.AbortError:

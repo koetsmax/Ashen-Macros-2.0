@@ -5,6 +5,7 @@ import requests
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
+from staffcheck.abort import interruptible_sleep
 from staffcheck.result_panel import _section
 from staffcheck.qt_ui import btn_config, btn_enable
 from staffcheck.tasks import run_background
@@ -30,6 +31,11 @@ def elemental_commands(self, *args):
 
     if not args:
         if not abort.is_abort_requested(self):
+            try:
+                # Give Discord a beat before /search so both slash commands land cleanly.
+                interruptible_sleep(self, 1.5)
+            except abort.AbortError:
+                return
             pipeline.continue_to_next(self)
         return
 
@@ -104,6 +110,9 @@ def elemental_api_request(self):
                 "gamertag": self.xbox_gt if self.xbox_gt else "abcdefghij",
                 "timestamp": self.timestamp,
             }
+            from staffcheck import analytics as sc_analytics
+
+            payload = sc_analytics.attach_check_id(self, payload)
             config = read_config()
             response = abort.post_json(
                 self,
@@ -156,6 +165,6 @@ def fix_issues(self):
             is_issue=False,
             detail="Gamertag in notes: True",
         )
-        sec.set_state("success")
+        sec.set_success_or_issues()
     if not self.loghistory_issues:
         btn_enable(self.loghistory_fix_issues_button, False)

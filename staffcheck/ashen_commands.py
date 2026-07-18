@@ -75,6 +75,9 @@ def ashen_api_request(self):
     try:
         btn_enable(self.search_fix_issues_button, False)
         payload = {"userID": self.user_id.get(), "timestamp": self.timestamp}
+        from staffcheck import analytics as sc_analytics
+
+        payload = sc_analytics.attach_check_id(self, payload)
         config = read_config()
         response = abort.post_json(
             self,

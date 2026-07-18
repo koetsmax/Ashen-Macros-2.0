@@ -118,7 +118,7 @@ def user_report_apply(view, response: dict, *, xbox_gt) -> None:
         is_issue=bool(r["anti_alliance_note"]),
         detail=f"Anti-alliance note: {r['anti_alliance_note']}",
     )
-    sec.set_state("success")
+    sec.set_success_or_issues()
 
     issues = {
         "Account Age": r["account_age"] < 60,
@@ -142,7 +142,7 @@ def user_report_skipped(view) -> None:
         is_issue=True,
         detail="Gamertag in notes: not checked (wrong channel)",
     )
-    sec.set_state("success")
+    sec.set_state("issues")
     view.loghistory_issues = ["Gamertag in Notes"]
 
 
@@ -228,7 +228,7 @@ def search_apply(view, response: dict) -> None:
         is_issue=not r["has_verified"],
         detail=f"Has verified: {r['has_verified']}",
     )
-    sec.set_state("success")
+    sec.set_success_or_issues()
 
     issues = {
         "Gamertag Exists": not r["gamertag_exists"],
@@ -282,7 +282,7 @@ def invite_apply(view, response: dict) -> None:
         is_issue=len(r["invitees_ids"]) >= 5,
         detail=f"People invited: {invited_count}",
     )
-    sec.set_state("success")
+    sec.set_success_or_issues()
 
 
 def sot_failed(view, message: str = "Failed") -> None:
@@ -324,4 +324,4 @@ def sot_apply(view, response: dict) -> None:
         is_issue=len(r["other_messages"]) > 0,
         detail=f"Other flagged messages: {len(r['other_messages'])}",
     )
-    sec.set_state("success")
+    sec.set_success_or_issues()
