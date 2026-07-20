@@ -92,7 +92,7 @@ def _clipboard_scope(text: str) -> Iterator[None]:
                 logger.warning("Could not restore previous clipboard contents")
 
 
-def switch_channel(self, channel: str, *args, **kwargs):
+def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         if not args:
@@ -100,9 +100,16 @@ def switch_channel(self, channel: str, *args, **kwargs):
         check_abort(self)
         keyboard.press_and_release("ctrl+k")
         interruptible_sleep(self, 0.18)
-        keyboard.write(channel)
-        interruptible_sleep(self, 0.8 if not kwargs else 5)
-        keyboard.press_and_release("enter")
+        if paste:
+            with _clipboard_scope(channel):
+                keyboard.press_and_release("ctrl+v")
+                interruptible_sleep(self, 0.8 if not kwargs else 5)
+                check_abort(self)
+                keyboard.press_and_release("enter")
+        else:
+            keyboard.write(channel)
+            interruptible_sleep(self, 0.8 if not kwargs else 5)
+            keyboard.press_and_release("enter")
         interruptible_sleep(self, 2)
 
 
@@ -118,6 +125,42 @@ def execute_command(self, command: str):
             interruptible_sleep(self, paste_delay)
             check_abort(self)
             keyboard.press_and_release("enter")
+
+
+def execute_slash_command(self, command: str, options: list[str] | None = None) -> None:
+    """Run a Discord slash command by tabbing through options.
+
+    Exact sequence (e.g. /process):
+      /process → Tab (select command) → type userID → wait → Tab
+      → type ship option → wait → Tab (autocomplete may expand to full name)
+      → wait → Enter
+    """
+    options = list(options or [])
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        config = read_config()
+        initial_command = float(config.get("initial_command") or 2)
+        follow_up = float(config.get("follow_up") or 0.4)
+        # Settle after typing each option value before Tab advances the field.
+        option_settle = max(follow_up * 2.5, 2.0)
+
+        keyboard.write(command)
+        interruptible_sleep(self, initial_command)
+        check_abort(self)
+        keyboard.press_and_release("tab")
+        # Let focus land on the first option before typing.
+        interruptible_sleep(self, follow_up)
+
+        for option in options:
+            check_abort(self)
+            keyboard.write(str(option))
+            interruptible_sleep(self, option_settle)
+            keyboard.press_and_release("tab")
+
+        # Brief pause after last Tab before Enter (autocomplete is already settled).
+        interruptible_sleep(self, max(follow_up, 0.45))
+        check_abort(self)
+        keyboard.press_and_release("enter")
 
 
 def type_text(self, text: str, *, press_enter: bool = True) -> None:

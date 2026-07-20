@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
+import threading
 from datetime import datetime, timezone
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QColor, QCursor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -20,9 +23,11 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -30,10 +35,37 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.keyboard import clear_typing_bar, execute_slash_command, switch_channel
 from core.queue_ws import QueueWsClient
 from core.settings import read_config, set_custom_value
 from gui import theme
 from gui.views.app_window import AppWindow
+from staffcheck.abort import AbortError, interruptible_sleep
+
+logger = logging.getLogger(__name__)
+
+# Ashen Alliance #queue — jump URL (Ctrl+K paste, normal settle wait).
+QUEUE_CHANNEL_JUMP_URL = (
+    "https://discord.com/channels/702865815111729183/712004382534664292"
+)
+# Leeway after click before Discord automation starts.
+QUEUE_COMMAND_START_DELAY_S = 1.2
+# Extra settle after jumping to #queue before typing the slash command.
+QUEUE_CHANNEL_SETTLE_S = 0.9
+
+# /process ship option: "FL 1 - Hunters Call Brig 5 -- 2/3" → "1 5"
+_PROCESS_SHIP_OPTION_RE = re.compile(
+    r"\bFL\s*(\d+)\b.*?\b(?:Brig|Sloop|Galleon|Gal)\s*(\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def _process_ship_option(ship_name: str) -> str | None:
+    """Convert a fleet channel name to the /process ship autocomplete value."""
+    match = _PROCESS_SHIP_OPTION_RE.search(ship_name or "")
+    if not match:
+        return None
+    return f"{match.group(1)} {match.group(2)}"
 
 
 def _queue_debug_enabled() -> bool:
@@ -43,6 +75,8 @@ def _queue_debug_enabled() -> bool:
 class QueueWindow(AppWindow):
     _ws_message = Signal(dict)
     _ws_status = Signal(str)
+    _command_status = Signal(str)
+    _command_finished = Signal()
 
     def __init__(self):
         self._debug_visible = _queue_debug_enabled()
@@ -56,9 +90,15 @@ class QueueWindow(AppWindow):
         self._sim_updating = False
         self._client: QueueWsClient | None = None
         self._pending_report = False
-        super().__init__("Queue Monitor")
+        self._command_busy = False
+        self.abort_requested = False
+        # User ids we just ran /prep for — flip Prep→Process until snapshot catches up.
+        self._recently_prepped_user_ids: set[str] = set()
+        super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
+        self._command_status.connect(self._set_status)
+        self._command_finished.connect(self._on_command_finished)
         self._client = QueueWsClient(
             on_message=lambda data: self._ws_message.emit(data),
             on_status=lambda text: self._ws_status.emit(text),
@@ -154,6 +194,15 @@ class QueueWindow(AppWindow):
         workflow_col = QSplitter(Qt.Orientation.Vertical)
         self._workflow_splitter = workflow_col
 
+        onduty_box = QGroupBox("On-duty pings")
+        onduty_layout = QVBoxLayout(onduty_box)
+        onduty_layout.setContentsMargins(4, 4, 4, 4)
+        self.onduty_list = QListWidget()
+        self.onduty_list.setWordWrap(True)
+        self.onduty_list.setMaximumHeight(72)
+        onduty_layout.addWidget(self.onduty_list)
+        workflow_col.addWidget(onduty_box)
+
         rejoin_box = QGroupBox("Waiting to rejoin")
         rejoin_layout = QVBoxLayout(rejoin_box)
         self.rejoins_list = QListWidget()
@@ -182,10 +231,11 @@ class QueueWindow(AppWindow):
         pending_layout.addWidget(self.outstanding_list)
         workflow_col.addWidget(pending_box)
 
-        workflow_col.setStretchFactor(0, 1)
+        workflow_col.setStretchFactor(0, 0)
         workflow_col.setStretchFactor(1, 1)
-        workflow_col.setStretchFactor(2, 2)
+        workflow_col.setStretchFactor(2, 1)
         workflow_col.setStretchFactor(3, 2)
+        workflow_col.setStretchFactor(4, 2)
         top_cluster.addWidget(workflow_col)
 
         # Keep fleet column narrow; workflow absorbs growth when the main
@@ -201,8 +251,18 @@ class QueueWindow(AppWindow):
         self.recommendations_list = QListWidget()
         self.recommendations_list.setWordWrap(True)
         self.recommendations_list.setMinimumHeight(100)
-        self.recommendations_list.itemSelectionChanged.connect(self._on_recommendation_selection)
-        self.recommendations_list.itemDoubleClicked.connect(self._on_recommendation_double_clicked)
+        self.recommendations_list.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.recommendations_list.customContextMenuRequested.connect(
+            self._on_recommendation_context_menu
+        )
+        self.recommendations_list.itemSelectionChanged.connect(
+            self._on_recommendation_selection
+        )
+        self.recommendations_list.itemDoubleClicked.connect(
+            self._on_recommendation_double_clicked
+        )
         rec_layout.addWidget(self.recommendations_list)
         self.recommendation_detail = QLabel("No recommendations yet")
         self.recommendation_detail.setWordWrap(True)
@@ -877,7 +937,9 @@ class QueueWindow(AppWindow):
         self._apply_leaves(data)
         self._apply_outstanding(data)
         self._apply_preps(data)
+        self._apply_onduty_pings(data)
         self._apply_rejoins(data)
+        self._sync_recently_prepped_from_snapshot(data)
         self._apply_recommendations(data)
 
         if self._debug_visible:
@@ -984,20 +1046,37 @@ class QueueWindow(AppWindow):
         """Map leave user_id -> unhandled|prepped|processing|taken."""
         leaves = data.get("active_leaves") or []
         processes = data.get("outstanding_processes") or []
-        preps = [
-            p
-            for p in (data.get("active_preps") or [])
-            if (p.get("status") or "open") in ("open", "ready")
-        ]
         recommendations = data.get("recommendations") or []
+
+        # Users still in a live recommendation keep their ready-prep leave claim.
+        # Ready/timeout preps for people who already missed their process spot
+        # (no longer recommended) must not keep the leave yellow.
+        recommended_user_ids: set[str] = set()
+        for rec in recommendations:
+            for member in rec.get("members") or []:
+                uid = str(member.get("user_id") or "")
+                if uid:
+                    recommended_user_ids.add(uid)
+
+        preps = []
+        for prep in data.get("active_preps") or []:
+            status = str(prep.get("status") or "open")
+            uid = str(prep.get("user_id") or "")
+            if status == "open":
+                preps.append(prep)
+            elif status == "ready" and uid in recommended_user_ids:
+                preps.append(prep)
 
         status_by_user: dict[str, str] = {}
         for leave in leaves:
             user_id = str(leave.get("user_id") or "")
             if not user_id:
                 continue
-            if (leave.get("fill_status") or "open") == "filled":
+            fill = leave.get("fill_status") or "open"
+            if fill == "filled":
                 status_by_user[user_id] = "taken"
+            elif fill == "departed":
+                status_by_user[user_id] = "left"
             else:
                 status_by_user[user_id] = "unhandled"
 
@@ -1061,6 +1140,7 @@ class QueueWindow(AppWindow):
         self._apply_leaves(self._last_snapshot)
         self._apply_outstanding(self._last_snapshot)
         self._apply_preps(self._last_snapshot)
+        self._apply_onduty_pings(self._last_snapshot)
         self._apply_rejoins(self._last_snapshot)
         self._apply_alliance_ping_header(self._last_snapshot)
         self._refresh_queue_minutes_column()
@@ -1221,6 +1301,7 @@ class QueueWindow(AppWindow):
 
         colors = {
             "unhandled": QColor(theme.RED or "#ff4444"),
+            "left": QColor(theme.RED or "#ff4444"),
             "prepped": QColor(theme.YELLOW or "#ffaa33"),
             "processing": QColor(theme.PEACH or "#ff8533"),
             "taken": QColor(theme.GREEN or "#4ade80"),
@@ -1237,7 +1318,8 @@ class QueueWindow(AppWindow):
                 overdue_phrase="should have left",
             )
             status = status_by_user.get(user_id, "unhandled")
-            bits = [f"{name} leaving {ship}", status]
+            verb = "left" if status == "left" else "leaving"
+            bits = [f"{name} {verb} {ship}", status]
             if expiry:
                 bits.append(expiry)
             item = QListWidgetItem(" — ".join(bits))
@@ -1260,7 +1342,7 @@ class QueueWindow(AppWindow):
             )
             ship = proc.get("ship_name") or proc.get("ship_channel_id") or "?"
             expiry = self._format_expiry(proc.get("expires_at"))
-            text = f"{name} → {ship}"
+            text = f"{name} -> {ship}"
             if expiry:
                 text = f"{text} ({expiry})"
             self.outstanding_list.addItem(text)
@@ -1271,31 +1353,55 @@ class QueueWindow(AppWindow):
         if not data.get("active", True):
             self.preps_list.addItem("Queue closed")
             return
-        # Show open/ready preps; hide terminal states cluttering the panel.
-        live = [p for p in preps if str(p.get("status") or "open") in ("open", "ready")]
+        # Pending = still waiting for accept; hide ready/accepted and terminal states.
+        live = [p for p in preps if str(p.get("status") or "open") == "open"]
         if not live:
             self.preps_list.addItem("None")
             return
-        ready_color = QColor(theme.GREEN or "#4ade80")
         for prep in live:
             user_id = str(prep.get("user_id") or "")
             name = self._display_name_for_user(
                 user_id, fallback=str(prep.get("display_name") or "")
             )
-            status = str(prep.get("status") or "open")
-            # Bot-notices "is ready" → show as accepted (green).
-            display_status = "accepted" if status == "ready" else status
             ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
             expiry = self._format_expiry(prep.get("expires_at"))
-            bits = [name, display_status]
+            bits = [name]
             if ship:
-                bits.append(f"→ {ship}")
+                bits.append(f"-> {ship}")
             if expiry:
                 bits.append(expiry)
-            item = QListWidgetItem(" — ".join(bits))
-            if status == "ready":
-                item.setForeground(ready_color)
-            self.preps_list.addItem(item)
+            self.preps_list.addItem(" — ".join(bits))
+
+    def _apply_onduty_pings(self, data: dict) -> None:
+        self.onduty_list.clear()
+        pings = data.get("onduty_pings") or []
+        if not pings:
+            self.onduty_list.addItem("None")
+            return
+        now = datetime.now(timezone.utc)
+        for ping in pings:
+            user_id = str(ping.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(ping.get("display_name") or "")
+            )
+            channel = str(ping.get("channel_name") or ping.get("channel_id") or "?")
+            if channel and not channel.startswith("#"):
+                channel = f"#{channel}"
+            bits = [name, channel]
+            created_at = ping.get("created_at")
+            if created_at:
+                try:
+                    value = datetime.fromisoformat(
+                        str(created_at).replace("Z", "+00:00")
+                    )
+                    if value.tzinfo is None:
+                        value = value.replace(tzinfo=timezone.utc)
+                    age_secs = int((now - value).total_seconds())
+                    if age_secs >= 0:
+                        bits.append(f"{self._format_duration(age_secs)} ago")
+                except Exception:
+                    pass
+            self.onduty_list.addItem(" — ".join(bits))
 
     def _apply_rejoins(self, data: dict) -> None:
         self.rejoins_list.clear()
@@ -1312,7 +1418,7 @@ class QueueWindow(AppWindow):
                 user_id, fallback=str(rejoin.get("display_name") or "")
             )
             ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
-            self.rejoins_list.addItem(f"{name} → {ship}")
+            self.rejoins_list.addItem(f"{name} -> {ship}")
 
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
@@ -1332,10 +1438,46 @@ class QueueWindow(AppWindow):
 
         restore_row = -1
         for index, rec in enumerate(recs):
+            rec = dict(rec)
+            action = self._effective_recommendation_action(rec)
+            rec["action"] = action
             summary = str(rec.get("summary") or rec.get("reason_label") or "Recommendation")
-            item = QListWidgetItem(summary)
+            if action == "process" and summary.startswith("Prep:"):
+                summary = "Process:" + summary[len("Prep:") :]
+                rec["summary"] = summary
+            primary_label = "Prep" if action == "prep" else "Process"
+
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, rec)
+
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(4, 0, 4, 0)
+            row_layout.setSpacing(6)
+            label = QLabel(summary)
+            label.setWordWrap(True)
+            label.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            )
+            row_layout.addWidget(label, stretch=1)
+
+            btn = QPushButton(primary_label)
+            btn.setFixedSize(64, 22)
+            btn.setStyleSheet("QPushButton { padding: 0px 4px; }")
+            btn.setEnabled(not self._command_busy and not self._sim_enabled)
+            if self._sim_enabled:
+                btn.setToolTip("Sim mode — use double-click to apply")
+            else:
+                btn.setToolTip(f"Run /{action} in #queue")
+            btn.clicked.connect(
+                lambda _checked=False, r=rec, a=action: self._start_queue_command(r, a)
+            )
+            row_layout.addWidget(btn)
+
             self.recommendations_list.addItem(item)
+            self.recommendations_list.setItemWidget(item, row)
+            item.setSizeHint(row.sizeHint())
+
             if previous and str(rec.get("id")) == str(previous):
                 restore_row = index
 
@@ -1344,7 +1486,88 @@ class QueueWindow(AppWindow):
             self.recommendations_list.setCurrentRow(restore_row)
         else:
             self._selected_recommendation_id = None
-            self.recommendation_detail.setText(f"{len(recs)} option(s) — select one to inspect")
+            self.recommendation_detail.setText(
+                f"{len(recs)} option(s) — select one to inspect"
+            )
+
+    def _effective_recommendation_action(self, rec: dict) -> str:
+        """Force process when the member is already prepped (or just prepped locally)."""
+        action = str(rec.get("action") or "process").lower()
+        if action != "prep":
+            return action
+        for member in rec.get("members") or []:
+            uid = str(member.get("user_id") or "")
+            if not uid:
+                continue
+            if uid in self._recently_prepped_user_ids:
+                return "process"
+            if self._user_has_active_prep(uid):
+                return "process"
+        return action
+
+    def _sync_recently_prepped_from_snapshot(self, data: dict) -> None:
+        """Drop optimistic prep markers once the live prep row (or process) appears."""
+        if not self._recently_prepped_user_ids:
+            return
+        live_prep = {
+            str(p.get("user_id") or "")
+            for p in (data.get("active_preps") or [])
+            if str(p.get("user_id") or "")
+            and (p.get("status") or "open") in ("open", "ready", "timeout")
+        }
+        processing = {
+            str(p.get("user_id") or "")
+            for p in (data.get("outstanding_processes") or [])
+            if p.get("user_id")
+        }
+        self._recently_prepped_user_ids = {
+            uid
+            for uid in self._recently_prepped_user_ids
+            if uid not in live_prep and uid not in processing
+        }
+
+    def _user_has_active_prep(self, user_id: str) -> bool:
+        uid = str(user_id or "")
+        if not uid:
+            return False
+        for prep in self._last_snapshot.get("active_preps") or []:
+            if str(prep.get("user_id") or "") != uid:
+                continue
+            if (prep.get("status") or "open") in ("open", "ready", "timeout"):
+                return True
+        return False
+
+    def _on_recommendation_context_menu(self, pos) -> None:
+        item = self.recommendations_list.itemAt(pos)
+        if item is None:
+            return
+        rec = item.data(Qt.ItemDataRole.UserRole) or {}
+        if not rec:
+            return
+        self.recommendations_list.setCurrentItem(item)
+
+        primary = str(rec.get("action") or "process").lower()
+        alternate = "process" if primary == "prep" else "prep"
+        members = rec.get("members") or []
+        user_id = str((members[0] if members else {}).get("user_id") or "")
+
+        menu = QMenu(self)
+        alt_action = QAction(alternate.capitalize(), self)
+        alt_action.setEnabled(not self._command_busy and not self._sim_enabled)
+        alt_action.triggered.connect(
+            lambda: self._start_queue_command(rec, alternate)
+        )
+        menu.addAction(alt_action)
+
+        if self._user_has_active_prep(user_id):
+            unprep_action = QAction("Unprep", self)
+            unprep_action.setEnabled(not self._command_busy and not self._sim_enabled)
+            unprep_action.triggered.connect(
+                lambda: self._start_queue_command(rec, "unprep")
+            )
+            menu.addAction(unprep_action)
+
+        menu.exec(QCursor.pos())
 
     def _on_recommendation_selection(self) -> None:
         items = self.recommendations_list.selectedItems()
@@ -1356,7 +1579,9 @@ class QueueWindow(AppWindow):
         self._selected_recommendation_id = str(rec.get("id") or "") or None
         ship = rec.get("ship") or {}
         members = rec.get("members") or []
-        names = ", ".join(str(m.get("display_name") or m.get("user_id") or "?") for m in members)
+        names = ", ".join(
+            str(m.get("display_name") or m.get("user_id") or "?") for m in members
+        )
         ship_name = ship.get("channel_name") or ship.get("channel_id") or "?"
         needs = ship.get("needs")
         needs_bit = f", needs {needs}" if needs is not None else ""
@@ -1373,7 +1598,7 @@ class QueueWindow(AppWindow):
         if self._sim_enabled:
             lines.append("Sim: double-click to process")
         else:
-            lines.append("Execute in alpha11")
+            lines.append("Use Prep/Process button, or right-click for the other action")
         self.recommendation_detail.setText("\n".join(lines))
 
         # Highlight matching queue rows for the chosen recommendation.
@@ -1389,13 +1614,125 @@ class QueueWindow(AppWindow):
                 self.queue_table.selectRow(row)
                 break
 
+    def _start_queue_command(self, rec: dict, action: str) -> None:
+        if self._sim_enabled:
+            self._set_status("Sim mode — Discord commands disabled")
+            return
+        if self._command_busy:
+            self._set_status("Already running a queue command")
+            return
+
+        members = rec.get("members") or []
+        member = members[0] if members else {}
+        user_id = str(member.get("user_id") or "").strip()
+        display_name = str(member.get("display_name") or user_id or "?")
+        ship = rec.get("ship") or {}
+        ship_name = str(ship.get("channel_name") or "").strip()
+        action = str(action or "").lower()
+
+        if not user_id:
+            self._set_status("Recommendation missing user id")
+            return
+        if action == "process":
+            if not ship_name:
+                self._set_status("Recommendation missing ship name")
+                return
+            ship_option = _process_ship_option(ship_name)
+            if not ship_option:
+                self._set_status(f"Cannot parse FL/ship numbers from: {ship_name}")
+                return
+        else:
+            ship_option = ""
+        if action not in ("prep", "process", "unprep"):
+            self._set_status(f"Unknown action: {action}")
+            return
+
+        if action == "prep" and user_id:
+            self._recently_prepped_user_ids.add(user_id)
+            # Flip Prep -> Process immediately in the list.
+            self._apply_recommendations(self._last_snapshot or {})
+        elif action == "unprep" and user_id:
+            self._recently_prepped_user_ids.discard(user_id)
+            self._apply_recommendations(self._last_snapshot or {})
+
+        self._command_busy = True
+        self.abort_requested = False
+        self._set_rec_buttons_enabled(False)
+        self._command_status.emit(f"Starting /{action} for {display_name}…")
+
+        thread = threading.Thread(
+            target=self._queue_command_worker,
+            args=(action, user_id, ship_option, ship_name, display_name),
+            daemon=True,
+        )
+        thread.start()
+
+    def _queue_command_worker(
+        self,
+        action: str,
+        user_id: str,
+        ship_option: str,
+        ship_name: str,
+        display_name: str,
+    ) -> None:
+        try:
+            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            self._command_status.emit(f"Opening #queue for {display_name}…")
+            switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
+            interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
+            clear_typing_bar()
+
+            if action == "process":
+                self._command_status.emit(
+                    f"Running /process for {display_name} -> {ship_option} ({ship_name})…"
+                )
+                execute_slash_command(self, "/process", [user_id, ship_option])
+            elif action == "prep":
+                self._command_status.emit(f"Running /prep for {display_name}…")
+                execute_slash_command(self, "/prep", [user_id])
+            else:
+                self._command_status.emit(f"Running /prep unprep for {display_name}…")
+                execute_slash_command(self, "/prep", [user_id, "unprep:True"])
+
+            self._command_status.emit(f"Done: /{action} for {display_name}")
+        except AbortError:
+            if action == "prep" and user_id:
+                self._recently_prepped_user_ids.discard(user_id)
+            self._command_status.emit("Queue command aborted")
+        except Exception:
+            if action == "prep" and user_id:
+                self._recently_prepped_user_ids.discard(user_id)
+            logger.exception("Queue slash command failed (%s %s)", action, user_id)
+            self._command_status.emit(f"Failed: /{action} for {display_name}")
+        finally:
+            self._command_finished.emit()
+
+    def _on_command_finished(self) -> None:
+        self._command_busy = False
+        # Refresh so abort/fail of /prep restores Prep, and success keeps Process.
+        if self._last_snapshot:
+            self._apply_recommendations(self._last_snapshot)
+        else:
+            self._set_rec_buttons_enabled(not self._sim_enabled)
+
+    def _set_rec_buttons_enabled(self, enabled: bool) -> None:
+        for i in range(self.recommendations_list.count()):
+            item = self.recommendations_list.item(i)
+            widget = self.recommendations_list.itemWidget(item)
+            if widget is None:
+                continue
+            for btn in widget.findChildren(QPushButton):
+                btn.setEnabled(enabled)
+
     def _on_recommendation_double_clicked(self, item: QListWidgetItem) -> None:
         if not self._sim_enabled or not self._client or item is None:
             return
         rec = item.data(Qt.ItemDataRole.UserRole) or {}
         ship = rec.get("ship") or {}
         channel_id = str(ship.get("channel_id") or "")
-        user_ids = [str(m.get("user_id")) for m in (rec.get("members") or []) if m.get("user_id")]
+        user_ids = [
+            str(m.get("user_id")) for m in (rec.get("members") or []) if m.get("user_id")
+        ]
         if not channel_id or not user_ids:
             self._set_status("Sim: recommendation missing ship or members")
             return

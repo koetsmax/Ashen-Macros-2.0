@@ -9,6 +9,9 @@ from staffcheck.check_message import not_good_to_check
 from staffcheck.qt_ui import btn_config, btn_enable
 from staffcheck.tasks import run_background
 
+# Must cover Xbox rate-limit waits (~60s × up to 3) plus scrape time on the API.
+SEARCH_API_TIMEOUT_SECONDS = 360
+
 
 def ashen_commands(self):
     if abort.is_abort_requested(self):
@@ -40,6 +43,45 @@ def ashen_commands(self):
     btn_config(self.kill_button, "Needs to unprivate Xbox", lambda: needs_to_unprivate_xbox(self))
     btn_enable(self.kill_button, True)
     self.kill_button.setVisible(True)
+
+
+def redo_search(self):
+    """Re-run /search + API scrape after timeout or Xbox rate-limit incomplete."""
+    if abort.is_abort_requested(self):
+        return
+    if self.channel.get() != "#on-duty-commands":
+        result_panel.search_skipped(self)
+        return
+    if not getattr(self, "xbox_gt", None):
+        result_panel.search_failed(self, "No gamertag to search")
+        return
+
+    btn_enable(self.search_fix_issues_button, False)
+    self.result_sections["search"].set_loading()
+    self.timestamp = int(time.time())
+    self.currentstate = "AshenCommands"
+    try:
+        switch_channel(self, self.channel.get())
+        clear_typing_bar()
+        search_gt = str(self.xbox_gt).replace(" ", "")
+        execute_command(
+            self,
+            f"/search member:{self.user_id.get()} gamertag:{search_gt}",
+        )
+    except abort.AbortError:
+        return
+    if abort.is_abort_requested(self):
+        return
+    run_background(ashen_api_request, self)
+
+
+def _enable_search_redo(self) -> None:
+    btn_config(
+        self.search_fix_issues_button,
+        "Re-run search",
+        on_click=lambda: redo_search(self),
+    )
+    btn_enable(self.search_fix_issues_button, True)
 
 
 def needs_to_remove_friends(self):
@@ -83,7 +125,7 @@ def ashen_api_request(self):
             self,
             f"{config['api_url']}/staffcheck/search",
             payload,
-            timeout=120,
+            timeout=SEARCH_API_TIMEOUT_SECONDS,
             headers=self.headers,
         )
 
@@ -93,18 +135,26 @@ def ashen_api_request(self):
             request_error = True
         elif response.status_code != 200:
             request_error = True
-        elif response.json()["error"] != "none":
-            result_panel.search_failed(self, response.json()["error"])
         else:
-            r = response.json()
-            result_panel.search_apply(self, r)
-            btn_enable(self.jump_to_message_search_button, True)
-            btn_config(
-                self.jump_to_message_search_button,
-                on_click=lambda: switch_channel(self, r["jump_url"], kwargs=True),
-            )
-            if self.search_issues:
-                btn_enable(self.search_fix_issues_button, True)
+            body = response.json()
+            err = body.get("error") or "none"
+            if err != "none":
+                result_panel.search_failed(self, err)
+                # Only Xbox rate-limit incomplete → allow manual re-run.
+                err_l = str(err).lower()
+                if (
+                    body.get("rate_limited")
+                    or body.get("incomplete")
+                    or "rate limited" in err_l
+                ):
+                    _enable_search_redo(self)
+            else:
+                result_panel.search_apply(self, body)
+                btn_enable(self.jump_to_message_search_button, True)
+                btn_config(
+                    self.jump_to_message_search_button,
+                    on_click=lambda: switch_channel(self, body["jump_url"], kwargs=True),
+                )
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True

@@ -183,8 +183,10 @@ class GamertagLookupWindow(AppWindow):
 
         linked = data.get("linked_xbox") or []
         if linked:
+            self.gamertag_label.setStyleSheet("")
             self.gamertag_label.setText("\n".join(str(g) for g in linked))
         else:
+            self.gamertag_label.setStyleSheet("color: #ff4444;")
             self.gamertag_label.setText("Not linked")
 
         self.mutuals_list.clear()

@@ -7,8 +7,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 _ALLOWED_MUTUAL_SERVER_NAMES = frozenset(
     {
         "Ashen Alliance",
-        "Sea of Thieves Official",
-        "Sea of Thieves Community",
+        "Sea of Thieves",
     }
 )
 

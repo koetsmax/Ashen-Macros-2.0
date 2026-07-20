@@ -199,7 +199,7 @@ def continue_check(self):
         if self.xbox_gt != []:
             label_set(self.gamertag_label, str(self.xbox_gt))
         else:
-            label_set(self.gamertag_label, "Not linked")
+            label_set(self.gamertag_label, "Not linked", "red")
         btn_enable(self.start_button, False)
         btn_enable(self.stop_button, True)
         # Session already started in start_check; keep hotkey alive if needed.
@@ -221,7 +221,7 @@ def continue_check(self):
         else:
             determine_method(self)
     else:
-        label_set(self.gamertag_label, "Not linked")
+        label_set(self.gamertag_label, "Not linked", "red")
         abort.start_check_session(self)
         from staffcheck import elemental_commands
 

@@ -249,7 +249,9 @@ class StaffcheckView(QWidget):
         )
         self.invited_users_loghistory_button.setEnabled(False)
 
-        self.search_fix_issues_button = self._make_button("W.I.P.", lambda: None)
+        self.search_fix_issues_button = self._make_button(
+            "Re-run search", lambda: None
+        )
         self.search_fix_issues_button.setEnabled(False)
         self.jump_to_message_search_button = self._make_button("Jump to message", lambda: None)
         self.jump_to_message_search_button.setEnabled(False)
