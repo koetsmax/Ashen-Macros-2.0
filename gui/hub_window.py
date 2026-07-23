@@ -42,6 +42,9 @@ class UpdateWorker(QThread):
 
 
 class StaffcheckHub(QMainWindow):
+    _update_download_ready = Signal(str)
+    _update_download_failed = Signal()
+
     def __init__(
         self,
         local_version: str,
@@ -66,8 +69,13 @@ class StaffcheckHub(QMainWindow):
         self._settings_action = None
         self._updates_action = None
 
+        self._update_download_ready.connect(self._start_installer_and_quit)
+        self._update_download_failed.connect(self._on_update_download_failed)
+
         self.setWindowTitle("Ashen Macros")
-        self.setMinimumSize(960, 520)
+        # Content is ~700–800px wide and left-aligned; a 960px floor left a
+        # permanent empty strip (~toast width) on the right that could not shrink.
+        self.setMinimumSize(720, 520)
         load_window_geometry(self)
         track_window_geometry(self)
 
@@ -129,8 +137,9 @@ class StaffcheckHub(QMainWindow):
         footer.addWidget(self.version_badge)
         outer.addLayout(footer)
 
-        self.toast_stack = ToastStack(central)
-        self.toast_stack.setParent(central)
+        # Parent to the window (not central's layout tree) so toasts never
+        # participate in size constraints — only setGeometry positioning.
+        self.toast_stack = ToastStack(self)
         self.toast_stack.raise_()
 
         self._build_menu()
@@ -181,26 +190,39 @@ class StaffcheckHub(QMainWindow):
         self._position_toast_stack()
 
     def _position_toast_stack(self):
-        if hasattr(self, "toast_stack"):
-            width = self.toast_stack.TOAST_WIDTH
-            if not self.toast_stack.isVisible():
-                return
-            height = self.toast_stack.preferred_height()
-            self.toast_stack.setGeometry(
-                self.width() - width - 20, 36, width, height
-            )
-            self.toast_stack.raise_()
-            # Re-measure after geometry settles (second toast often needs this).
-            QTimer.singleShot(0, self._relayout_toast_stack)
+        if not hasattr(self, "toast_stack"):
+            return
+        if not self.toast_stack.isVisible():
+            return
+        width = self.toast_stack.TOAST_WIDTH
+        height = self.toast_stack.preferred_height()
+        central = self.centralWidget()
+        if central is not None:
+            top_right = central.mapTo(self, central.rect().topRight())
+            x = top_right.x() - width - 20
+            y = top_right.y() + 8
+        else:
+            x = self.width() - width - 20
+            y = 36
+        self.toast_stack.setGeometry(x, y, width, height)
+        self.toast_stack.raise_()
+        # Re-measure after geometry settles (second toast often needs this).
+        QTimer.singleShot(0, self._relayout_toast_stack)
 
     def _relayout_toast_stack(self):
         if not hasattr(self, "toast_stack") or not self.toast_stack.isVisible():
             return
         width = self.toast_stack.TOAST_WIDTH
         height = self.toast_stack.preferred_height()
-        self.toast_stack.setGeometry(
-            self.width() - width - 20, 36, width, height
-        )
+        central = self.centralWidget()
+        if central is not None:
+            top_right = central.mapTo(self, central.rect().topRight())
+            x = top_right.x() - width - 20
+            y = top_right.y() + 8
+        else:
+            x = self.width() - width - 20
+            y = 36
+        self.toast_stack.setGeometry(x, y, width, height)
         self.toast_stack.raise_()
 
     def _set_welcome_text(self, username: str | None):
@@ -447,14 +469,12 @@ class StaffcheckHub(QMainWindow):
             self.version_badge.set_outdated(True)
             self.toast_stack.show_toast(
                 "update",
-                f"Update available (v{self._online_version})",
+                f"Update available (v{self._online_version}). "
+                "Functionality may be reduced until you update.",
                 on_click=self._download_update,
                 dismiss_ms=0,
+                action_label="Update now",
             )
-        elif kind == "elevate":
-            from pyuac import runAsAdmin
-            self.close()
-            runAsAdmin()
         elif not silent:
             if kind == "current":
                 self.version_badge.set_outdated(False)
@@ -478,8 +498,66 @@ class StaffcheckHub(QMainWindow):
                 )
 
     def _download_update(self):
-        if self._online_version:
-            updates.download_update(self._online_version)
+        if not self._online_version:
+            return
+        self.toast_stack.show_toast(
+            "update",
+            f"Downloading update (v{self._online_version})…",
+            dismiss_ms=0,
+        )
+        version = self._online_version
+        worker = threading.Thread(
+            target=self._download_update_worker,
+            args=(version,),
+            daemon=True,
+        )
+        worker.start()
+
+    def _download_update_worker(self, online_version: str) -> None:
+        try:
+            installer_path = updates.download_update(online_version)
+        except Exception:
+            logger.exception("Update download failed")
+            self._update_download_failed.emit()
+            return
+        # Marshal to the UI thread — QTimer.singleShot from a worker thread is a no-op.
+        self._update_download_ready.emit(installer_path)
+
+    def _on_update_download_failed(self) -> None:
+        self.toast_stack.show_toast(
+            "update",
+            "Update download failed. Try again from Check for updates.",
+            dismiss_ms=8000,
+            on_click=self._download_update,
+            action_label="Retry",
+        )
+
+    def _start_installer_and_quit(self, installer_path: str) -> None:
+        try:
+            updates.launch_installer_after_exit(installer_path)
+        except Exception:
+            logger.exception("Failed to schedule installer")
+            self.toast_stack.show_toast(
+                "update",
+                "Could not start the installer. Try running Ashen.Macro.Installer.exe manually.",
+                dismiss_ms=10000,
+            )
+            return
+        self._quit_for_update()
+
+    def _quit_for_update(self) -> None:
+        """Fully exit so the installer can overwrite launcher files."""
+        from PySide6.QtWidgets import QApplication
+
+        self.toast_stack.show_toast(
+            "update",
+            "Update downloaded — closing to install…",
+            dismiss_ms=0,
+        )
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+        else:
             self.close()
 
     def closeEvent(self, event: QCloseEvent):

@@ -52,6 +52,32 @@ class SettingsDialog(QDialog):
         )
         layout.addWidget(self.compact_panels_check)
 
+        self.edit_check_message_check = QCheckBox("Edit previous check message")
+        self.edit_check_message_check.setChecked(
+            config.get("edit_check_message", "true").lower() in ("1", "true", "yes")
+        )
+        self.edit_check_message_check.setToolTip(
+            "When enabled, if you posted a good/not-good check for this user in "
+            "#on-duty-chat within the last 30 minutes, edit that message instead of posting a new one."
+        )
+        layout.addWidget(self.edit_check_message_check)
+
+        nav_row = QHBoxLayout()
+        nav_row.addWidget(QLabel("Test navigate messages up:"))
+        self.edit_nav_offset_entry = QLineEdit(
+            config.get("edit_check_nav_test_offset", "4")
+        )
+        self.edit_nav_offset_entry.setMaximumWidth(60)
+        nav_row.addWidget(self.edit_nav_offset_entry)
+        self.edit_nav_test_btn = QPushButton("Test navigate in on-duty-chat")
+        self.edit_nav_test_btn.setToolTip(
+            "Switch to #on-duty-chat and move focus up N messages. Does not open edit."
+        )
+        self.edit_nav_test_btn.clicked.connect(self._test_edit_navigate)
+        nav_row.addWidget(self.edit_nav_test_btn)
+        nav_row.addStretch(1)
+        layout.addLayout(nav_row)
+
         layout.addWidget(QLabel(
             "Delay Initial Command: wait after the slash command.\n"
             "Delay follow up: wait after each variable.\n"
@@ -140,6 +166,39 @@ class SettingsDialog(QDialog):
     def _reset_app_positions(self):
         reset_app_window_positions(self.parent())
 
+    def _test_edit_navigate(self):
+        raw = self.edit_nav_offset_entry.text().strip() or "4"
+        try:
+            n = max(1, int(raw))
+        except ValueError:
+            n = 4
+        self.edit_nav_offset_entry.setText(str(n))
+        set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", str(n))
+        self.edit_nav_test_btn.setEnabled(False)
+        from staffcheck.tasks import run_background
+
+        run_background(self._run_edit_nav_test, n)
+
+    def _run_edit_nav_test(self, n: int):
+        import threading
+        from types import SimpleNamespace
+
+        from core.keyboard import navigate_to_on_duty_message, switch_channel
+        from staffcheck.abort import AbortError
+        from staffcheck.qt_ui import on_main_thread
+
+        ctx = SimpleNamespace(
+            keyboard_lock=threading.Lock(),
+            abort_requested=False,
+        )
+        try:
+            switch_channel(ctx, "#on-duty-chat")
+            navigate_to_on_duty_message(ctx, n)
+        except AbortError:
+            pass
+        finally:
+            on_main_thread(lambda: self.edit_nav_test_btn.setEnabled(True))
+
     def _save(self):
         for key, (entry, section) in self.entries.items():
             set_custom_value(section, key, entry.text())
@@ -148,6 +207,17 @@ class SettingsDialog(QDialog):
             "compact_panels",
             "true" if self.compact_panels_check.isChecked() else "false",
         )
+        set_custom_value(
+            "STAFFCHECK",
+            "edit_check_message",
+            "true" if self.edit_check_message_check.isChecked() else "false",
+        )
+        raw = self.edit_nav_offset_entry.text().strip() or "4"
+        try:
+            n = max(1, int(raw))
+        except ValueError:
+            n = 4
+        set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", str(n))
         self.accept()
 
     def _reset(self):
@@ -157,6 +227,10 @@ class SettingsDialog(QDialog):
             set_custom_value(section, key, defaults[key])
         self.compact_panels_check.setChecked(True)
         set_custom_value("UI", "compact_panels", "true")
+        self.edit_check_message_check.setChecked(True)
+        set_custom_value("STAFFCHECK", "edit_check_message", "true")
+        self.edit_nav_offset_entry.setText("4")
+        set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", "4")
         theme.set_flavor(theme.DEFAULT_FLAVOR)
         for i in range(self.flavor_combo.count()):
             if self.flavor_combo.itemData(i) == theme.DEFAULT_FLAVOR:

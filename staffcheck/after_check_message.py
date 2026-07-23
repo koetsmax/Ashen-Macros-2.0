@@ -3,7 +3,7 @@ import time
 
 import requests
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel, type_text
+from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from core.settings import read_config
 from staffcheck import abort, pipeline
 from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
@@ -20,9 +20,9 @@ def after_check_message(self):
         lambda: pipeline.continue_to_next(self),
     )
     btn_enable(self.function_button, True)
-    btn_config(self.kill_button, "Open modmail to unprivate Xbox", lambda: unprivate_xbox(self))
-    btn_config(self.start_button, "Needs to join the AWR", lambda: join_awr(self))
-    btn_config(self.function_button_2, "Needs to verify account", lambda: verify_account(self))
+    btn_config(self.kill_button, "Unprivate Xbox (modmail)", lambda: unprivate_xbox(self))
+    btn_config(self.start_button, "Join AWR", lambda: join_awr(self))
+    btn_config(self.function_button_2, "Verify account", lambda: verify_account(self))
     btn_enable(self.kill_button, True)
     btn_enable(self.function_button_2, True)
 
@@ -66,16 +66,6 @@ def unprivate_api_request(self):
                 switch_channel(self, f"#{r['modmail_channel']}")
                 clear_typing_bar()
                 execute_command(self, "/message-store recall Unprivate Xbox copyable: True")
-
-                config = read_config()
-                msg = config["unprivate_xbox_message"]
-                if msg.lower() != "delete":
-                    switch_channel(self, "#on-duty-chat", "arg")
-                    clear_typing_bar()
-                    msg = msg.replace("userID", f"<@{self.user_id.get()}>")
-                    msg = msg.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-                    type_text(self, msg)
-                    switch_channel(self, f"#{r['modmail_channel']}")
             except abort.AbortError:
                 return
 
@@ -95,13 +85,6 @@ def join_awr(self):
         clear_typing_bar()
         switch_channel(self, "#on-duty-chat")
         execute_command(self, f"/joinawr member:{self.user_id.get()}")
-
-        config = read_config()
-        msg = config["join_awr_message"]
-        if msg.lower() != "delete":
-            msg = msg.replace("userID", f"<@{self.user_id.get()}>")
-            msg = msg.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-            type_text(self, msg)
     except abort.AbortError:
         return
     pipeline.continue_to_next(self)
@@ -112,13 +95,6 @@ def verify_account(self):
         clear_typing_bar()
         switch_channel(self, "#on-duty-chat")
         execute_command(self, f"/verify member:{self.user_id.get()} verify_type:verify")
-
-        config = read_config()
-        msg = config["verify_message"]
-        if msg.lower() != "delete":
-            msg = msg.replace("userID", f"<@{self.user_id.get()}>")
-            msg = msg.replace("Time", f"<t:{round(time.time() + 600)}:R>")
-            type_text(self, msg)
     except abort.AbortError:
         return
     pipeline.continue_to_next(self)

@@ -4,7 +4,6 @@ from gui.components.result_section import ResultSection
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDialog,
     QGridLayout,
@@ -26,7 +25,7 @@ from staffcheck import abort, pipeline
 from staffcheck.build_example_message import build_example_message
 from staffcheck.elemental_commands import fix_issues as elemental_fix
 from staffcheck.invite_tracker import check_invited_users, check_loghistory
-from staffcheck.qt_ui import Var, btn_config, btn_enable
+from staffcheck.qt_ui import Var, btn_config, btn_enable, label_set
 from staffcheck.sot_official import check_for_yourself
 from staffcheck.result_panel import SECTION_IDLE_TOOLTIPS
 
@@ -165,6 +164,12 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self.gamertag_label, row, 1)
         row += 1
 
+        self.input_layout.addWidget(self._input_field_label("Last check:"), row, 0)
+        self.last_check_label = self._value_field("Not found")
+        label_set(self.last_check_label, "Not found", "muted")
+        self.input_layout.addWidget(self.last_check_label, row, 1)
+        row += 1
+
         self.input_layout.addWidget(self._input_field_label("Channel:"), row, 0)
         self.channel_combo_box = QComboBox()
         self.channel_combo_box.setMinimumHeight(FIELD_HEIGHT)
@@ -186,11 +191,6 @@ class StaffcheckView(QWidget):
         ])
         self.method = Var(self.method_combo_box.currentText, self.method_combo_box.setCurrentText)
         self.input_layout.addWidget(self.method_combo_box, row, 1)
-        row += 1
-
-        self.pre_check_button = QCheckBox("Check ID/GT in on-duty-chat")
-        self.pre_check_button.setMinimumHeight(FIELD_HEIGHT)
-        self.input_layout.addWidget(self.pre_check_button, row, 0, 1, 2)
         row += 1
 
         btn_row = QHBoxLayout()
@@ -241,12 +241,14 @@ class StaffcheckView(QWidget):
         self.jump_to_message_button.setEnabled(False)
 
         self.invited_by_loghistory_button = self._make_button(
-            "User report on inviters", lambda: check_loghistory(self),
+            "User report inviters", lambda: check_loghistory(self),
         )
+        self.invited_by_loghistory_button.setToolTip("User report on inviters")
         self.invited_by_loghistory_button.setEnabled(False)
         self.invited_users_loghistory_button = self._make_button(
-            "User report on invited users", lambda: check_invited_users(self),
+            "User report invited", lambda: check_invited_users(self),
         )
+        self.invited_users_loghistory_button.setToolTip("User report on invited users")
         self.invited_users_loghistory_button.setEnabled(False)
 
         self.search_fix_issues_button = self._make_button(
@@ -388,6 +390,7 @@ class StaffcheckView(QWidget):
         guilds = list(self.mutual_guilds)
         old = self.results_panel
         self.results_panel = self._build_results_panel()
+        self.results_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self._body_layout.replaceWidget(old, self.results_panel)
         old.deleteLater()
         if guilds:
@@ -398,9 +401,6 @@ class StaffcheckView(QWidget):
         for label, handler in [
             ("Good to check message", self.edit_good_to_check),
             ("Not good to check message", self.edit_not_good_to_check),
-            ("Join AWR message", self.edit_join_awr),
-            ("Unprivate Xbox message", self.edit_unprivate_xbox),
-            ("Verify message", self.edit_verify),
         ]:
             action = menu.addAction(label)
             action.triggered.connect(handler)
@@ -416,7 +416,7 @@ class StaffcheckView(QWidget):
 
         for w in (
             self.user_id_entry, self.channel_combo_box, self.method_combo_box,
-            self.pre_check_button, self.reason_entry,
+            self.reason_entry,
         ):
             w.setEnabled(ready)
         if ready:
@@ -441,21 +441,6 @@ class StaffcheckView(QWidget):
         CustomizeDialog("not_good_to_check_message",
                         "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1,
                         "userID **Not** Good to check -- GT: xboxGT -- Reason", self).exec()
-
-    def edit_join_awr(self):
-        CustomizeDialog("join_awr_message",
-                        "userID = Discord ID\n<#702904587027480607> = Alliance Waiting Room\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
-                        2, "userID has been requested to join the <#702904587027480607> - Good to remove from the queue if they don't join within 10 minutes (Time)", self).exec()
-
-    def edit_unprivate_xbox(self):
-        CustomizeDialog("unprivate_xbox_message",
-                        "userID = Discord ID\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
-                        3, "userID has been asked to unprivate their xbox - Good to remove from the queue if they don't unprivate their xbox within 10 minutes (Time)", self).exec()
-
-    def edit_verify(self):
-        CustomizeDialog("verify_message",
-                        "userID = Discord ID\nTime = automatic hammertime timestamp\nSet to 'delete' to prevent it from posting this message.",
-                        4, "userID has been asked to verify their account - Good to remove from the queue if they don't verify within 10 minutes (Time)", self).exec()
 
 
 class CustomizeDialog(QDialog):

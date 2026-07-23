@@ -35,7 +35,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.keyboard import clear_typing_bar, execute_slash_command, switch_channel
+from core.keyboard import (
+    clear_typing_bar,
+    confirm_shipswap_after_process,
+    execute_slash_command,
+    switch_channel,
+)
+from core.leave_pending import fetch_leave_message, react_pending_on_leave
 from core.queue_ws import QueueWsClient
 from core.settings import read_config, set_custom_value
 from gui import theme
@@ -94,6 +100,10 @@ class QueueWindow(AppWindow):
         self.abort_requested = False
         # User ids we just ran /prep for — flip Prep→Process until snapshot catches up.
         self._recently_prepped_user_ids: set[str] = set()
+        # Leave message ids we already :pending:-reacted (or self-reacted).
+        self._reacted_leave_message_ids: set[str] = set()
+        # Leave message ids claimed by someone else's :pending: — do not handle.
+        self._skipped_leave_message_ids: set[str] = set()
         super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
@@ -203,39 +213,31 @@ class QueueWindow(AppWindow):
         onduty_layout.addWidget(self.onduty_list)
         workflow_col.addWidget(onduty_box)
 
-        rejoin_box = QGroupBox("Waiting to rejoin")
-        rejoin_layout = QVBoxLayout(rejoin_box)
-        self.rejoins_list = QListWidget()
-        self.rejoins_list.setWordWrap(True)
-        rejoin_layout.addWidget(self.rejoins_list)
-        workflow_col.addWidget(rejoin_box)
+        leaves_rejoins_box = QGroupBox("Leaves & rejoins")
+        leaves_rejoins_layout = QVBoxLayout(leaves_rejoins_box)
+        self.leaves_rejoins_list = QListWidget()
+        self.leaves_rejoins_list.setWordWrap(True)
+        leaves_rejoins_layout.addWidget(self.leaves_rejoins_list)
+        workflow_col.addWidget(leaves_rejoins_box)
 
-        leaves_box = QGroupBox("Active leaves")
-        leaves_layout = QVBoxLayout(leaves_box)
-        self.leaves_list = QListWidget()
-        self.leaves_list.setWordWrap(True)
-        leaves_layout.addWidget(self.leaves_list)
-        workflow_col.addWidget(leaves_box)
+        preps_processes_box = QGroupBox("Preps & processes")
+        preps_processes_layout = QVBoxLayout(preps_processes_box)
+        self.preps_processes_list = QListWidget()
+        self.preps_processes_list.setWordWrap(True)
+        preps_processes_layout.addWidget(self.preps_processes_list)
+        workflow_col.addWidget(preps_processes_box)
 
-        preps_box = QGroupBox("Pending preps")
-        preps_layout = QVBoxLayout(preps_box)
-        self.preps_list = QListWidget()
-        self.preps_list.setWordWrap(True)
-        preps_layout.addWidget(self.preps_list)
-        workflow_col.addWidget(preps_box)
-
-        pending_box = QGroupBox("Pending processes")
-        pending_layout = QVBoxLayout(pending_box)
-        self.outstanding_list = QListWidget()
-        self.outstanding_list.setWordWrap(True)
-        pending_layout.addWidget(self.outstanding_list)
-        workflow_col.addWidget(pending_box)
+        new_sc_box = QGroupBox("New staffchecks")
+        new_sc_layout = QVBoxLayout(new_sc_box)
+        self.new_staffchecks_list = QListWidget()
+        self.new_staffchecks_list.setWordWrap(True)
+        new_sc_layout.addWidget(self.new_staffchecks_list)
+        workflow_col.addWidget(new_sc_box)
 
         workflow_col.setStretchFactor(0, 0)
         workflow_col.setStretchFactor(1, 1)
         workflow_col.setStretchFactor(2, 1)
-        workflow_col.setStretchFactor(3, 2)
-        workflow_col.setStretchFactor(4, 2)
+        workflow_col.setStretchFactor(3, 1)
         top_cluster.addWidget(workflow_col)
 
         # Keep fleet column narrow; workflow absorbs growth when the main
@@ -934,11 +936,10 @@ class QueueWindow(AppWindow):
                 self._selected_user_id = None
                 self._clear_editors()
 
-        self._apply_leaves(data)
-        self._apply_outstanding(data)
-        self._apply_preps(data)
+        self._apply_leaves_rejoins(data)
+        self._apply_preps_processes(data)
         self._apply_onduty_pings(data)
-        self._apply_rejoins(data)
+        self._apply_new_staffchecks(data)
         self._sync_recently_prepped_from_snapshot(data)
         self._apply_recommendations(data)
 
@@ -1137,11 +1138,10 @@ class QueueWindow(AppWindow):
     def _tick_countdowns(self) -> None:
         if not self._last_snapshot:
             return
-        self._apply_leaves(self._last_snapshot)
-        self._apply_outstanding(self._last_snapshot)
-        self._apply_preps(self._last_snapshot)
+        self._apply_leaves_rejoins(self._last_snapshot)
+        self._apply_preps_processes(self._last_snapshot)
         self._apply_onduty_pings(self._last_snapshot)
-        self._apply_rejoins(self._last_snapshot)
+        self._apply_new_staffchecks(self._last_snapshot)
         self._apply_alliance_ping_header(self._last_snapshot)
         self._refresh_queue_minutes_column()
 
@@ -1289,14 +1289,15 @@ class QueueWindow(AppWindow):
         days = hours // 24
         return f"{days}d"
 
-    def _apply_leaves(self, data: dict) -> None:
-        self.leaves_list.clear()
+    def _apply_leaves_rejoins(self, data: dict) -> None:
+        self.leaves_rejoins_list.clear()
         leaves = data.get("active_leaves") or []
+        rejoins = data.get("pending_rejoins") or []
         if not data.get("active", True):
-            self.leaves_list.addItem("Queue closed")
+            self.leaves_rejoins_list.addItem("Queue closed")
             return
-        if not leaves:
-            self.leaves_list.addItem("None")
+        if not leaves and not rejoins:
+            self.leaves_rejoins_list.addItem("None")
             return
 
         colors = {
@@ -1305,6 +1306,7 @@ class QueueWindow(AppWindow):
             "prepped": QColor(theme.YELLOW or "#ffaa33"),
             "processing": QColor(theme.PEACH or "#ff8533"),
             "taken": QColor(theme.GREEN or "#4ade80"),
+            "rejoin": QColor(theme.BLUE or "#60a5fa"),
         }
         status_by_user = self._leave_status_by_user(data)
         for leave in leaves:
@@ -1319,22 +1321,54 @@ class QueueWindow(AppWindow):
             )
             status = status_by_user.get(user_id, "unhandled")
             verb = "left" if status == "left" else "leaving"
-            bits = [f"{name} {verb} {ship}", status]
+            bits = [f"Leave: {name} {verb} {ship}", status]
             if expiry:
                 bits.append(expiry)
             item = QListWidgetItem(" — ".join(bits))
             item.setForeground(colors.get(status, colors["unhandled"]))
-            self.leaves_list.addItem(item)
+            self.leaves_rejoins_list.addItem(item)
 
-    def _apply_outstanding(self, data: dict) -> None:
-        self.outstanding_list.clear()
+        for rejoin in rejoins:
+            user_id = str(rejoin.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(rejoin.get("display_name") or "")
+            )
+            ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
+            item = QListWidgetItem(f"Rejoin: {name} -> {ship}")
+            item.setForeground(colors["rejoin"])
+            self.leaves_rejoins_list.addItem(item)
+
+    def _apply_preps_processes(self, data: dict) -> None:
+        self.preps_processes_list.clear()
         processes = data.get("outstanding_processes") or []
+        preps = data.get("active_preps") or []
         if not data.get("active", True):
-            self.outstanding_list.addItem("Queue closed")
+            self.preps_processes_list.addItem("Queue closed")
             return
-        if not processes:
-            self.outstanding_list.addItem("None")
+        live_preps = [p for p in preps if str(p.get("status") or "open") == "open"]
+        if not processes and not live_preps:
+            self.preps_processes_list.addItem("None")
             return
+
+        prep_color = QColor(theme.YELLOW or "#ffaa33")
+        process_color = QColor(theme.PEACH or "#ff8533")
+
+        for prep in live_preps:
+            user_id = str(prep.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(prep.get("display_name") or "")
+            )
+            ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
+            expiry = self._format_expiry(prep.get("expires_at"))
+            bits = [f"Prep: {name}"]
+            if ship:
+                bits.append(f"-> {ship}")
+            if expiry:
+                bits.append(expiry)
+            item = QListWidgetItem(" — ".join(bits))
+            item.setForeground(prep_color)
+            self.preps_processes_list.addItem(item)
+
         for proc in processes:
             user_id = str(proc.get("user_id") or "")
             name = self._display_name_for_user(
@@ -1342,35 +1376,83 @@ class QueueWindow(AppWindow):
             )
             ship = proc.get("ship_name") or proc.get("ship_channel_id") or "?"
             expiry = self._format_expiry(proc.get("expires_at"))
-            text = f"{name} -> {ship}"
+            text = f"Process: {name} -> {ship}"
             if expiry:
                 text = f"{text} ({expiry})"
-            self.outstanding_list.addItem(text)
+            item = QListWidgetItem(text)
+            item.setForeground(process_color)
+            self.preps_processes_list.addItem(item)
 
-    def _apply_preps(self, data: dict) -> None:
-        self.preps_list.clear()
-        preps = data.get("active_preps") or []
-        if not data.get("active", True):
-            self.preps_list.addItem("Queue closed")
+    def _apply_new_staffchecks(self, data: dict) -> None:
+        self.new_staffchecks_list.clear()
+        rows = data.get("new_staffchecks") or []
+        if not rows:
+            self.new_staffchecks_list.addItem("None")
             return
-        # Pending = still waiting for accept; hide ready/accepted and terminal states.
-        live = [p for p in preps if str(p.get("status") or "open") == "open"]
-        if not live:
-            self.preps_list.addItem("None")
-            return
-        for prep in live:
-            user_id = str(prep.get("user_id") or "")
+
+        colors = {
+            "awaiting_process": QColor(getattr(theme, "OVERLAY1", None) or "#888888"),
+            "awaiting_spot": QColor(theme.YELLOW or "#ffaa33"),
+            "on_fleet": QColor(theme.GREEN or "#4ade80"),
+            "missed_spot": QColor(theme.RED or "#ff4444"),
+            "left_early": QColor(theme.PEACH or "#ff8533"),
+        }
+        keep_seconds = 3600
+        now = datetime.now(timezone.utc)
+
+        for row in rows:
+            user_id = str(row.get("user_id") or "")
             name = self._display_name_for_user(
-                user_id, fallback=str(prep.get("display_name") or "")
+                user_id, fallback=str(row.get("display_name") or "")
             )
-            ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
-            expiry = self._format_expiry(prep.get("expires_at"))
-            bits = [name]
-            if ship:
-                bits.append(f"-> {ship}")
-            if expiry:
-                bits.append(expiry)
-            self.preps_list.addItem(" — ".join(bits))
+            status = str(row.get("status") or "awaiting_process")
+            ship = row.get("ship_name") or row.get("ship_channel_id") or ""
+
+            if status == "missed_spot":
+                detail = "Missed their spot, remove staffchecked"
+            elif status == "left_early":
+                played = row.get("played_seconds")
+                try:
+                    played_i = int(played) if played is not None else 0
+                except (TypeError, ValueError):
+                    played_i = 0
+                detail = (
+                    f"Played {self._format_duration(played_i)} — uncheck staffchecked"
+                )
+            elif status == "on_fleet":
+                remaining = None
+                joined_raw = row.get("joined_fleet_at")
+                if joined_raw:
+                    try:
+                        joined = datetime.fromisoformat(
+                            str(joined_raw).replace("Z", "+00:00")
+                        )
+                        if joined.tzinfo is None:
+                            joined = joined.replace(tzinfo=timezone.utc)
+                        remaining = max(
+                            0,
+                            keep_seconds
+                            - int((now - joined).total_seconds()),
+                        )
+                    except Exception:
+                        remaining = None
+                if remaining is None:
+                    detail = "On fleet — keep role after 1h"
+                else:
+                    detail = (
+                        f"On fleet — keep role in {self._format_duration(remaining)}"
+                    )
+            elif status == "awaiting_spot":
+                detail = "Waiting to take spot"
+            else:
+                detail = "Staffchecked — waiting to process"
+
+            bits = [name, detail]
+            if ship and status in ("awaiting_spot", "on_fleet", "left_early", "missed_spot"):
+                bits.insert(1, f"-> {ship}")
+            item = QListWidgetItem(" — ".join(bits))
+            item.setForeground(colors.get(status, colors["awaiting_process"]))
+            self.new_staffchecks_list.addItem(item)
 
     def _apply_onduty_pings(self, data: dict) -> None:
         self.onduty_list.clear()
@@ -1402,23 +1484,6 @@ class QueueWindow(AppWindow):
                 except Exception:
                     pass
             self.onduty_list.addItem(" — ".join(bits))
-
-    def _apply_rejoins(self, data: dict) -> None:
-        self.rejoins_list.clear()
-        rejoins = data.get("pending_rejoins") or []
-        if not data.get("active", True):
-            self.rejoins_list.addItem("Queue closed")
-            return
-        if not rejoins:
-            self.rejoins_list.addItem("None")
-            return
-        for rejoin in rejoins:
-            user_id = str(rejoin.get("user_id") or "")
-            name = self._display_name_for_user(
-                user_id, fallback=str(rejoin.get("display_name") or "")
-            )
-            ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
-            self.rejoins_list.addItem(f"{name} -> {ship}")
 
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
@@ -1593,6 +1658,19 @@ class QueueWindow(AppWindow):
             f"Ship: {ship_name}{needs_bit}",
             f"Why: {reason}",
         ]
+        origin = rec.get("origin_ship_effect") or {}
+        if origin.get("label"):
+            effect = str(origin.get("effect") or "").lower()
+            if effect == "empty":
+                lines.append(
+                    f"Note: {origin['label']} (no score penalty)"
+                )
+            elif effect == "lms":
+                lines.append(
+                    f"Note: {origin['label']} (no score penalty)"
+                )
+            else:
+                lines.append(f"Note: {origin['label']}")
         if score is not None:
             lines.append(f"Score: {score}")
         if self._sim_enabled:
@@ -1655,6 +1733,9 @@ class QueueWindow(AppWindow):
             self._recently_prepped_user_ids.discard(user_id)
             self._apply_recommendations(self._last_snapshot or {})
 
+        is_shipswap = bool(member.get("valid_shipswap"))
+        ship_channel_id = str(ship.get("channel_id") or "").strip()
+
         self._command_busy = True
         self.abort_requested = False
         self._set_rec_buttons_enabled(False)
@@ -1662,10 +1743,98 @@ class QueueWindow(AppWindow):
 
         thread = threading.Thread(
             target=self._queue_command_worker,
-            args=(action, user_id, ship_option, ship_name, display_name),
+            args=(
+                action,
+                user_id,
+                ship_option,
+                ship_name,
+                display_name,
+                is_shipswap,
+                ship_channel_id,
+            ),
             daemon=True,
         )
         thread.start()
+
+    def _open_leaves_for_ship(
+        self, ship_channel_id: str, ship_name: str
+    ) -> list[dict]:
+        """Oldest-first open leaves on a ship that still have a #queue message id."""
+        leaves = self._last_snapshot.get("active_leaves") or []
+        ship_key = ""
+        if ship_channel_id:
+            ship_key = f"id:{ship_channel_id}"
+        elif ship_name:
+            ship_key = f"name:{ship_name.strip().lower()}"
+        if not ship_key:
+            return []
+        matched: list[dict] = []
+        for leave in leaves:
+            if (leave.get("fill_status") or "open") == "filled":
+                continue
+            mid = str(leave.get("message_id") or "").strip()
+            if not mid:
+                continue
+            if mid in self._skipped_leave_message_ids:
+                continue
+            if self._ship_key_for_workflow(leave) != ship_key:
+                continue
+            matched.append(leave)
+        matched.sort(
+            key=lambda row: str(row.get("created_at") or row.get("expires_at") or "")
+        )
+        return matched
+
+    def _react_pending_before_fill(
+        self, ship_channel_id: str, ship_name: str, display_name: str
+    ) -> None:
+        """React :pending: on the leave we're filling, if any and not already claimed."""
+        for leave in self._open_leaves_for_ship(ship_channel_id, ship_name):
+            mid = str(leave.get("message_id") or "").strip()
+            if not mid:
+                continue
+            if mid in self._reacted_leave_message_ids:
+                # Already reacted (this session or prior self-react) — continue flow.
+                return
+
+            self._command_status.emit(
+                f"Looking up leave message before filling for {display_name}…"
+            )
+            info = fetch_leave_message(self._client, mid)
+            if not info.get("found"):
+                logger.info(
+                    "Leave message %s not found (%s) — skipping pending react",
+                    mid,
+                    info.get("reason"),
+                )
+                continue
+
+            if info.get("has_pending_reaction") and not info.get("self_reacted"):
+                # Someone else already claimed this leave — do not handle it.
+                self._skipped_leave_message_ids.add(mid)
+                self._command_status.emit(
+                    "Leave already has :pending: from someone else — skipping that leave"
+                )
+                continue
+
+            if info.get("self_reacted"):
+                self._reacted_leave_message_ids.add(mid)
+                return
+
+            leave_name = str(leave.get("display_name") or leave.get("user_id") or "?")
+            self._command_status.emit(
+                f"Reacting :pending: to leave from {leave_name}…"
+            )
+            status = react_pending_on_leave(
+                self, mid, info=info, client=self._client
+            )
+            if status in ("reacted", "already"):
+                self._reacted_leave_message_ids.add(mid)
+                return
+            if status == "skipped":
+                self._skipped_leave_message_ids.add(mid)
+                continue
+            logger.warning("Failed to react :pending: on leave message %s", mid)
 
     def _queue_command_worker(
         self,
@@ -1674,6 +1843,8 @@ class QueueWindow(AppWindow):
         ship_option: str,
         ship_name: str,
         display_name: str,
+        is_shipswap: bool = False,
+        ship_channel_id: str = "",
     ) -> None:
         try:
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
@@ -1682,11 +1853,22 @@ class QueueWindow(AppWindow):
             interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
             clear_typing_bar()
 
+            if action in ("prep", "process"):
+                self._react_pending_before_fill(
+                    ship_channel_id, ship_name, display_name
+                )
+                clear_typing_bar()
+
             if action == "process":
                 self._command_status.emit(
                     f"Running /process for {display_name} -> {ship_option} ({ship_name})…"
                 )
                 execute_slash_command(self, "/process", [user_id, ship_option])
+                if is_shipswap:
+                    self._command_status.emit(
+                        f"Confirming shipswap button for {display_name}…"
+                    )
+                    confirm_shipswap_after_process(self)
             elif action == "prep":
                 self._command_status.emit(f"Running /prep for {display_name}…")
                 execute_slash_command(self, "/prep", [user_id])

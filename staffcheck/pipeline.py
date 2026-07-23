@@ -1,9 +1,12 @@
 import requests
+from datetime import datetime, timezone
 
 from core.settings import read_config
 from staffcheck import abort, result_panel
 from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
 from staffcheck.tasks import run_background
+
+_TWELVE_HOURS = 12 * 3600
 
 
 def _button_noop():
@@ -37,6 +40,57 @@ def configure_rerun_button(view, on_click) -> None:
     btn_enable(btn, True)
 
 
+def _relative_age(iso_ts: str) -> str:
+    try:
+        when = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        seconds = max(0, int((datetime.now(timezone.utc) - when).total_seconds()))
+    except Exception:
+        return "?"
+    if seconds < 60:
+        return f"{seconds}s ago"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 48:
+        return f"{hours}h ago"
+    days = hours // 24
+    return f"{days}d ago"
+
+
+def apply_last_check_label(self, data: dict | None = None):
+    """Set Last check row from essential_data fields (or reset to Not found)."""
+    if not data:
+        label_set(self.last_check_label, "Not found", "muted")
+        return
+
+    status = data.get("last_check_status") or "none"
+    at = data.get("last_check_at")
+    if status == "none" or not at:
+        label_set(self.last_check_label, "Not found", "muted")
+        return
+
+    age = _relative_age(at)
+    if status == "not_good":
+        label_set(self.last_check_label, f"Not good · {age}", "red")
+        return
+    if status == "good":
+        try:
+            when = datetime.fromisoformat(str(at).replace("Z", "+00:00"))
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=timezone.utc)
+            seconds = (datetime.now(timezone.utc) - when).total_seconds()
+        except Exception:
+            seconds = _TWELVE_HOURS + 1
+        color = "green" if seconds <= _TWELVE_HOURS else "orange"
+        label_set(self.last_check_label, f"Good · {age}", color)
+        return
+
+    label_set(self.last_check_label, "Not found", "muted")
+
+
 def _reset_result_panels(self):
     result_panel.reset_all(self)
     self._user_report_data = None
@@ -61,6 +115,7 @@ def prepare_for_new_check(self):
     _reset_result_panels(self)
     _clear_mutual_guilds(self)
     label_set(self.gamertag_label, "Unknown")
+    apply_last_check_label(self)
     self.user_name = None
     self.clear_reason()
     self.check_id = None
@@ -97,7 +152,6 @@ def start_check(self):
     self.user_id_entry.setEnabled(False)
     self.channel_combo_box.setEnabled(False)
     self.method_combo_box.setEnabled(False)
-    self.pre_check_button.setEnabled(False)
     label_set(self.status_label, "Sending API request")
     # Capture widget values on the main thread before the background request.
     user_id = self.user_id.get()
@@ -121,7 +175,7 @@ def _fetch_essential_data(self, user_id: str):
         self.essential_data_response = requests.post(
             f"{config['api_url']}/staffcheck/essential_data",
             json=payload,
-            timeout=20,
+            timeout=45,
             headers=self.headers,
         )
 
@@ -148,6 +202,7 @@ def _handle_essential_data(self, request_error: bool):
             self.user_name = data["discord_name"]
             self.mutual_guilds = data["mutual_guilds"]
             result_panel.mutual_servers_apply(self, self.mutual_guilds)
+            apply_last_check_label(self, data)
 
             linked = data.get("linked_xbox") or []
             try:
@@ -178,7 +233,6 @@ def _handle_essential_data(self, request_error: bool):
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
-    self.pre_check_button.setEnabled(True)
     abort.end_check_session(self)
 
 
@@ -208,18 +262,12 @@ def continue_check(self):
         self.user_id_entry.setEnabled(False)
         self.channel_combo_box.setEnabled(False)
         self.method_combo_box.setEnabled(False)
-        self.pre_check_button.setEnabled(False)
         self.reason_entry.setEnabled(True)
         disable_function_button(self)
         disable_function_button_2(self)
 
         self.currentstate = None
-        if self.pre_check_button.isChecked():
-            from staffcheck import pre_check
-
-            pre_check.pre_check(self)
-        else:
-            determine_method(self)
+        determine_method(self)
     else:
         label_set(self.gamertag_label, "Not linked", "red")
         abort.start_check_session(self)
@@ -241,7 +289,6 @@ def finish_single_method(self):
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
-    self.pre_check_button.setEnabled(True)
     self.reason_entry.setEnabled(True)
 
     previous_user_id = self.user_id.get()
@@ -263,6 +310,7 @@ def reset_ui(self, preserve_abort: bool = False):
     self.user_id.set("")
     label_set(self.status_label, "Waiting for ID")
     label_set(self.gamertag_label, "Unknown")
+    apply_last_check_label(self)
     btn_enable(self.stop_button, False)
 
     self.clear_reason()
@@ -283,7 +331,6 @@ def reset_ui(self, preserve_abort: bool = False):
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
-    self.pre_check_button.setEnabled(True)
 
 
 def perform_next_command(self):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import uuid
 from typing import Callable
 from urllib.parse import urlparse, urlunparse
 
@@ -34,6 +35,8 @@ class QueueWsClient:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._ws = None
+        self._pending_lock = threading.Lock()
+        self._pending: dict[str, dict] = {}
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -53,6 +56,10 @@ class QueueWsClient:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
         self._thread = None
+        with self._pending_lock:
+            for entry in self._pending.values():
+                entry["event"].set()
+            self._pending.clear()
 
     def send(self, payload: dict) -> None:
         ws = self._ws
@@ -63,8 +70,40 @@ class QueueWsClient:
         except Exception:
             logger.exception("Failed to send queue WS message")
 
+    def request(self, payload: dict, *, timeout: float = 20.0) -> dict | None:
+        """Send a message with request_id and wait for a matching response."""
+        request_id = str(uuid.uuid4())
+        event = threading.Event()
+        with self._pending_lock:
+            self._pending[request_id] = {"event": event, "response": None}
+        try:
+            self.send({**payload, "request_id": request_id})
+            if not event.wait(timeout):
+                logger.warning(
+                    "Queue WS request timed out (%s)", payload.get("type")
+                )
+                return None
+            with self._pending_lock:
+                entry = self._pending.get(request_id) or {}
+                return entry.get("response")
+        finally:
+            with self._pending_lock:
+                self._pending.pop(request_id, None)
+
     def request_refresh(self) -> None:
         self.send({"type": "refresh"})
+
+    def _fulfill_pending(self, data: dict) -> bool:
+        request_id = data.get("request_id")
+        if not request_id:
+            return False
+        with self._pending_lock:
+            entry = self._pending.get(str(request_id))
+            if entry is None:
+                return False
+            entry["response"] = data
+            entry["event"].set()
+            return True
 
     def _run(self) -> None:
         try:
@@ -107,6 +146,9 @@ class QueueWsClient:
             logger.warning("Invalid queue WS JSON")
             return
         if not isinstance(data, dict):
+            return
+        # Request/response pairs are consumed by waiting worker threads.
+        if self._fulfill_pending(data):
             return
         self._on_message(data)
 

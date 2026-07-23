@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QTimer, Qt
+from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QTimer, Qt, QSize
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -111,10 +111,9 @@ class Toast(QFrame):
                 self._layout.addWidget(self._action_btn)
             else:
                 self._action_btn.setText(action_label)
-            try:
+            # Avoid libpyside warning when nothing is connected yet.
+            if self._action_btn.receivers("2clicked()") > 0:
                 self._action_btn.clicked.disconnect()
-            except RuntimeError:
-                pass
             self._action_btn.clicked.connect(on_click)
             self._action_btn.setVisible(True)
         elif self._action_btn is not None:
@@ -192,7 +191,9 @@ class ToastStack(QWidget):
 
     def __init__(self, parent: QWidget):
         super().__init__(parent)
-        self.setFixedWidth(self.TOAST_WIDTH)
+        # Pure overlay: never setFixedWidth (that sets minimumWidth and can
+        # leave a permanent empty strip beside left-aligned hub content).
+        self.setMinimumSize(0, 0)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -200,7 +201,13 @@ class ToastStack(QWidget):
         self._layout = layout
         self._active: dict[str, Toast] = {}
         self.setVisible(False)
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+
+    def sizeHint(self) -> QSize:
+        return QSize(0, 0)
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(0, 0)
 
     def _notify_reposition(self):
         window = self.window()

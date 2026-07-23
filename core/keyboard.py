@@ -65,13 +65,31 @@ def activate_window(window: str, timeout: float = 2.0):
     threading.Timer(0.5, _reset_window_state).start()
 
 
-def clear_typing_bar():
+def clear_typing_bar(*, in_on_duty_chat: bool = False):
+    """Clear Discord's message input.
+
+    When already in #on-duty-chat and edit-previous-check is enabled, starts with
+    Up → Esc → Esc so focus leaves any stuck message/edit state first.
+    """
     with keyboard_automation():
         activate_window("discord")
+        if in_on_duty_chat:
+            config = read_config()
+            if config.get("edit_check_message", "true").lower() in ("1", "true", "yes"):
+                keyboard.press_and_release("up")
+                keyboard.press_and_release("esc")
+                keyboard.press_and_release("esc")
         keyboard.press_and_release("esc")
         keyboard.press_and_release("esc")
         keyboard.press_and_release("ctrl+a")
         keyboard.press_and_release("backspace")
+
+
+# Settle after clear before focusing messages.
+_ON_DUTY_AFTER_CLEAR = 0.9
+# Between Shift+Tab and the first Up; shorter for later Ups / edit keys.
+_ON_DUTY_FIRST_UP = 0.3
+_ON_DUTY_FOCUS_STEP = 0.2
 
 
 @contextmanager
@@ -163,6 +181,30 @@ def execute_slash_command(self, command: str, options: list[str] | None = None) 
         keyboard.press_and_release("enter")
 
 
+def confirm_shipswap_after_process(self) -> None:
+    """After /process for a shipswap: focus the bot reply and confirm the button.
+
+    Sequence: Shift+Tab → Up (one message) → Tab × 7 → Enter
+    """
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    step = max(follow_up, 0.2)
+    with keyboard_automation(), self.keyboard_lock:
+        interruptible_sleep(self, 2.0)
+        check_abort(self)
+        keyboard.press_and_release("shift+tab")
+        interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("up")
+        interruptible_sleep(self, step)
+        for _ in range(7):
+            check_abort(self)
+            keyboard.press_and_release("tab")
+            interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("enter")
+
+
 def type_text(self, text: str, *, press_enter: bool = True) -> None:
     """Type a free-text message (good-to-check, join AWR, etc.) with abort coverage."""
     with keyboard_automation(), self.keyboard_lock:
@@ -171,3 +213,109 @@ def type_text(self, text: str, *, press_enter: bool = True) -> None:
         if press_enter:
             check_abort(self)
             keyboard.press_and_release("enter")
+
+
+def paste_text(self, text: str, *, press_enter: bool = True) -> None:
+    """Paste text via clipboard (safer for markdown / multiline than keyboard.write)."""
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        with _clipboard_scope(text):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, follow_up)
+        if press_enter:
+            check_abort(self)
+            keyboard.press_and_release("enter")
+
+
+def navigate_to_on_duty_message(self, n: int, *, extra_ups: int = 0) -> None:
+    """Move Discord focus from the typing bar to the Nth message above it.
+
+    n is 1-based (1 = latest message). Does not open edit.
+    Sequence: clear → Shift+Tab → Up (first message) → Up × (n-1 + extra_ups)
+
+    extra_ups accounts for Discord date-divider rows when a local day boundary
+    sits between now and the target message.
+    """
+    navigate_to_channel_message(self, n, extra_ups=extra_ups, in_on_duty_chat=True)
+
+
+def navigate_to_channel_message(
+    self,
+    n: int,
+    *,
+    extra_ups: int = 0,
+    in_on_duty_chat: bool = False,
+) -> None:
+    """Move Discord focus from the typing bar to the Nth message above it.
+
+    n is 1-based (1 = latest message). Does not open edit or react.
+    Sequence: clear → Shift+Tab → Up (first message) → Up × (n-1 + extra_ups)
+    """
+    n = max(1, int(n))
+    extra = max(0, int(extra_ups))
+    after_clear = _ON_DUTY_AFTER_CLEAR
+    first_up = _ON_DUTY_FIRST_UP
+    step = _ON_DUTY_FOCUS_STEP
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        clear_typing_bar(in_on_duty_chat=in_on_duty_chat)
+        interruptible_sleep(self, after_clear)
+        check_abort(self)
+        keyboard.press_and_release("shift+tab")
+        interruptible_sleep(self, first_up)
+        keyboard.press_and_release("up")
+        interruptible_sleep(self, step)
+        for _ in range(n - 1 + extra):
+            check_abort(self)
+            keyboard.press_and_release("up")
+            interruptible_sleep(self, step)
+
+
+def react_to_channel_message(
+    self,
+    n: int,
+    emoji_query: str = "pending",
+    *,
+    extra_ups: int = 0,
+) -> None:
+    """Navigate to the Nth message, press +, paste emoji name, Enter."""
+    step = _ON_DUTY_FOCUS_STEP
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    navigate_to_channel_message(self, n, extra_ups=extra_ups, in_on_duty_chat=False)
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        keyboard.press_and_release("+")
+        interruptible_sleep(self, max(follow_up, 0.35))
+        check_abort(self)
+        with _clipboard_scope(str(emoji_query)):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, follow_up)
+        check_abort(self)
+        keyboard.press_and_release("enter")
+        interruptible_sleep(self, step)
+    # Return focus to the typing bar for the next slash command.
+    clear_typing_bar()
+
+
+def edit_on_duty_message(
+    self, n: int, new_content: str, *, extra_ups: int = 0
+) -> None:
+    """Navigate to the Nth message, press E to edit, replace content, save."""
+    step = _ON_DUTY_FOCUS_STEP
+    navigate_to_on_duty_message(self, n, extra_ups=extra_ups)
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        keyboard.press_and_release("e")
+        interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("ctrl+a")
+        interruptible_sleep(self, step)
+        with _clipboard_scope(new_content):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("enter")
+        interruptible_sleep(self, step)
