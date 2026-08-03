@@ -112,6 +112,8 @@ def _clear_mutual_guilds(self):
 
 def prepare_for_new_check(self):
     """Reset panels and gamertag when starting a new check."""
+    from staffcheck.edit_check import empty_edit_check
+
     _reset_result_panels(self)
     _clear_mutual_guilds(self)
     label_set(self.gamertag_label, "Unknown")
@@ -119,6 +121,7 @@ def prepare_for_new_check(self):
     self.user_name = None
     self.clear_reason()
     self.check_id = None
+    self._edit_check = empty_edit_check()
 
 
 def validate_user_id(self) -> bool:
@@ -197,12 +200,15 @@ def _handle_essential_data(self, request_error: bool):
         try:
             from staffcheck import analytics as sc_analytics
 
+            from staffcheck.edit_check import store_edit_check_from_essential
+
             data = self.essential_data_response.json()
             sc_analytics.store_check_id_from_response(self, data)
             self.user_name = data["discord_name"]
             self.mutual_guilds = data["mutual_guilds"]
             result_panel.mutual_servers_apply(self, self.mutual_guilds)
             apply_last_check_label(self, data)
+            store_edit_check_from_essential(self, data)
 
             linked = data.get("linked_xbox") or []
             try:

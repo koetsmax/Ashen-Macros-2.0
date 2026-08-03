@@ -264,7 +264,8 @@ class StaffcheckHub(QMainWindow):
             action.setEnabled(menus_enabled and allowed)
             action.setVisible(not menus_enabled or allowed)
         if self._settings_action is not None:
-            self._settings_action.setEnabled(menus_enabled)
+            # Always available — needed to fix API URL when offline.
+            self._settings_action.setEnabled(True)
         if self._updates_action is not None:
             self._updates_action.setEnabled(menus_enabled)
         if hasattr(self, "customize_menu"):
@@ -288,6 +289,8 @@ class StaffcheckHub(QMainWindow):
     def _open_settings(self):
         if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
             self.staffcheck.rebuild_results_panel()
+            # API URL (or other connection settings) may have changed.
+            self._poll_status()
 
     def _run_verify(self):
         if not self.connected:

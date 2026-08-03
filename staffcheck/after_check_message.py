@@ -24,21 +24,33 @@ def after_check_message(self):
     btn_config(self.start_button, "Join AWR", lambda: join_awr(self))
     btn_config(self.function_button_2, "Verify account", lambda: verify_account(self))
     btn_enable(self.kill_button, True)
+    btn_enable(self.start_button, True)
     btn_enable(self.function_button_2, True)
 
 
+def _set_after_check_buttons_enabled(self, enabled: bool) -> None:
+    btn_enable(self.kill_button, enabled)
+    btn_enable(self.start_button, enabled)
+    btn_enable(self.function_button, enabled)
+    btn_enable(self.function_button_2, enabled)
+
+
 def unprivate_xbox(self):
+    _set_after_check_buttons_enabled(self, False)
+    label_set(self.status_label, "Waiting for modmail channel…", "orange")
     try:
         switch_channel(self, "#on-duty-chat")
         clear_typing_bar()
         execute_command(self, f"/create user:{self.user_id.get()}")
     except abort.AbortError:
+        _set_after_check_buttons_enabled(self, True)
         return
     run_background(unprivate_api_request, self)
 
 
 def unprivate_api_request(self):
     if abort.is_abort_requested(self):
+        on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
         return
 
     request_error = False
@@ -48,18 +60,20 @@ def unprivate_api_request(self):
         response = requests.post(
             f"{config['api_url']}/staffcheck/unprivate",
             json=payload,
-            timeout=120,
+            timeout=180,
             headers=self.headers,
         )
         while not response.json():
             time.sleep(0.1)
         if abort.is_abort_requested(self):
+            on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
             return
         if response.status_code != 200:
             request_error = True
         elif response.json()["error"] != "none":
             request_error = True
-            label_set(self.status_label, response.json()["error"], "red")
+            err = response.json().get("error") or "Failed to get modmail channel"
+            label_set(self.status_label, err, "red")
         else:
             r = response.json()
             try:
@@ -67,17 +81,28 @@ def unprivate_api_request(self):
                 clear_typing_bar()
                 execute_command(self, "/message-store recall Unprivate Xbox copyable: True")
             except abort.AbortError:
+                on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
                 return
 
             on_main_thread(lambda: pipeline.continue_to_next(self))
+            return
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
     if request_error:
         if abort.is_abort_requested(self):
+            on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
             return
-        label_set(self.status_label, "Failed to get modmail channel", "red")
-        on_main_thread(lambda: pipeline.continue_to_next(self))
+
+        def _fail():
+            label_set(self.status_label, "Failed to get modmail channel", "red")
+            _set_after_check_buttons_enabled(self, True)
+            pipeline.continue_to_next(self)
+
+        on_main_thread(_fail)
+        return
+
+    on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
 
 
 def join_awr(self):

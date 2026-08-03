@@ -903,6 +903,8 @@ class QueueWindow(AppWindow):
                     flags.append("Process separately")
                 if entry.get("needs_prep"):
                     flags.append("Needs prep")
+                if entry.get("staffchecked") is False:
+                    flags.append("Not staffchecked")
                 prep_status = self._prep_status_for_user(str(entry.get("user_id") or ""))
                 if prep_status:
                     if prep_status == "ready":
@@ -1673,6 +1675,8 @@ class QueueWindow(AppWindow):
                 lines.append(f"Note: {origin['label']}")
         if score is not None:
             lines.append(f"Score: {score}")
+        if any(m.get("staffchecked") is False for m in members):
+            lines.append("Warning: not staffchecked")
         if self._sim_enabled:
             lines.append("Sim: double-click to process")
         else:

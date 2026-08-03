@@ -4,17 +4,25 @@ from staffcheck import abort, pipeline
 from staffcheck.after_check_message import after_check_message
 from staffcheck.edit_check import (
     edit_check_enabled,
-    fetch_editable_check,
+    empty_edit_check,
     post_or_edit_check_message,
+    resolve_edit_at_click,
 )
-from staffcheck.qt_ui import btn_config, btn_enable, on_main_thread
-from staffcheck.tasks import run_background
+from staffcheck.qt_ui import btn_config, btn_enable
 
 
 def _apply_check_buttons(self, *, editable: bool) -> None:
     if editable:
-        btn_config(self.kill_button, "Edit check message", lambda: not_good_to_check(self))
-        btn_config(self.start_button, "Edit check message", lambda: good_to_check(self))
+        btn_config(
+            self.kill_button,
+            "Edit: Not Good to Check",
+            lambda: not_good_to_check(self),
+        )
+        btn_config(
+            self.start_button,
+            "Edit: Good to check",
+            lambda: good_to_check(self),
+        )
     else:
         btn_config(self.kill_button, "Not Good to Check", lambda: not_good_to_check(self))
         btn_config(
@@ -28,27 +36,23 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
 
 
 def check_message(self):
+    """
+    Show Post/Edit buttons from pre-check (essential_data last_check_editable).
+    Offset/content are resolved only when a button is clicked.
+    """
     self.currentstate = "Done"
-    self._edit_check = {"editable": False, "offset": None, "content": None}
-    _apply_check_buttons(self, editable=False)
+    info = getattr(self, "_edit_check", None) or empty_edit_check()
+    editable = bool(info.get("editable")) and edit_check_enabled()
+    self._edit_check = {
+        **empty_edit_check(),
+        **info,
+        "editable": editable,
+        # Offset must be fresh at click time.
+        "offset": None,
+        "content": None,
+    }
+    _apply_check_buttons(self, editable=editable)
     pipeline.disable_function_button(self)
-    if edit_check_enabled():
-        user_id = self.user_id.get()
-        run_background(_prefetch_editable, self, user_id)
-
-
-def _prefetch_editable(self, user_id: str):
-    info = fetch_editable_check(self, user_id)
-    if abort.is_abort_requested(self):
-        return
-
-    def apply():
-        if abort.is_abort_requested(self):
-            return
-        self._edit_check = info
-        _apply_check_buttons(self, editable=bool(info.get("editable")))
-
-    on_main_thread(apply)
 
 
 def good_to_check(self):
@@ -66,7 +70,8 @@ def good_to_check(self):
         message = message.replace("userID", f"<@{self.user_id.get()}>")
         message = message.replace("xboxGT", f"{self.xbox_gt}")
 
-        info = fetch_editable_check(self, self.user_id.get())
+        info = resolve_edit_at_click(self)
+        self._edit_check = info
         post_or_edit_check_message(self, message, info)
     except abort.AbortError:
         return
@@ -85,7 +90,7 @@ def not_good_to_check(self):
     btn_enable(self.function_button, False)
     pipeline.disable_function_button_2(self)
     editable = bool((getattr(self, "_edit_check", None) or {}).get("editable"))
-    label = "Edit check message" if editable else "Not Good to Check"
+    label = "Edit: Not Good to Check" if editable else "Not Good to Check"
     btn_config(self.start_button, label, lambda: build_not_good_to_check(self))
     btn_enable(self.start_button, True)
 
@@ -107,8 +112,8 @@ def build_not_good_to_check(self):
         sc_analytics.report_outcome(
             self, outcome="not_good", reason=self.reason.get()
         )
-        # Already on on-duty-chat from not_good_to_check; refresh editability.
-        info = fetch_editable_check(self, self.user_id.get())
+        info = resolve_edit_at_click(self)
+        self._edit_check = info
         if not info.get("editable"):
             clear_typing_bar(in_on_duty_chat=True)
         post_or_edit_check_message(self, message, info)
