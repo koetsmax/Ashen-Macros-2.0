@@ -71,7 +71,9 @@ def clear_typing_bar(*, in_on_duty_chat: bool = False):
     When already in #on-duty-chat and edit-previous-check is enabled, starts with
     Up → Esc → Esc so focus leaves any stuck message/edit state first.
     """
-    with keyboard_automation():
+    from staffcheck.abort import suppress_abort_hotkey
+
+    with keyboard_automation(), suppress_abort_hotkey():
         activate_window("discord")
         if in_on_duty_chat:
             config = read_config()
@@ -203,6 +205,55 @@ def confirm_shipswap_after_process(self) -> None:
             interruptible_sleep(self, step)
         check_abort(self)
         keyboard.press_and_release("enter")
+
+
+def apply_update_bonus_on_queue_message(self, offset: int | None = None) -> None:
+    """Focus a #queue message and run Apps → update bonus.
+
+    When offset is set (1-based history count), navigate to that message.
+    Otherwise: Shift+Tab → Up once (newest message), same family as shipswap follow-up.
+
+    Then: Shift+F10 → Down × 9 → Right → type \"update bonus\" → Down → Enter
+    """
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    step = max(follow_up, 0.2)
+    if offset is not None and int(offset) >= 1:
+        navigate_to_channel_message(self, int(offset), in_on_duty_chat=False)
+    else:
+        with keyboard_automation(), self.keyboard_lock:
+            interruptible_sleep(self, 1.0)
+            check_abort(self)
+            clear_typing_bar()
+            interruptible_sleep(self, step)
+            keyboard.press_and_release("shift+tab")
+            interruptible_sleep(self, step)
+            check_abort(self)
+            keyboard.press_and_release("up")
+            interruptible_sleep(self, step)
+
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        keyboard.press_and_release("shift+f10")
+        interruptible_sleep(self, max(step, 0.35))
+        for _ in range(9):
+            check_abort(self)
+            keyboard.press_and_release("down")
+            interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("right")
+        interruptible_sleep(self, max(step, 0.35))
+        check_abort(self)
+        with _clipboard_scope("update bonus"):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, follow_up)
+        check_abort(self)
+        keyboard.press_and_release("down")
+        interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("enter")
+        interruptible_sleep(self, step)
+    clear_typing_bar()
 
 
 def type_text(self, text: str, *, press_enter: bool = True) -> None:

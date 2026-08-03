@@ -1,7 +1,13 @@
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.keyboard import clear_typing_bar
 from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
 from gui.views.app_window import AppWindow
+from staffcheck.abort import (
+    AbortError,
+    check_abort,
+    end_abort_session,
+    start_abort_session,
+)
 
 
 class MemberInQueue:
@@ -14,6 +20,7 @@ class MemberInQueue:
 class FillNewFleetWindow(AppWindow):
     def __init__(self):
         super().__init__("Fill New Fleet", keyboard_lock=True)
+        self.abort_requested = False
 
     def _build_ui(self) -> None:
         layout = self.add_grid()
@@ -40,9 +47,12 @@ class FillNewFleetWindow(AppWindow):
             2,
         )
 
+        self.status_label = QLabel("")
+        layout.addWidget(self.status_label, 7, 0, 1, 2)
+
         start = QPushButton("Start")
         start.clicked.connect(self._start)
-        layout.addWidget(start, 7, 0, 1, 2)
+        layout.addWidget(start, 8, 0, 1, 2)
 
     def _start(self):
         fleet = self.fleet_combo.currentText()
@@ -65,12 +75,22 @@ class FillNewFleetWindow(AppWindow):
 
         members_in_queue.sort(key=lambda x: x.queuepos)
 
-        current_change = 0
-        for to_process in members_in_queue:
-            actual_queuepos = str(to_process.queuepos + current_change)
-            clear_typing_bar()
-            # execute_command(
-            #     self,
-            #     f"/process {actual_queuepos} {to_process.fleetnum} {to_process.shipnum}",
-            # )
-            current_change -= 1
+        start_abort_session(self)
+        try:
+            current_change = 0
+            for to_process in members_in_queue:
+                check_abort(self)
+                actual_queuepos = str(to_process.queuepos + current_change)
+                clear_typing_bar()
+                check_abort(self)
+                # execute_command(
+                #     self,
+                #     f"/process {actual_queuepos} {to_process.fleetnum} {to_process.shipnum}",
+                # )
+                del actual_queuepos  # kept for when /process is re-enabled
+                current_change -= 1
+            self.status_label.setText("Done")
+        except AbortError:
+            self.status_label.setText("Aborted")
+        finally:
+            end_abort_session(self)

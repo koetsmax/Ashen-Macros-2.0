@@ -449,6 +449,13 @@ def _qss() -> str:
     QLabel#versionBadge[outdated="true"] {{
         color: {RED};
     }}
+    QLabel#prereleaseBadge {{
+        color: {PEACH};
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        margin-right: 8px;
+    }}
     QLabel#statusConnected {{
         color: {GREEN};
     }}

@@ -184,19 +184,27 @@ class SettingsDialog(QDialog):
         from types import SimpleNamespace
 
         from core.keyboard import navigate_to_on_duty_message, switch_channel
-        from staffcheck.abort import AbortError
+        from staffcheck.abort import (
+            AbortError,
+            end_abort_session,
+            start_abort_session,
+        )
         from staffcheck.qt_ui import on_main_thread
 
         ctx = SimpleNamespace(
             keyboard_lock=threading.Lock(),
             abort_requested=False,
+            _abort_session_active=False,
+            _abort_hotkey=None,
         )
         try:
+            start_abort_session(ctx)
             switch_channel(ctx, "#on-duty-chat")
             navigate_to_on_duty_message(ctx, n)
         except AbortError:
             pass
         finally:
+            end_abort_session(ctx)
             on_main_thread(lambda: self.edit_nav_test_btn.setEnabled(True))
 
     def _save(self):

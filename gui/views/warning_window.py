@@ -1,7 +1,16 @@
+import threading
+
 from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton
 
 from core.keyboard import clear_typing_bar, execute_command, switch_channel
 from gui.views.app_window import AppWindow
+from staffcheck.abort import (
+    AbortError,
+    check_abort,
+    end_abort_session,
+    start_abort_session,
+)
+from staffcheck.qt_ui import on_main_thread
 
 
 PRESET_REASONS = {
@@ -21,6 +30,8 @@ PRESET_REASONS = {
 class WarningWindow(AppWindow):
     def __init__(self):
         super().__init__("Add Warning", keyboard_lock=True)
+        self.abort_requested = False
+        self._busy = False
 
     def _build_ui(self) -> None:
         layout = self.add_grid()
@@ -56,10 +67,13 @@ class WarningWindow(AppWindow):
         self.start_button.clicked.connect(self._start)
         layout.addWidget(self.start_button, 6, 0)
 
-        self.stop_button = QPushButton("Stop")
+        self.stop_button = QPushButton("Stop / Abort")
         self.stop_button.clicked.connect(self._stop)
         self.stop_button.setEnabled(False)
         layout.addWidget(self.stop_button, 6, 1)
+
+        self.status_label = QLabel("")
+        layout.addWidget(self.status_label, 7, 0, 1, 2)
 
     def _reason_text(self) -> str:
         custom = self.custom_reason_entry.text().strip()
@@ -67,36 +81,109 @@ class WarningWindow(AppWindow):
             return custom
         return PRESET_REASONS[self.reason_combo.currentText()]
 
-    def _add_warning(self):
-        clear_typing_bar()
-        reason = self._reason_text()
-        if self.nodm_check.isChecked():
-            execute_command(self, f"/warn member:{self.user_id_entry.text()} reason:{reason} no_dm: True")
-        else:
-            execute_command(self, f"/warn member:{self.user_id_entry.text()} reason:{reason}")
+    def _set_status(self, text: str) -> None:
+        on_main_thread(lambda: self.status_label.setText(text))
+
+    def _set_busy(self, busy: bool) -> None:
+        def _apply():
+            self._busy = busy
+            self.start_button.setEnabled(not busy)
+            self.stop_button.setEnabled(busy)
+
+        on_main_thread(_apply)
 
     def _stop(self):
-        self.start_button.setText("Start")
-        try:
-            self.start_button.clicked.disconnect()
-        except RuntimeError:
-            pass
-        self.start_button.clicked.connect(self._start)
-        self.stop_button.setEnabled(False)
+        self.abort_requested = True
+        if not self._busy:
+            self._reset_start_button()
 
-    def _start(self):
-        if self.loghistory_check.isChecked():
-            switch_channel(self, self.channel_combo.currentText())
-            clear_typing_bar()
-            execute_command(self, f"/user_report member:{self.user_id_entry.text()}")
-            self.start_button.setText("Add warning")
+    def _reset_start_button(self) -> None:
+        def _apply():
+            self.start_button.setText("Start")
             try:
                 self.start_button.clicked.disconnect()
             except RuntimeError:
                 pass
-            self.start_button.clicked.connect(self._add_warning)
-            self.stop_button.setEnabled(True)
+            self.start_button.clicked.connect(self._start)
+            self.stop_button.setEnabled(False)
+            self.start_button.setEnabled(True)
+
+        on_main_thread(_apply)
+
+    def _start(self):
+        if self._busy:
+            return
+        if self.loghistory_check.isChecked():
+            threading.Thread(target=self._run_loghistory_step, daemon=True).start()
         else:
+            threading.Thread(target=self._run_warn, daemon=True).start()
+
+    def _run_loghistory_step(self) -> None:
+        self._set_busy(True)
+        self._set_status("Opening channel / loghistory…")
+        start_abort_session(self)
+        try:
             switch_channel(self, self.channel_combo.currentText())
+            check_abort(self)
             clear_typing_bar()
-            self._add_warning()
+            check_abort(self)
+            execute_command(self, f"/user_report member:{self.user_id_entry.text()}")
+            self._set_status("Review loghistory, then Add warning (abort key works)")
+
+            def _arm_add():
+                self.start_button.setText("Add warning")
+                try:
+                    self.start_button.clicked.disconnect()
+                except RuntimeError:
+                    pass
+                self.start_button.clicked.connect(self._queue_add_warning)
+                self.start_button.setEnabled(True)
+                self.stop_button.setEnabled(True)
+                self._busy = False
+
+            on_main_thread(_arm_add)
+        except AbortError:
+            self._set_status("Aborted")
+            self._reset_start_button()
+            self._busy = False
+        except Exception as exc:
+            self._set_status(f"Failed: {exc}")
+            self._reset_start_button()
+            self._busy = False
+        finally:
+            end_abort_session(self)
+
+    def _queue_add_warning(self) -> None:
+        if self._busy:
+            return
+        threading.Thread(target=self._run_warn, daemon=True).start()
+
+    def _run_warn(self) -> None:
+        self._set_busy(True)
+        self._set_status("Adding warning…")
+        start_abort_session(self)
+        try:
+            switch_channel(self, self.channel_combo.currentText())
+            check_abort(self)
+            clear_typing_bar()
+            check_abort(self)
+            reason = self._reason_text()
+            if self.nodm_check.isChecked():
+                execute_command(
+                    self,
+                    f"/warn member:{self.user_id_entry.text()} reason:{reason} no_dm: True",
+                )
+            else:
+                execute_command(
+                    self,
+                    f"/warn member:{self.user_id_entry.text()} reason:{reason}",
+                )
+            self._set_status("Done")
+        except AbortError:
+            self._set_status("Aborted")
+        except Exception as exc:
+            self._set_status(f"Failed: {exc}")
+        finally:
+            end_abort_session(self)
+            self._reset_start_button()
+            self._busy = False

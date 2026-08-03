@@ -85,6 +85,7 @@ def _set_default_values(config) -> bool:
         },
         "SESSION": {"open_apps": ""},
         "API": {"api_url": "https://ashen.api.famkoets.nl"},
+        "UPDATES": {"prefer_prerelease": "false"},
         "UI": {
             "catppuccin_flavor": "mocha",
             "compact_panels": "true",

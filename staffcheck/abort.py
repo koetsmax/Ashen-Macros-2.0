@@ -15,12 +15,18 @@ from core.settings import read_config
 logger = logging.getLogger(__name__)
 
 _keyboard_automation_depth = 0
+_suppress_abort_depth = 0
 _keyboard_automation_lock = threading.Lock()
 
 
 def is_keyboard_automation_active() -> bool:
     with _keyboard_automation_lock:
         return _keyboard_automation_depth > 0
+
+
+def is_abort_hotkey_suppressed() -> bool:
+    with _keyboard_automation_lock:
+        return _suppress_abort_depth > 0
 
 
 @contextmanager
@@ -33,6 +39,19 @@ def keyboard_automation() -> Iterator[None]:
     finally:
         with _keyboard_automation_lock:
             _keyboard_automation_depth = max(0, _keyboard_automation_depth - 1)
+
+
+@contextmanager
+def suppress_abort_hotkey() -> Iterator[None]:
+    """Ignore abort-key presses (e.g. while we inject Esc to clear Discord)."""
+    global _suppress_abort_depth
+    with _keyboard_automation_lock:
+        _suppress_abort_depth += 1
+    try:
+        yield
+    finally:
+        with _keyboard_automation_lock:
+            _suppress_abort_depth = max(0, _suppress_abort_depth - 1)
 
 
 class AbortError(Exception):
@@ -98,8 +117,17 @@ def install_abort_hotkey(self) -> None:
 
 
 def _on_abort_hotkey(self) -> None:
-    # Abort key only applies during keyboard automation (channel switch, paste,
-    # clear typing bar, typing messages). Idle / API wait uses Stop check instead.
+    if is_abort_hotkey_suppressed():
+        return
+
+    # Queue / generic Discord automation: abort anytime during the session
+    # (including waits between keystrokes).
+    if getattr(self, "_abort_session_active", False):
+        request_abort(self)
+        return
+
+    # Staffcheck: abort key only applies during keyboard automation.
+    # Idle / API wait uses Stop check instead.
     if not is_keyboard_automation_active():
         return
     abort_staffcheck(self)
@@ -114,6 +142,32 @@ def remove_abort_hotkey(self) -> None:
     except (KeyError, ValueError):
         pass
     self._abort_hotkey = None
+
+
+def request_abort(self) -> None:
+    """Set abort_requested when a Discord automation / staffcheck session is live."""
+    if is_abort_requested(self):
+        return
+    if not (
+        getattr(self, "_abort_session_active", False)
+        or getattr(self, "check_in_progress", False)
+    ):
+        return
+    self.abort_requested = True
+    logger.info("Abort requested")
+
+
+def start_abort_session(self) -> None:
+    """Start a generic Discord keyboard session (queue, warn, command executor, …)."""
+    self.abort_requested = False
+    self._abort_session_active = True
+    install_abort_hotkey(self)
+
+
+def end_abort_session(self) -> None:
+    """End a generic Discord keyboard session; leave abort_requested sticky briefly."""
+    remove_abort_hotkey(self)
+    self._abort_session_active = False
 
 
 def start_check_session(self) -> None:

@@ -2,11 +2,12 @@ import logging
 import threading
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QShowEvent
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut, QShowEvent
 from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QVBoxLayout, QWidget
 from shiboken6 import isValid
 
 from core import auth, updates
+from core.settings import read_config, set_custom_value
 from core.window_positions import load_window_geometry, save_window_geometry, track_window_geometry
 from gui.apps.registry import APP_BY_KEY, APP_REGISTRY, app_allowed, open_app, restore_session_apps
 from gui.components.toast import ToastStack
@@ -15,6 +16,8 @@ from gui.settings_dialog import SettingsDialog
 from gui.views.app_window import AppWindow
 from gui.views.staffcheck_view import StaffcheckView
 from staffcheck import verification
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +64,7 @@ class StaffcheckHub(QMainWindow):
         self._verification_in_progress = False
         self._open_apps: dict[str, AppWindow] = {}
         self._online_version = None
+        self._online_tag_name = None
         self._update_worker = None
         self._poll_worker = None
         self._update_request_id = 0
@@ -133,9 +137,16 @@ class StaffcheckHub(QMainWindow):
 
         footer = QHBoxLayout()
         footer.addStretch()
+        self.prerelease_badge = QLabel("PRE-RELEASE UPDATES ENABLED")
+        self.prerelease_badge.setObjectName("prereleaseBadge")
+        self.prerelease_badge.setToolTip(
+            "Checking GitHub for pre-release builds (Ctrl+Shift+P to toggle)"
+        )
+        footer.addWidget(self.prerelease_badge)
         self.version_badge = VersionBadge(local_version)
         footer.addWidget(self.version_badge)
         outer.addLayout(footer)
+        self._update_prerelease_badge()
 
         # Parent to the window (not central's layout tree) so toasts never
         # participate in size constraints — only setGeometry positioning.
@@ -177,6 +188,10 @@ class StaffcheckHub(QMainWindow):
 
         self.customize_menu = bar.addMenu("Customize")
         self._update_menu_gating()
+
+        self._prerelease_shortcut = QShortcut(QKeySequence("Ctrl+Shift+P"), self)
+        self._prerelease_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        self._prerelease_shortcut.activated.connect(self._toggle_prerelease_updates)
 
     def showEvent(self, event: QShowEvent):
         super().showEvent(event)
@@ -232,6 +247,10 @@ class StaffcheckHub(QMainWindow):
         else:
             self.welcome_label.clear()
             self.welcome_label.setVisible(False)
+
+    def _update_prerelease_badge(self) -> None:
+        enabled = updates.prefer_prerelease_enabled()
+        self.prerelease_badge.setVisible(enabled)
 
     def _has_permission(self, key: str) -> bool:
         return key in (self.permissions or [])
@@ -333,8 +352,12 @@ class StaffcheckHub(QMainWindow):
     def _recheck_permissions(self):
         if not self.connected:
             return
+        before = set(self.permissions or [])
         self._sync_auth_from_login(log=True)
         self._apply_gating()
+        after = set(self.permissions or [])
+        if before == after:
+            return
         if self.verified and self.permissions:
             self.toast_stack.show_toast(
                 "permissions_refresh",
@@ -344,7 +367,7 @@ class StaffcheckHub(QMainWindow):
         elif self.verified:
             self.toast_stack.show_toast(
                 "permissions_refresh",
-                "Still no permissions granted.",
+                "Permissions cleared — none granted.",
                 dismiss_ms=4000,
             )
 
@@ -434,17 +457,80 @@ class StaffcheckHub(QMainWindow):
                     win.close()
                 self._open_apps.pop(key, None)
 
+    def _toggle_prerelease_updates(self):
+        if not self.verified or not self.connected:
+            self.toast_stack.show_toast(
+                "prerelease",
+                "Connect and verify before toggling pre-release updates.",
+                dismiss_ms=6000,
+            )
+            return
+
+        enabled = not updates.prefer_prerelease_enabled()
+        set_custom_value(
+            "UPDATES",
+            "prefer_prerelease",
+            "true" if enabled else "false",
+        )
+        self._update_prerelease_badge()
+        state = "enabled" if enabled else "disabled"
+        self.toast_stack.show_toast(
+            "prerelease",
+            f"Pre-release updates {state}.",
+            dismiss_ms=5000,
+        )
+        threading.Thread(
+            target=self._notify_prerelease_toggle,
+            args=(enabled,),
+            daemon=True,
+        ).start()
+        self._check_updates(silent=False)
+
+    def _notify_prerelease_toggle(self, enabled: bool) -> None:
+        try:
+            token = auth.get_token()
+            if not token:
+                return
+            api_url = read_config().get("api_url") or ""
+            response = requests.post(
+                f"{api_url.rstrip('/')}/macros/prerelease_toggle",
+                json={"enabled": enabled},
+                headers={"Authorization": token},
+                timeout=10,
+            )
+            if response.status_code >= 400:
+                logger.warning(
+                    "Prerelease toggle notify failed: %s %s",
+                    response.status_code,
+                    response.text[:200],
+                )
+        except Exception:
+            logger.exception("Failed to notify prerelease toggle")
+
     def _check_updates(self, silent: bool = True):
         if self._worker_running(self._update_worker):
             if not silent:
                 logger.debug("Skipping update check; previous worker still running")
             return
 
+        # Manual "Check for updates" also refreshes token permissions.
+        if not silent and self.connected:
+            self._recheck_permissions()
+
         self._update_request_id += 1
         request_id = self._update_request_id
 
         if not silent:
-            self.toast_stack.show_toast("update_check", "Checking for updates...", dismiss_ms=0)
+            channel = (
+                "pre-release"
+                if updates.prefer_prerelease_enabled()
+                else "stable"
+            )
+            self.toast_stack.show_toast(
+                "update_check",
+                f"Checking for {channel} updates...",
+                dismiss_ms=0,
+            )
 
         worker = UpdateWorker(silent=silent, parent=self)
         worker.finished.connect(
@@ -469,10 +555,12 @@ class StaffcheckHub(QMainWindow):
 
         if kind == "outdated":
             self._online_version = result["online_version"]
+            self._online_tag_name = result.get("tag_name") or self._online_version
             self.version_badge.set_outdated(True)
+            channel = "pre-release " if result.get("prerelease") else ""
             self.toast_stack.show_toast(
                 "update",
-                f"Update available (v{self._online_version}). "
+                f"{channel}Update available (v{self._online_version}). "
                 "Functionality may be reduced until you update.",
                 on_click=self._download_update,
                 dismiss_ms=0,
@@ -509,16 +597,17 @@ class StaffcheckHub(QMainWindow):
             dismiss_ms=0,
         )
         version = self._online_version
+        tag_name = self._online_tag_name or version
         worker = threading.Thread(
             target=self._download_update_worker,
-            args=(version,),
+            args=(version, tag_name),
             daemon=True,
         )
         worker.start()
 
-    def _download_update_worker(self, online_version: str) -> None:
+    def _download_update_worker(self, online_version: str, tag_name: str | None = None) -> None:
         try:
-            installer_path = updates.download_update(online_version)
+            installer_path = updates.download_update(online_version, tag_name=tag_name)
         except Exception:
             logger.exception("Update download failed")
             self._update_download_failed.emit()

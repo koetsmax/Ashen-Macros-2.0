@@ -5,9 +5,16 @@ import subprocess
 import requests
 from packaging import version
 
+from core.settings import read_config
+
 logger = logging.getLogger(__name__)
 
-GITHUB_RELEASES = "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest"
+GITHUB_RELEASES_LATEST = (
+    "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest"
+)
+GITHUB_RELEASES_LIST = (
+    "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases"
+)
 
 # Process names used by the installed / built launcher (without .exe for Stop-Process).
 LAUNCHER_PROCESS_BASENAMES = (
@@ -31,35 +38,96 @@ def read_local_version() -> str:
     return "0.0.0"
 
 
+def prefer_prerelease_enabled() -> bool:
+    config = read_config()
+    return str(config.get("prefer_prerelease", "false")).lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _release_version_name(release: dict) -> str:
+    name = str(release.get("name") or "").strip()
+    if name:
+        return name
+    tag = str(release.get("tag_name") or "").strip()
+    if tag.lower().startswith("v"):
+        return tag[1:]
+    return tag
+
+
+def _fetch_online_release(*, prefer_prerelease: bool) -> dict | None:
+    headers = {"Accept": "application/vnd.github+json"}
+    if prefer_prerelease:
+        response = requests.get(GITHUB_RELEASES_LIST, headers=headers, timeout=15)
+        if response.status_code != 200:
+            return None
+        releases = response.json()
+        if not isinstance(releases, list) or not releases:
+            return None
+        prereleases = [r for r in releases if r.get("prerelease")]
+        chosen = (prereleases or releases)[0]
+        online = _release_version_name(chosen)
+        if not online:
+            return None
+        return {
+            "online_version": online,
+            "tag_name": str(chosen.get("tag_name") or online),
+            "prerelease": bool(chosen.get("prerelease")),
+        }
+
+    response = requests.get(GITHUB_RELEASES_LATEST, headers=headers, timeout=15)
+    if response.status_code != 200:
+        return None
+    payload = response.json()
+    online = _release_version_name(payload)
+    if not online:
+        return None
+    return {
+        "online_version": online,
+        "tag_name": str(payload.get("tag_name") or online),
+        "prerelease": bool(payload.get("prerelease")),
+    }
+
+
 def check_for_updates(silent: bool = True) -> dict:
     """Returns {kind, online_version?} where kind is one of: noop, outdated, current, dev."""
     try:
-        request = requests.get(GITHUB_RELEASES, timeout=15)
-        if request.status_code != 200:
+        prefer = prefer_prerelease_enabled()
+        release = _fetch_online_release(prefer_prerelease=prefer)
+        if release is None:
             return {"kind": "noop"}
         local = read_local_version()
-        online = request.json()["name"]
+        online = release["online_version"]
         if version.parse(local) < version.parse(online):
-            return {"kind": "outdated", "online_version": online}
+            return {
+                "kind": "outdated",
+                "online_version": online,
+                "tag_name": release.get("tag_name") or online,
+                "prerelease": release.get("prerelease"),
+            }
         if version.parse(local) == version.parse(online) and not silent:
-            return {"kind": "current"}
+            return {"kind": "current", "prerelease": release.get("prerelease")}
         if version.parse(local) > version.parse(online) and not silent:
-            return {"kind": "dev"}
+            return {"kind": "dev", "prerelease": release.get("prerelease")}
         return {"kind": "noop"}
     except Exception as e:
         logger.warning("Failed to check for updates: %s", e)
         return {"kind": "noop"}
 
 
-def download_update(online_version: str) -> str:
+def download_update(online_version: str, tag_name: str | None = None) -> str:
     """Download the installer to disk. Does not start it or exit the app.
 
     Returns the absolute path to the downloaded installer.
     """
-    logger.info("Downloading update v%s", online_version)
+    asset_ref = (tag_name or online_version or "").strip()
+    logger.info("Downloading update v%s (tag %s)", online_version, asset_ref)
     url = (
         f"https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/"
-        f"{online_version}/Ashen.Macro.installer.exe"
+        f"{asset_ref}/Ashen.Macro.installer.exe"
     )
     download = requests.get(url, allow_redirects=True, timeout=180)
     download.raise_for_status()

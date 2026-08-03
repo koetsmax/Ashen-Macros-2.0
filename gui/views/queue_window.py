@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -36,17 +35,31 @@ from PySide6.QtWidgets import (
 )
 
 from core.keyboard import (
+    apply_update_bonus_on_queue_message,
     clear_typing_bar,
     confirm_shipswap_after_process,
+    execute_command,
     execute_slash_command,
     switch_channel,
 )
 from core.leave_pending import fetch_leave_message, react_pending_on_leave
+from core.queue_status_banner import (
+    BANNER_BUTTON_LABELS,
+    BANNER_RECALL_NAMES,
+    fetch_status_banner_offset,
+    wait_for_status_banner,
+)
 from core.queue_ws import QueueWsClient
 from core.settings import read_config, set_custom_value
 from gui import theme
 from gui.views.app_window import AppWindow
-from staffcheck.abort import AbortError, interruptible_sleep
+from staffcheck.abort import (
+    AbortError,
+    check_abort,
+    end_abort_session,
+    interruptible_sleep,
+    start_abort_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +101,7 @@ class QueueWindow(AppWindow):
         self._debug_visible = _queue_debug_enabled()
         self._last_snapshot: dict = {}
         self._selected_user_id: str | None = None
-        self._updating_editors = False
         self._known_activities: list[str] = []
-        self._activity_checks: dict[str, QCheckBox] = {}
         self._selected_recommendation_id: str | None = None
         self._sim_enabled = False
         self._sim_updating = False
@@ -121,31 +132,51 @@ class QueueWindow(AppWindow):
 
     def _build_ui(self) -> None:
         status_row = QHBoxLayout()
+        status_row.setSpacing(12)
         self.status_label = QLabel("Starting...")
         self.status_label.setObjectName("hubApiStatus")
-        status_row.addWidget(self.status_label, stretch=1)
+        status_row.addWidget(self.status_label)
 
         self.queue_state_label = QLabel("")
         self.queue_state_label.setObjectName("hubNotVerified")
         status_row.addWidget(self.queue_state_label)
 
-        self.private_queue_label = QLabel("Private queue: —")
+        self.private_queue_label = QLabel("Private queue: -")
         status_row.addWidget(self.private_queue_label)
 
-        self.private_ships_label = QLabel("Private ships: —")
+        self.private_ships_label = QLabel("Private ships: -")
         status_row.addWidget(self.private_ships_label)
 
-        self.alliance_ping_label = QLabel("Alliance ping: —")
+        self.alliance_ping_label = QLabel("Alliance ping: -")
         status_row.addWidget(self.alliance_ping_label)
 
-        self.peers_label = QLabel("Staff online: —")
+        self.peers_label = QLabel("Staff online: -")
         status_row.addWidget(self.peers_label)
 
+        self.queue_banner_label = QLabel("Queue msg: -")
+        self.queue_banner_label.setToolTip("Current #queue status banner")
+        status_row.addWidget(self.queue_banner_label)
+
+        status_row.addStretch(1)
+
+        self.queue_banner_button = QPushButton("Set")
+        self.queue_banner_button.setObjectName("hubHeaderButton")
+        self.queue_banner_button.setEnabled(False)
+        self.queue_banner_button.setFixedWidth(52)
+        self.queue_banner_button.setToolTip(
+            "Post /message-store recall for the recommended Ships full / "
+            "requiring crew banner, then Apps > update bonus"
+        )
+        self.queue_banner_button.clicked.connect(self._start_set_queue_banner)
+        status_row.addWidget(self.queue_banner_button)
+
         refresh_btn = QPushButton("Refresh")
+        refresh_btn.setObjectName("hubHeaderButton")
         refresh_btn.clicked.connect(self._request_refresh)
         status_row.addWidget(refresh_btn)
 
         report_btn = QPushButton("Report")
+        report_btn.setObjectName("hubHeaderButton")
         report_btn.setToolTip(
             "Send a full fleet/queue snapshot + Ashen channel list .txt to #macro-logs"
         )
@@ -162,91 +193,71 @@ class QueueWindow(AppWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         self._ships_splitter = splitter
 
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(0)
-
-        # Nested resizable panes:
-        # [ Full ships | Needs ]  [ Rejoins / Leaves / Pending ]
-        # [------------ Recommended processes ----------------]
-        self._left_panel_splitter = QSplitter(Qt.Orientation.Vertical)
-
-        top_cluster = QSplitter(Qt.Orientation.Horizontal)
-        self._top_cluster_splitter = top_cluster
-
-        fleet_col = QSplitter(Qt.Orientation.Vertical)
-        self._fleet_splitter = fleet_col
-
-        full_box = QGroupBox("Full Ships")
-        full_layout = QVBoxLayout(full_box)
-        self.full_ships_label = QLabel("—")
-        self.full_ships_label.setWordWrap(True)
-        self.full_ships_label.setTextFormat(Qt.TextFormat.RichText)
-        self.full_ships_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.full_ships_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        full_layout.addWidget(self.full_ships_label)
-        fleet_col.addWidget(full_box)
-
-        needs_box = QGroupBox("Ships Requiring Crew")
-        needs_layout = QVBoxLayout(needs_box)
-        self.needs_ships_label = QLabel("—")
-        self.needs_ships_label.setWordWrap(True)
-        self.needs_ships_label.setTextFormat(Qt.TextFormat.RichText)
-        self.needs_ships_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.needs_ships_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        needs_layout.addWidget(self.needs_ships_label)
-        fleet_col.addWidget(needs_box)
-        fleet_col.setStretchFactor(0, 1)
-        fleet_col.setStretchFactor(1, 1)
-        top_cluster.addWidget(fleet_col)
-
+        # Left: workflow lists only
+        # [ Ships / Leaves / Preps / On-duty+SC ]
         workflow_col = QSplitter(Qt.Orientation.Vertical)
         self._workflow_splitter = workflow_col
 
-        onduty_box = QGroupBox("On-duty pings")
-        onduty_layout = QVBoxLayout(onduty_box)
-        onduty_layout.setContentsMargins(4, 4, 4, 4)
-        self.onduty_list = QListWidget()
-        self.onduty_list.setWordWrap(True)
-        self.onduty_list.setMaximumHeight(72)
-        onduty_layout.addWidget(self.onduty_list)
-        workflow_col.addWidget(onduty_box)
+        ships_box = QGroupBox("Ships")
+        ships_layout = QVBoxLayout(ships_box)
+        ships_layout.setContentsMargins(4, 4, 4, 4)
+        self.ships_list = QListWidget()
+        self.ships_list.setWordWrap(True)
+        ships_layout.addWidget(self.ships_list)
+        workflow_col.addWidget(ships_box)
 
-        leaves_rejoins_box = QGroupBox("Leaves & rejoins")
+        leaves_rejoins_box = QGroupBox("Leaves + rejoins")
         leaves_rejoins_layout = QVBoxLayout(leaves_rejoins_box)
         self.leaves_rejoins_list = QListWidget()
         self.leaves_rejoins_list.setWordWrap(True)
         leaves_rejoins_layout.addWidget(self.leaves_rejoins_list)
         workflow_col.addWidget(leaves_rejoins_box)
 
-        preps_processes_box = QGroupBox("Preps & processes")
+        preps_processes_box = QGroupBox("Preps + processes")
         preps_processes_layout = QVBoxLayout(preps_processes_box)
         self.preps_processes_list = QListWidget()
         self.preps_processes_list.setWordWrap(True)
         preps_processes_layout.addWidget(self.preps_processes_list)
         workflow_col.addWidget(preps_processes_box)
 
-        new_sc_box = QGroupBox("New staffchecks")
-        new_sc_layout = QVBoxLayout(new_sc_box)
-        self.new_staffchecks_list = QListWidget()
-        self.new_staffchecks_list.setWordWrap(True)
-        new_sc_layout.addWidget(self.new_staffchecks_list)
-        workflow_col.addWidget(new_sc_box)
+        onduty_sc_box = QGroupBox("On-duty + new staffchecks")
+        onduty_sc_layout = QVBoxLayout(onduty_sc_box)
+        self.onduty_staffchecks_list = QListWidget()
+        self.onduty_staffchecks_list.setWordWrap(True)
+        onduty_sc_layout.addWidget(self.onduty_staffchecks_list)
+        workflow_col.addWidget(onduty_sc_box)
 
         workflow_col.setStretchFactor(0, 0)
         workflow_col.setStretchFactor(1, 1)
         workflow_col.setStretchFactor(2, 1)
         workflow_col.setStretchFactor(3, 1)
-        top_cluster.addWidget(workflow_col)
+        splitter.addWidget(workflow_col)
 
-        # Keep fleet column narrow; workflow absorbs growth when the main
-        # left panel is resized against the Queue table.
-        top_cluster.setStretchFactor(0, 0)
-        top_cluster.setStretchFactor(1, 1)
-        top_cluster.setSizes([160, 380])
+        # Right: Queue over Recommended processes
+        right_panel = QSplitter(Qt.Orientation.Vertical)
+        self._right_panel_splitter = right_panel
 
-        self._left_panel_splitter.addWidget(top_cluster)
+        queue_box = QGroupBox("Queue")
+        queue_layout = QVBoxLayout(queue_box)
+        self.queue_table = QTableWidget(0, 5)
+        self.queue_table.setHorizontalHeaderLabels(
+            ["Name", "Activity", "Minutes", "Flags", "Request"]
+        )
+        header = self.queue_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.queue_table.setColumnWidth(3, 220)
+        self.queue_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.queue_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.queue_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.queue_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.queue_table.customContextMenuRequested.connect(self._on_queue_context_menu)
+        self.queue_table.itemSelectionChanged.connect(self._on_queue_selection)
+        queue_layout.addWidget(self.queue_table)
+        right_panel.addWidget(queue_box)
 
         rec_box = QGroupBox("Recommended processes")
         rec_layout = QVBoxLayout(rec_box)
@@ -272,98 +283,19 @@ class QueueWindow(AppWindow):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
         rec_layout.addWidget(self.recommendation_detail)
-        self._left_panel_splitter.addWidget(rec_box)
-        self._left_panel_splitter.setStretchFactor(0, 2)
-        self._left_panel_splitter.setStretchFactor(1, 3)
+        right_panel.addWidget(rec_box)
 
-        left_layout.addWidget(self._left_panel_splitter)
-        splitter.addWidget(left)
-
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        queue_box = QGroupBox("Queue")
-        queue_layout = QVBoxLayout(queue_box)
-        self.queue_table = QTableWidget(0, 5)
-        self.queue_table.setHorizontalHeaderLabels(
-            ["Name", "Activity", "Minutes", "Flags", "Request"]
-        )
-        header = self.queue_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        self.queue_table.setColumnWidth(3, 220)
-        self.queue_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.queue_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self.queue_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.queue_table.itemSelectionChanged.connect(self._on_queue_selection)
-        queue_layout.addWidget(self.queue_table)
-        right_layout.addWidget(queue_box)
-
-        edit_box = QGroupBox("Selected entry")
-        edit_layout = QVBoxLayout(edit_box)
-        self.selected_label = QLabel("Click a queue entry to edit")
-        edit_layout.addWidget(self.selected_label)
-
-        self.activities_toggle = QPushButton("Override activities ▸")
-        self.activities_toggle.setCheckable(True)
-        self.activities_toggle.setEnabled(False)
-        self.activities_toggle.toggled.connect(self._on_activities_toggled)
-        edit_layout.addWidget(self.activities_toggle)
-
-        self.activities_panel = QFrame()
-        self.activities_panel.setVisible(False)
-        activities_layout = QVBoxLayout(self.activities_panel)
-        activities_layout.setContentsMargins(4, 4, 4, 4)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setMaximumHeight(180)
-        scroll_inner = QWidget()
-        self.activities_checks_layout = QVBoxLayout(scroll_inner)
-        self.activities_checks_layout.setContentsMargins(0, 0, 0, 0)
-        scroll.setWidget(scroll_inner)
-        activities_layout.addWidget(scroll)
-
-        apply_row = QHBoxLayout()
-        self.apply_activities_btn = QPushButton("Apply activities")
-        self.apply_activities_btn.setEnabled(False)
-        self.apply_activities_btn.clicked.connect(self._apply_manual_activities)
-        apply_row.addWidget(self.apply_activities_btn)
-        self.clear_activities_btn = QPushButton("Clear override")
-        self.clear_activities_btn.setEnabled(False)
-        self.clear_activities_btn.clicked.connect(self._clear_manual_activities)
-        apply_row.addWidget(self.clear_activities_btn)
-        activities_layout.addLayout(apply_row)
-        edit_layout.addWidget(self.activities_panel)
-        self._rebuild_activity_checks(self._known_activities)
-
-        process_row = QHBoxLayout()
-        process_row.addWidget(QLabel("Process together:"))
-        self.process_combo = QComboBox()
-        self.process_combo.addItem("Unset", None)
-        self.process_combo.addItem("Together", "together")
-        self.process_combo.addItem("Separately", "separate")
-        self.process_combo.setEnabled(False)
-        self.process_combo.currentIndexChanged.connect(self._on_process_together_changed)
-        process_row.addWidget(self.process_combo, stretch=1)
-        edit_layout.addLayout(process_row)
-
-        right_layout.addWidget(edit_box)
-        splitter.addWidget(right)
+        right_panel.setStretchFactor(0, 3)
+        right_panel.setStretchFactor(1, 1)
+        splitter.addWidget(right_panel)
 
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
         self.root_layout.addWidget(splitter, stretch=1)
         self._restore_splitter_sizes()
         splitter.splitterMoved.connect(self._save_splitter_sizes)
-        self._left_panel_splitter.splitterMoved.connect(self._save_splitter_sizes)
-        self._top_cluster_splitter.splitterMoved.connect(self._save_splitter_sizes)
-        self._fleet_splitter.splitterMoved.connect(self._save_splitter_sizes)
         self._workflow_splitter.splitterMoved.connect(self._save_splitter_sizes)
+        self._right_panel_splitter.splitterMoved.connect(self._save_splitter_sizes)
 
         self.debug_box = QGroupBox("Raw messages (debug)")
         self.debug_box.setVisible(self._debug_visible)
@@ -435,10 +367,8 @@ class QueueWindow(AppWindow):
         except Exception:
             return
         mapping = (
-            ("left_panel", self._left_panel_splitter),
-            ("top_cluster", self._top_cluster_splitter),
-            ("fleet", self._fleet_splitter),
             ("workflow", self._workflow_splitter),
+            ("right_panel", self._right_panel_splitter),
         )
         for key, widget in mapping:
             sizes = data.get(key)
@@ -458,10 +388,8 @@ class QueueWindow(AppWindow):
                 ",".join(str(size) for size in sizes),
             )
         panel = {
-            "left_panel": self._left_panel_splitter.sizes(),
-            "top_cluster": self._top_cluster_splitter.sizes(),
-            "fleet": self._fleet_splitter.sizes(),
             "workflow": self._workflow_splitter.sizes(),
+            "right_panel": self._right_panel_splitter.sizes(),
         }
         set_custom_value("UI", "queue_panel_splitters", json.dumps(panel))
 
@@ -659,61 +587,10 @@ class QueueWindow(AppWindow):
         labels = [str(a) for a in activities if str(a).strip()]
         if labels and labels != self._known_activities:
             self._known_activities = labels
-            self._rebuild_activity_checks(labels)
-            if self._selected_user_id:
-                self._load_editors_for_selection()
-
-    def _rebuild_activity_checks(self, activities: list[str]) -> None:
-        while self.activities_checks_layout.count():
-            item = self.activities_checks_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-        self._activity_checks = {}
-        for label in activities:
-            check = QCheckBox(label)
-            check.setEnabled(False)
-            self._activity_checks[label] = check
-            self.activities_checks_layout.addWidget(check)
-        self.activities_checks_layout.addStretch(1)
-
-    def _on_activities_toggled(self, checked: bool) -> None:
-        self.activities_panel.setVisible(checked)
-        self.activities_toggle.setText(
-            "Override activities ▾" if checked else "Override activities ▸"
-        )
-
-    def _selected_activity_labels(self) -> list[str]:
-        return [label for label, check in self._activity_checks.items() if check.isChecked()]
-
-    def _apply_manual_activities(self) -> None:
-        if not self._selected_user_id or not self._client:
-            return
-        self._client.send(
-            {
-                "type": "set_manual_activities",
-                "user_id": self._selected_user_id,
-                "activities": self._selected_activity_labels(),
-            }
-        )
-
-    def _clear_manual_activities(self) -> None:
-        if not self._selected_user_id or not self._client:
-            return
-        self._updating_editors = True
-        for check in self._activity_checks.values():
-            check.setChecked(False)
-        self._updating_editors = False
-        self._client.send(
-            {
-                "type": "set_manual_activities",
-                "user_id": self._selected_user_id,
-                "activities": [],
-            }
-        )
 
     def _apply_peers(self, peers: list) -> None:
         self.peers_label.setText(f"Staff online: {len(peers)}")
+        self.peers_label.setToolTip(f"{len(peers)} staff connected to Queue Monitor")
 
     def _format_scraped(self, scraped: str | None) -> str:
         if not scraped:
@@ -738,62 +615,132 @@ class QueueWindow(AppWindow):
         rows = self.queue_table.selectionModel().selectedRows()
         if not rows:
             self._selected_user_id = None
-            self._clear_editors()
             return
         item = self.queue_table.item(rows[0].row(), 0)
         if item is None:
             return
         user_id = item.data(Qt.ItemDataRole.UserRole)
         self._selected_user_id = str(user_id) if user_id else None
-        self._load_editors_for_selection()
 
-    def _clear_editors(self) -> None:
-        self._updating_editors = True
-        self.selected_label.setText("Click a queue entry to edit")
-        self.activities_toggle.setEnabled(False)
-        self.activities_toggle.setChecked(False)
-        self.activities_panel.setVisible(False)
-        self.apply_activities_btn.setEnabled(False)
-        self.clear_activities_btn.setEnabled(False)
-        for check in self._activity_checks.values():
-            check.setChecked(False)
-            check.setEnabled(False)
-        self.process_combo.setCurrentIndex(0)
-        self.process_combo.setEnabled(False)
-        self._updating_editors = False
+    def _queue_user_id_at_pos(self, pos) -> str | None:
+        index = self.queue_table.indexAt(pos)
+        if not index.isValid():
+            return None
+        item = self.queue_table.item(index.row(), 0)
+        if item is None:
+            return None
+        user_id = item.data(Qt.ItemDataRole.UserRole)
+        return str(user_id) if user_id else None
 
-    def _load_editors_for_selection(self) -> None:
-        entry = self._entry_by_user_id(self._selected_user_id or "")
-        if entry is None:
-            self._clear_editors()
+    def _on_queue_context_menu(self, pos) -> None:
+        user_id = self._queue_user_id_at_pos(pos)
+        if not user_id:
             return
-        name = entry.get("display_name") or entry.get("user_id")
-        self.selected_label.setText(f"{name} (`{entry.get('user_id')}`)")
-        self._updating_editors = True
-        self.activities_toggle.setEnabled(True)
-        self.apply_activities_btn.setEnabled(True)
-        self.clear_activities_btn.setEnabled(True)
-        activity_text = str(entry.get("activity") or "")
-        parts = {part.strip().lower() for part in activity_text.split(",") if part.strip()}
-        for label, check in self._activity_checks.items():
-            check.setEnabled(True)
-            check.setChecked(label.lower() in parts)
-        self.process_combo.setEnabled(True)
-        value = entry.get("process_together")
-        index = self.process_combo.findData(value)
-        self.process_combo.setCurrentIndex(index if index >= 0 else 0)
-        self._updating_editors = False
+        entry = self._entry_by_user_id(user_id)
+        if entry is None:
+            return
 
-    def _on_process_together_changed(self, _index: int) -> None:
-        if self._updating_editors or not self._selected_user_id or not self._client:
+        self.queue_table.selectRow(self.queue_table.indexAt(pos).row())
+        self._selected_user_id = user_id
+
+        menu = QMenu(self)
+        edit_action = menu.addAction("Edit activities…")
+        process_menu = menu.addMenu("Process together")
+        current = entry.get("process_together")
+        for label, value in (
+            ("Unset", None),
+            ("Together", "together"),
+            ("Separately", "separate"),
+        ):
+            action = process_menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(current == value)
+            action.triggered.connect(
+                lambda _checked=False, uid=user_id, val=value: self._set_process_together(
+                    uid, val
+                )
+            )
+
+        chosen = menu.exec(self.queue_table.viewport().mapToGlobal(pos))
+        if chosen is edit_action:
+            self._open_edit_activities_dialog(user_id)
+
+    def _set_process_together(self, user_id: str, value) -> None:
+        if not self._client:
             return
         self._client.send(
             {
                 "type": "set_process_together",
-                "user_id": self._selected_user_id,
-                "value": self.process_combo.currentData(),
+                "user_id": user_id,
+                "value": value,
             }
         )
+
+    def _open_edit_activities_dialog(self, user_id: str) -> None:
+        entry = self._entry_by_user_id(user_id)
+        if entry is None:
+            return
+
+        dialog = QDialog(self)
+        name = entry.get("display_name") or user_id
+        dialog.setWindowTitle(f"Edit activities — {name}")
+        dialog.setMinimumWidth(320)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel(f"{name} (`{user_id}`)"))
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMaximumHeight(240)
+        scroll_inner = QWidget()
+        checks_layout = QVBoxLayout(scroll_inner)
+        checks_layout.setContentsMargins(0, 0, 0, 0)
+        activity_text = str(entry.get("activity") or "")
+        parts = {part.strip().lower() for part in activity_text.split(",") if part.strip()}
+        checks: dict[str, QCheckBox] = {}
+        for label in self._known_activities:
+            check = QCheckBox(label)
+            check.setChecked(label.lower() in parts)
+            checks[label] = check
+            checks_layout.addWidget(check)
+        checks_layout.addStretch(1)
+        scroll.setWidget(scroll_inner)
+        layout.addWidget(scroll)
+
+        buttons = QDialogButtonBox()
+        apply_btn = buttons.addButton(
+            "Apply activities", QDialogButtonBox.ButtonRole.AcceptRole
+        )
+        clear_btn = buttons.addButton(
+            "Clear override", QDialogButtonBox.ButtonRole.ActionRole
+        )
+        cancel_btn = buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
+        layout.addWidget(buttons)
+
+        def send_activities(labels: list[str]) -> None:
+            if not self._client:
+                return
+            self._client.send(
+                {
+                    "type": "set_manual_activities",
+                    "user_id": user_id,
+                    "activities": labels,
+                }
+            )
+
+        def on_apply() -> None:
+            send_activities(
+                [label for label, check in checks.items() if check.isChecked()]
+            )
+            dialog.accept()
+
+        def on_clear() -> None:
+            send_activities([])
+            dialog.accept()
+
+        apply_btn.clicked.connect(on_apply)
+        clear_btn.clicked.connect(on_clear)
+        cancel_btn.clicked.connect(dialog.reject)
+        dialog.exec()
 
     def _ship_fill_color(self, fill: str) -> str:
         if fill == "green":
@@ -802,7 +749,7 @@ class QueueWindow(AppWindow):
             return theme.PEACH
         return theme.RED
 
-    def _format_ship_line(self, ship: dict) -> str:
+    def _format_ship_line(self, ship: dict) -> tuple[str, str]:
         channel_id = ship.get("channel_id") or "?"
         name = (ship.get("channel_name") or "").strip()
         label = name if name and name != channel_id else f"#{channel_id}"
@@ -821,10 +768,33 @@ class QueueWindow(AppWindow):
                 fill = "orange"
 
         detail = f" — Needs {needs}" if needs is not None else ""
-        color = self._ship_fill_color(fill)
-        safe_label = str(label).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        safe_detail = detail.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        return f'<span style="color:{color}">{safe_label}{safe_detail}</span>'
+        return f"{label}{detail}", self._ship_fill_color(fill)
+
+    def _apply_ships(self, data: dict) -> None:
+        self.ships_list.clear()
+        ships = data.get("ships") or []
+        if not data.get("active", True):
+            self.ships_list.addItem("Queue closed — no fleet info")
+            return
+
+        needs_items: list[tuple[str, str]] = []
+        full_items: list[tuple[str, str]] = []
+        for ship in ships:
+            text, color = self._format_ship_line(ship)
+            status = ship.get("status") or ""
+            if ship.get("section") == "needs_crew" or status == "needs_crew":
+                needs_items.append((text, color))
+            else:
+                full_items.append((text, color))
+
+        if not needs_items and not full_items:
+            self.ships_list.addItem("None")
+            return
+
+        for text, color in needs_items + full_items:
+            item = QListWidgetItem(text)
+            item.setForeground(QColor(color))
+            self.ships_list.addItem(item)
 
     def _apply_snapshot(self, data: dict) -> None:
         scraped = self._format_scraped(data.get("scraped_at"))
@@ -832,46 +802,33 @@ class QueueWindow(AppWindow):
         self._apply_peers(peers)
         self._apply_private_queue_header(data)
         self._apply_alliance_ping_header(data)
+        self._apply_queue_banner_header(data)
 
         active = data.get("active", True)
         sim = data.get("sim") or {}
         if sim.get("enabled"):
             self.queue_state_label.setText("SIM")
             self.closed_banner.setVisible(False)
-            self._set_status("Simulator active — live queue paused for this view")
+            self._set_status("Simulator active")
+            self.status_label.setToolTip("Live queue paused for this view")
         elif active:
             self.queue_state_label.setText("Open")
             self.closed_banner.setVisible(False)
-            self._set_status(f"Connected — last scrape {scraped}")
+            self._set_status("Connected")
+            self.status_label.setToolTip(f"Last scrape {scraped}")
         else:
             self.queue_state_label.setText("Closed")
             self.closed_banner.setVisible(True)
-            self._set_status(f"Queue closed — last check {scraped}")
-
-        ships = data.get("ships") or []
-        full_lines = []
-        needs_lines = []
-        for ship in ships:
-            line = self._format_ship_line(ship)
-            status = ship.get("status") or ""
-            if ship.get("section") == "needs_crew" or status == "needs_crew":
-                needs_lines.append(line)
-            else:
-                full_lines.append(line)
-
-        if not active:
-            self.full_ships_label.setText("Queue closed — no fleet info")
-            self.needs_ships_label.setText("Queue closed — no fleet info")
-        else:
-            self.full_ships_label.setText("<br>".join(full_lines) if full_lines else "None")
-            self.needs_ships_label.setText("<br>".join(needs_lines) if needs_lines else "None")
+            self._set_status("Queue closed")
+            self.status_label.setToolTip(f"Last check {scraped}")
 
         selected = self._selected_user_id
         queue = data.get("queue") or []
         self.queue_table.setRowCount(0 if not active else len(queue))
         if active:
             if not queue:
-                self._set_status(f"Connected — queue empty — last scrape {scraped}")
+                self._set_status("Connected — queue empty")
+                self.status_label.setToolTip(f"Last scrape {scraped}")
             restore_row = -1
             for row, entry in enumerate(queue):
                 flags = []
@@ -922,26 +879,27 @@ class QueueWindow(AppWindow):
                     item = QTableWidgetItem(value)
                     if col == 0:
                         item.setData(Qt.ItemDataRole.UserRole, entry.get("user_id"))
+                    item.setToolTip("Right click to edit")
                     self.queue_table.setItem(row, col, item)
                 minutes_text, minutes_tip = self._format_queue_minutes(entry)
                 minutes_item = self.queue_table.item(row, 2)
                 if minutes_item is not None:
                     minutes_item.setText(minutes_text)
-                    minutes_item.setToolTip(minutes_tip)
+                    minutes_item.setToolTip(
+                        f"Right click to edit\n\n{minutes_tip}"
+                    )
                 if selected and str(entry.get("user_id")) == str(selected):
                     restore_row = row
 
             if restore_row >= 0:
                 self.queue_table.selectRow(restore_row)
-                self._load_editors_for_selection()
             elif selected:
                 self._selected_user_id = None
-                self._clear_editors()
 
+        self._apply_ships(data)
         self._apply_leaves_rejoins(data)
         self._apply_preps_processes(data)
-        self._apply_onduty_pings(data)
-        self._apply_new_staffchecks(data)
+        self._apply_onduty_staffchecks(data)
         self._sync_recently_prepped_from_snapshot(data)
         self._apply_recommendations(data)
 
@@ -1142,8 +1100,7 @@ class QueueWindow(AppWindow):
             return
         self._apply_leaves_rejoins(self._last_snapshot)
         self._apply_preps_processes(self._last_snapshot)
-        self._apply_onduty_pings(self._last_snapshot)
-        self._apply_new_staffchecks(self._last_snapshot)
+        self._apply_onduty_staffchecks(self._last_snapshot)
         self._apply_alliance_ping_header(self._last_snapshot)
         self._refresh_queue_minutes_column()
 
@@ -1196,7 +1153,135 @@ class QueueWindow(AppWindow):
             text, tip = self._format_queue_minutes(entry)
             if minutes_item.text() != text:
                 minutes_item.setText(text)
-            minutes_item.setToolTip(tip)
+            minutes_item.setToolTip(f"Right click to edit\n\n{tip}")
+
+    def _apply_queue_banner_header(self, data: dict) -> None:
+        banner = data.get("queue_status_banner") or {}
+        active = bool(data.get("active", True))
+        current = banner.get("type")
+        label = str(banner.get("label") or "None")
+        preview = str(banner.get("preview") or "").strip()
+        recommended = banner.get("recommended_type")
+        self.queue_banner_label.setText(f"Queue msg: {label}")
+        tip_bits = [label]
+        if preview:
+            tip_bits.append(preview)
+        if recommended and recommended in BANNER_BUTTON_LABELS:
+            tip_bits.append(
+                f"Recommended: {BANNER_BUTTON_LABELS[recommended]}"
+            )
+        self.queue_banner_label.setToolTip("\n".join(tip_bits))
+
+        mismatch = (
+            bool(recommended)
+            and recommended in BANNER_RECALL_NAMES
+            and current != recommended
+        )
+        if mismatch:
+            self.queue_banner_label.setStyleSheet(f"color: {theme.PEACH or '#ff8533'};")
+        else:
+            self.queue_banner_label.setStyleSheet("")
+
+        self.queue_banner_button.setText("Set")
+        if (
+            not active
+            or self._sim_enabled
+            or self._command_busy
+            or not recommended
+            or recommended not in BANNER_RECALL_NAMES
+            or current == recommended
+        ):
+            self.queue_banner_button.setEnabled(False)
+            return
+
+        self.queue_banner_button.setEnabled(True)
+        self._pending_banner_target = recommended
+
+    def _start_set_queue_banner(self) -> None:
+        if self._sim_enabled:
+            self._set_status("Sim mode — Discord commands disabled")
+            return
+        if self._command_busy:
+            self._set_status("Already running a queue command")
+            return
+        snap = self._last_snapshot or {}
+        banner = snap.get("queue_status_banner") or {}
+        target = str(
+            getattr(self, "_pending_banner_target", None)
+            or banner.get("recommended_type")
+            or ""
+        )
+        recall_name = BANNER_RECALL_NAMES.get(target)
+        if not recall_name:
+            self._set_status("No recommended queue banner to set")
+            return
+
+        previous_id = str(banner.get("message_id") or "") or None
+        self._command_busy = True
+        self.abort_requested = False
+        self._set_rec_buttons_enabled(False)
+        self.queue_banner_button.setEnabled(False)
+        self._command_status.emit(f"Setting queue banner: {recall_name}…")
+
+        thread = threading.Thread(
+            target=self._set_queue_banner_worker,
+            args=(target, recall_name, previous_id),
+            daemon=True,
+        )
+        thread.start()
+
+    def _set_queue_banner_worker(
+        self, expected_type: str, recall_name: str, previous_message_id: str | None
+    ) -> None:
+        start_abort_session(self)
+        try:
+            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            self._command_status.emit("Opening #queue…")
+            switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
+            interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
+            check_abort(self)
+            clear_typing_bar()
+            check_abort(self)
+            self._command_status.emit(f"Recalling: {recall_name}…")
+            execute_command(
+                self, f"/message-store recall name:{recall_name}"
+            )
+            self._command_status.emit("Waiting for new queue banner…")
+
+            def _snap():
+                return self._last_snapshot
+
+            def _abort():
+                return bool(getattr(self, "abort_requested", False))
+
+            new_banner = wait_for_status_banner(
+                _snap,
+                expected_type=expected_type,
+                previous_message_id=previous_message_id,
+                timeout_s=20.0,
+                abort_check=_abort,
+            )
+            check_abort(self)
+            offset = None
+            if new_banner and new_banner.get("message_id"):
+                self._command_status.emit("Resolving banner position…")
+                info = fetch_status_banner_offset(
+                    self._client, str(new_banner["message_id"])
+                )
+                check_abort(self)
+                if info.get("found") and info.get("offset"):
+                    offset = int(info["offset"])
+            self._command_status.emit("Apps > update bonus...")
+            apply_update_bonus_on_queue_message(self, offset)
+            self._command_status.emit(f"Queue banner set: {recall_name}")
+        except AbortError:
+            self._command_status.emit("Queue banner set aborted")
+        except Exception:
+            logger.exception("Failed setting queue status banner")
+            self._command_status.emit("Failed to set queue banner")
+        finally:
+            end_abort_session(self)
+            self._command_finished.emit()
 
     def _apply_private_queue_header(self, data: dict) -> None:
         private = data.get("private_queue") or []
@@ -1217,7 +1302,7 @@ class QueueWindow(AppWindow):
         max_ratio = float(stats.get("max_ratio") or 0.5)
         pct = int(round(100 * max_ratio))
         if total <= 0:
-            self.private_ships_label.setText("Private ships: —")
+            self.private_ships_label.setText("Private ships: -")
             self.private_ships_label.setStyleSheet("")
             self.private_ships_label.setToolTip("No fleet ships yet")
         else:
@@ -1255,7 +1340,7 @@ class QueueWindow(AppWindow):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
         except ValueError:
-            self.alliance_ping_label.setText("Alliance ping: —")
+            self.alliance_ping_label.setText("Alliance ping: -")
             self.alliance_ping_label.setStyleSheet("")
             return
 
@@ -1275,7 +1360,10 @@ class QueueWindow(AppWindow):
         self.alliance_ping_label.setStyleSheet(f"color: {color};")
 
         local = dt.astimezone()
-        self.alliance_ping_label.setToolTip(f"Last ping: {local.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        self.alliance_ping_label.setToolTip(
+            f"Last alliance ping {age_text} ago\n"
+            f"{local.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        )
 
     @staticmethod
     def _format_age(seconds: int) -> str:
@@ -1290,6 +1378,17 @@ class QueueWindow(AppWindow):
             return f"{hours}h {rem}m" if rem else f"{hours}h"
         days = hours // 24
         return f"{days}d"
+
+    def _clean_ship_label(self, ship: object) -> str | None:
+        """Real ship label for list rows, or None for empty/-- placeholders."""
+        text = str(ship or "").strip()
+        if not text or text in ("-", "--", "?", "unknown", "unknown ship"):
+            return None
+        return text
+
+    def _join_workflow_bits(self, bits: list[str]) -> str:
+        """Join list fields without '-' (ship names already use 'FL 1 - …')."""
+        return " · ".join(b for b in bits if b)
 
     def _apply_leaves_rejoins(self, data: dict) -> None:
         self.leaves_rejoins_list.clear()
@@ -1316,7 +1415,11 @@ class QueueWindow(AppWindow):
             name = self._display_name_for_user(
                 user_id, fallback=str(leave.get("display_name") or "")
             )
-            ship = leave.get("ship_name") or leave.get("ship_channel_id") or "?"
+            ship = (
+                self._clean_ship_label(leave.get("ship_name"))
+                or self._clean_ship_label(leave.get("ship_channel_id"))
+                or "?"
+            )
             expiry = self._format_expiry(
                 leave.get("expires_at"),
                 overdue_phrase="should have left",
@@ -1326,7 +1429,7 @@ class QueueWindow(AppWindow):
             bits = [f"Leave: {name} {verb} {ship}", status]
             if expiry:
                 bits.append(expiry)
-            item = QListWidgetItem(" — ".join(bits))
+            item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(colors.get(status, colors["unhandled"]))
             self.leaves_rejoins_list.addItem(item)
 
@@ -1335,7 +1438,11 @@ class QueueWindow(AppWindow):
             name = self._display_name_for_user(
                 user_id, fallback=str(rejoin.get("display_name") or "")
             )
-            ship = rejoin.get("ship_name") or rejoin.get("ship_channel_id") or "unknown ship"
+            ship = (
+                self._clean_ship_label(rejoin.get("ship_name"))
+                or self._clean_ship_label(rejoin.get("ship_channel_id"))
+                or "unknown ship"
+            )
             item = QListWidgetItem(f"Rejoin: {name} -> {ship}")
             item.setForeground(colors["rejoin"])
             self.leaves_rejoins_list.addItem(item)
@@ -1360,14 +1467,17 @@ class QueueWindow(AppWindow):
             name = self._display_name_for_user(
                 user_id, fallback=str(prep.get("display_name") or "")
             )
-            ship = prep.get("ship_name") or prep.get("target_ship_channel_id") or ""
+            ship = self._clean_ship_label(
+                prep.get("ship_name")
+            ) or self._clean_ship_label(prep.get("target_ship_channel_id"))
             expiry = self._format_expiry(prep.get("expires_at"))
-            bits = [f"Prep: {name}"]
+            head = f"Prep: {name}"
             if ship:
-                bits.append(f"-> {ship}")
+                head = f"{head} -> {ship}"
+            bits = [head]
             if expiry:
                 bits.append(expiry)
-            item = QListWidgetItem(" — ".join(bits))
+            item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(prep_color)
             self.preps_processes_list.addItem(item)
 
@@ -1376,7 +1486,11 @@ class QueueWindow(AppWindow):
             name = self._display_name_for_user(
                 user_id, fallback=str(proc.get("display_name") or "")
             )
-            ship = proc.get("ship_name") or proc.get("ship_channel_id") or "?"
+            ship = (
+                self._clean_ship_label(proc.get("ship_name"))
+                or self._clean_ship_label(proc.get("ship_channel_id"))
+                or "?"
+            )
             expiry = self._format_expiry(proc.get("expires_at"))
             text = f"Process: {name} -> {ship}"
             if expiry:
@@ -1385,83 +1499,32 @@ class QueueWindow(AppWindow):
             item.setForeground(process_color)
             self.preps_processes_list.addItem(item)
 
-    def _apply_new_staffchecks(self, data: dict) -> None:
-        self.new_staffchecks_list.clear()
-        rows = data.get("new_staffchecks") or []
-        if not rows:
-            self.new_staffchecks_list.addItem("None")
-            return
+    def _new_staffcheck_ttl_anchor(self, row: dict) -> datetime | None:
+        """UTC start time used for the 1h auto-clear countdown."""
+        status = str(row.get("status") or "")
+        raw = None
+        if status == "on_fleet":
+            raw = row.get("joined_fleet_at") or row.get("role_granted_at") or row.get("created_at")
+        else:
+            raw = row.get("role_granted_at") or row.get("created_at")
+        if not raw:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return None
 
-        colors = {
-            "awaiting_process": QColor(getattr(theme, "OVERLAY1", None) or "#888888"),
-            "awaiting_spot": QColor(theme.YELLOW or "#ffaa33"),
-            "on_fleet": QColor(theme.GREEN or "#4ade80"),
-            "missed_spot": QColor(theme.RED or "#ff4444"),
-            "left_early": QColor(theme.PEACH or "#ff8533"),
-        }
-        keep_seconds = 3600
-        now = datetime.now(timezone.utc)
-
-        for row in rows:
-            user_id = str(row.get("user_id") or "")
-            name = self._display_name_for_user(
-                user_id, fallback=str(row.get("display_name") or "")
-            )
-            status = str(row.get("status") or "awaiting_process")
-            ship = row.get("ship_name") or row.get("ship_channel_id") or ""
-
-            if status == "missed_spot":
-                detail = "Missed their spot, remove staffchecked"
-            elif status == "left_early":
-                played = row.get("played_seconds")
-                try:
-                    played_i = int(played) if played is not None else 0
-                except (TypeError, ValueError):
-                    played_i = 0
-                detail = (
-                    f"Played {self._format_duration(played_i)} — uncheck staffchecked"
-                )
-            elif status == "on_fleet":
-                remaining = None
-                joined_raw = row.get("joined_fleet_at")
-                if joined_raw:
-                    try:
-                        joined = datetime.fromisoformat(
-                            str(joined_raw).replace("Z", "+00:00")
-                        )
-                        if joined.tzinfo is None:
-                            joined = joined.replace(tzinfo=timezone.utc)
-                        remaining = max(
-                            0,
-                            keep_seconds
-                            - int((now - joined).total_seconds()),
-                        )
-                    except Exception:
-                        remaining = None
-                if remaining is None:
-                    detail = "On fleet — keep role after 1h"
-                else:
-                    detail = (
-                        f"On fleet — keep role in {self._format_duration(remaining)}"
-                    )
-            elif status == "awaiting_spot":
-                detail = "Waiting to take spot"
-            else:
-                detail = "Staffchecked — waiting to process"
-
-            bits = [name, detail]
-            if ship and status in ("awaiting_spot", "on_fleet", "left_early", "missed_spot"):
-                bits.insert(1, f"-> {ship}")
-            item = QListWidgetItem(" — ".join(bits))
-            item.setForeground(colors.get(status, colors["awaiting_process"]))
-            self.new_staffchecks_list.addItem(item)
-
-    def _apply_onduty_pings(self, data: dict) -> None:
-        self.onduty_list.clear()
+    def _apply_onduty_staffchecks(self, data: dict) -> None:
+        self.onduty_staffchecks_list.clear()
         pings = data.get("onduty_pings") or []
-        if not pings:
-            self.onduty_list.addItem("None")
+        rows = data.get("new_staffchecks") or []
+        if not pings and not rows:
+            self.onduty_staffchecks_list.addItem("None")
             return
+
         now = datetime.now(timezone.utc)
         for ping in pings:
             user_id = str(ping.get("user_id") or "")
@@ -1471,7 +1534,7 @@ class QueueWindow(AppWindow):
             channel = str(ping.get("channel_name") or ping.get("channel_id") or "?")
             if channel and not channel.startswith("#"):
                 channel = f"#{channel}"
-            bits = [name, channel]
+            bits = [f"On-duty: {name}", channel]
             created_at = ping.get("created_at")
             if created_at:
                 try:
@@ -1485,7 +1548,69 @@ class QueueWindow(AppWindow):
                         bits.append(f"{self._format_duration(age_secs)} ago")
                 except Exception:
                     pass
-            self.onduty_list.addItem(" — ".join(bits))
+            self.onduty_staffchecks_list.addItem(self._join_workflow_bits(bits))
+
+        colors = {
+            "awaiting_process": QColor(getattr(theme, "OVERLAY1", None) or "#888888"),
+            "awaiting_spot": QColor(theme.YELLOW or "#ffaa33"),
+            "on_fleet": QColor(theme.GREEN or "#4ade80"),
+            "missed_spot": QColor(theme.RED or "#ff4444"),
+            "left_early": QColor(theme.PEACH or "#ff8533"),
+        }
+        keep_seconds = 3600
+
+        for row in rows:
+            user_id = str(row.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(row.get("display_name") or "")
+            )
+            status = str(row.get("status") or "awaiting_process")
+
+            if status == "missed_spot":
+                detail = "Missed their spot, remove staffchecked"
+            elif status == "left_early":
+                played = row.get("played_seconds")
+                try:
+                    played_i = int(played) if played is not None else 0
+                except (TypeError, ValueError):
+                    played_i = 0
+                detail = (
+                    f"Played {self._format_duration(played_i)}, uncheck staffchecked"
+                )
+            elif status == "on_fleet":
+                detail = "On fleet, can keep role"
+            elif status == "awaiting_spot":
+                detail = "Waiting to take spot"
+            else:
+                detail = "Staffchecked, waiting to process"
+
+            remaining = None
+            anchor = self._new_staffcheck_ttl_anchor(row)
+            if anchor is not None:
+                remaining = max(
+                    0,
+                    keep_seconds - int((now - anchor).total_seconds()),
+                )
+
+            ship = self._clean_ship_label(
+                row.get("ship_name")
+            ) or self._clean_ship_label(row.get("ship_channel_id"))
+            head = f"New SC: {name}"
+            if ship and status in (
+                "awaiting_spot",
+                "on_fleet",
+                "left_early",
+                "missed_spot",
+            ):
+                head = f"New SC: {name} -> {ship}"
+            if status == "on_fleet" and remaining is not None:
+                detail = f"On fleet, can keep role in {self._format_duration(remaining)}"
+            bits = [head, detail]
+            if remaining is not None and status != "on_fleet":
+                bits.append(f"clears in {self._format_duration(remaining)}")
+            item = QListWidgetItem(self._join_workflow_bits(bits))
+            item.setForeground(colors.get(status, colors["awaiting_process"]))
+            self.onduty_staffchecks_list.addItem(item)
 
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
@@ -1794,6 +1919,7 @@ class QueueWindow(AppWindow):
     ) -> None:
         """React :pending: on the leave we're filling, if any and not already claimed."""
         for leave in self._open_leaves_for_ship(ship_channel_id, ship_name):
+            check_abort(self)
             mid = str(leave.get("message_id") or "").strip()
             if not mid:
                 continue
@@ -1805,6 +1931,7 @@ class QueueWindow(AppWindow):
                 f"Looking up leave message before filling for {display_name}…"
             )
             info = fetch_leave_message(self._client, mid)
+            check_abort(self)
             if not info.get("found"):
                 logger.info(
                     "Leave message %s not found (%s) — skipping pending react",
@@ -1850,18 +1977,23 @@ class QueueWindow(AppWindow):
         is_shipswap: bool = False,
         ship_channel_id: str = "",
     ) -> None:
+        start_abort_session(self)
         try:
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit(f"Opening #queue for {display_name}…")
             switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
             interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
+            check_abort(self)
             clear_typing_bar()
+            check_abort(self)
 
             if action in ("prep", "process"):
                 self._react_pending_before_fill(
                     ship_channel_id, ship_name, display_name
                 )
+                check_abort(self)
                 clear_typing_bar()
+                check_abort(self)
 
             if action == "process":
                 self._command_status.emit(
@@ -1891,6 +2023,7 @@ class QueueWindow(AppWindow):
             logger.exception("Queue slash command failed (%s %s)", action, user_id)
             self._command_status.emit(f"Failed: /{action} for {display_name}")
         finally:
+            end_abort_session(self)
             self._command_finished.emit()
 
     def _on_command_finished(self) -> None:
@@ -1898,6 +2031,7 @@ class QueueWindow(AppWindow):
         # Refresh so abort/fail of /prep restores Prep, and success keeps Process.
         if self._last_snapshot:
             self._apply_recommendations(self._last_snapshot)
+            self._apply_queue_banner_header(self._last_snapshot)
         else:
             self._set_rec_buttons_enabled(not self._sim_enabled)
 
@@ -1909,6 +2043,11 @@ class QueueWindow(AppWindow):
                 continue
             for btn in widget.findChildren(QPushButton):
                 btn.setEnabled(enabled)
+        if hasattr(self, "queue_banner_button"):
+            if not enabled:
+                self.queue_banner_button.setEnabled(False)
+            elif self._last_snapshot:
+                self._apply_queue_banner_header(self._last_snapshot)
 
     def _on_recommendation_double_clicked(self, item: QListWidgetItem) -> None:
         if not self._sim_enabled or not self._client or item is None:
