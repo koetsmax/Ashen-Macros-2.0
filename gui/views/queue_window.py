@@ -70,7 +70,9 @@ QUEUE_CHANNEL_JUMP_URL = (
 # Leeway after click before Discord automation starts.
 QUEUE_COMMAND_START_DELAY_S = 1.2
 # Extra settle after jumping to #queue before typing the slash command.
-QUEUE_CHANNEL_SETTLE_S = 0.9
+QUEUE_CHANNEL_SETTLE_S = 1.2
+# Soft flash for on-duty ping rows in Leaves workflow list.
+ONDUTY_PING_FLASH_MS = 750
 
 # /process ship option: "FL 1 - Hunters Call Brig 5 -- 2/3" → "1 5"
 _PROCESS_SHIP_OPTION_RE = re.compile(
@@ -115,6 +117,7 @@ class QueueWindow(AppWindow):
         self._reacted_leave_message_ids: set[str] = set()
         # Leave message ids claimed by someone else's :pending: — do not handle.
         self._skipped_leave_message_ids: set[str] = set()
+        self._onduty_ping_flash_on = False
         super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
@@ -129,6 +132,9 @@ class QueueWindow(AppWindow):
         self._countdown_timer.setInterval(1000)
         self._countdown_timer.timeout.connect(self._tick_countdowns)
         self._countdown_timer.start()
+        self._onduty_flash_timer = QTimer(self)
+        self._onduty_flash_timer.setInterval(ONDUTY_PING_FLASH_MS)
+        self._onduty_flash_timer.timeout.connect(self._tick_onduty_ping_flash)
 
     def _build_ui(self) -> None:
         status_row = QHBoxLayout()
@@ -153,16 +159,16 @@ class QueueWindow(AppWindow):
         self.peers_label = QLabel("Staff online: -")
         status_row.addWidget(self.peers_label)
 
-        self.queue_banner_label = QLabel("Queue msg: -")
+        self.queue_banner_label = QLabel("Queue message: -")
         self.queue_banner_label.setToolTip("Current #queue status banner")
         status_row.addWidget(self.queue_banner_label)
 
         status_row.addStretch(1)
 
-        self.queue_banner_button = QPushButton("Set")
+        self.queue_banner_button = QPushButton("Set Queue message")
         self.queue_banner_button.setObjectName("hubHeaderButton")
         self.queue_banner_button.setEnabled(False)
-        self.queue_banner_button.setFixedWidth(52)
+        self.queue_banner_button.setMinimumWidth(130)
         self.queue_banner_button.setToolTip(
             "Post /message-store recall for the recommended Ships full / "
             "requiring crew banner, then Apps > update bonus"
@@ -862,6 +868,30 @@ class QueueWindow(AppWindow):
                     flags.append("Needs prep")
                 if entry.get("staffchecked") is False:
                     flags.append("Not staffchecked")
+                    mark = entry.get("od_check_mark")
+                    if mark == "good":
+                        flags.append("Good to check")
+                    elif mark == "not_good":
+                        flags.append("Not good to check")
+                avoid_with = entry.get("avoid_with") or []
+                if avoid_with:
+                    names = []
+                    for oid in avoid_with[:3]:
+                        other = self._entry_by_user_id(str(oid))
+                        if other:
+                            names.append(
+                                str(
+                                    other.get("display_name")
+                                    or other.get("user_id")
+                                    or oid
+                                )
+                            )
+                        else:
+                            names.append(str(oid))
+                    suffix = ", ".join(names)
+                    if len(avoid_with) > 3:
+                        suffix += ", …"
+                    flags.append(f"Do not process with {suffix}")
                 prep_status = self._prep_status_for_user(str(entry.get("user_id") or ""))
                 if prep_status:
                     if prep_status == "ready":
@@ -1162,7 +1192,7 @@ class QueueWindow(AppWindow):
         label = str(banner.get("label") or "None")
         preview = str(banner.get("preview") or "").strip()
         recommended = banner.get("recommended_type")
-        self.queue_banner_label.setText(f"Queue msg: {label}")
+        self.queue_banner_label.setText(f"Queue message: {label}")
         tip_bits = [label]
         if preview:
             tip_bits.append(preview)
@@ -1182,7 +1212,7 @@ class QueueWindow(AppWindow):
         else:
             self.queue_banner_label.setStyleSheet("")
 
-        self.queue_banner_button.setText("Set")
+        self.queue_banner_button.setText("Set Queue message")
         if (
             not active
             or self._sim_enabled
@@ -1394,10 +1424,11 @@ class QueueWindow(AppWindow):
         self.leaves_rejoins_list.clear()
         leaves = data.get("active_leaves") or []
         rejoins = data.get("pending_rejoins") or []
+        notices = data.get("leave_notices") or []
         if not data.get("active", True):
             self.leaves_rejoins_list.addItem("Queue closed")
             return
-        if not leaves and not rejoins:
+        if not leaves and not rejoins and not notices:
             self.leaves_rejoins_list.addItem("None")
             return
 
@@ -1408,6 +1439,9 @@ class QueueWindow(AppWindow):
             "processing": QColor(theme.PEACH or "#ff8533"),
             "taken": QColor(theme.GREEN or "#4ade80"),
             "rejoin": QColor(theme.BLUE or "#60a5fa"),
+            "notice_none": QColor(theme.RED or "#ff4444"),
+            "notice_pending": QColor(theme.YELLOW or "#ffaa33"),
+            "notice_marked": QColor(theme.GREEN or "#4ade80"),
         }
         status_by_user = self._leave_status_by_user(data)
         for leave in leaves:
@@ -1445,6 +1479,34 @@ class QueueWindow(AppWindow):
             )
             item = QListWidgetItem(f"Rejoin: {name} -> {ship}")
             item.setForeground(colors["rejoin"])
+            self.leaves_rejoins_list.addItem(item)
+
+        for notice in notices:
+            user_id = str(notice.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(notice.get("display_name") or "")
+            )
+            ship = (
+                self._clean_ship_label(notice.get("ship_name"))
+                or self._clean_ship_label(notice.get("ship_channel_id"))
+                or ""
+            )
+            mark = str(notice.get("staff_mark") or "none").lower()
+            if mark == "pending":
+                detail = "pending"
+                color = colors["notice_pending"]
+            elif mark in ("tick", "cross"):
+                detail = "marked"
+                color = colors["notice_marked"]
+            else:
+                detail = "needs mark"
+                color = colors["notice_none"]
+            bits = [f"Leave message: {name}"]
+            if ship:
+                bits.append(ship)
+            bits.append(detail)
+            item = QListWidgetItem(self._join_workflow_bits(bits))
+            item.setForeground(color)
             self.leaves_rejoins_list.addItem(item)
 
     def _apply_preps_processes(self, data: dict) -> None:
@@ -1521,8 +1583,10 @@ class QueueWindow(AppWindow):
         self.onduty_staffchecks_list.clear()
         pings = data.get("onduty_pings") or []
         rows = data.get("new_staffchecks") or []
-        if not pings and not rows:
+        watches = data.get("uncheck_watches") or []
+        if not pings and not rows and not watches:
             self.onduty_staffchecks_list.addItem("None")
+            self._sync_onduty_ping_flash_timer()
             return
 
         now = datetime.now(timezone.utc)
@@ -1548,7 +1612,9 @@ class QueueWindow(AppWindow):
                         bits.append(f"{self._format_duration(age_secs)} ago")
                 except Exception:
                     pass
-            self.onduty_staffchecks_list.addItem(self._join_workflow_bits(bits))
+            item = QListWidgetItem(self._join_workflow_bits(bits))
+            item.setData(Qt.ItemDataRole.UserRole, "onduty_ping")
+            self.onduty_staffchecks_list.addItem(item)
 
         colors = {
             "awaiting_process": QColor(getattr(theme, "OVERLAY1", None) or "#888888"),
@@ -1612,6 +1678,65 @@ class QueueWindow(AppWindow):
             item.setForeground(colors.get(status, colors["awaiting_process"]))
             self.onduty_staffchecks_list.addItem(item)
 
+        uncheck_color = QColor(theme.PEACH or "#ff8533")
+        for watch in watches:
+            user_id = str(watch.get("user_id") or "")
+            name = self._display_name_for_user(
+                user_id, fallback=str(watch.get("display_name") or "")
+            )
+            bits = [f"Uncheck: {name}", "once off fleet"]
+            note = str(watch.get("note") or "").strip()
+            if note:
+                bits.append(note[:80] + ("…" if len(note) > 80 else ""))
+            expires_at = watch.get("expires_at")
+            if expires_at:
+                try:
+                    exp = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+                    if exp.tzinfo is None:
+                        exp = exp.replace(tzinfo=timezone.utc)
+                    remaining = max(0, int((exp - now).total_seconds()))
+                    bits.append(f"clears in {self._format_duration(remaining)}")
+                except Exception:
+                    pass
+            item = QListWidgetItem(self._join_workflow_bits(bits))
+            item.setForeground(uncheck_color)
+            self.onduty_staffchecks_list.addItem(item)
+
+        self._sync_onduty_ping_flash_timer()
+
+    def _sync_onduty_ping_flash_timer(self) -> None:
+        has_ping = False
+        for i in range(self.onduty_staffchecks_list.count()):
+            item = self.onduty_staffchecks_list.item(i)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == "onduty_ping":
+                has_ping = True
+                break
+        if has_ping:
+            if not self._onduty_flash_timer.isActive():
+                self._onduty_ping_flash_on = False
+                self._onduty_flash_timer.start()
+                self._tick_onduty_ping_flash()
+        else:
+            self._onduty_flash_timer.stop()
+            self._onduty_ping_flash_on = False
+
+    def _tick_onduty_ping_flash(self) -> None:
+        self._onduty_ping_flash_on = not self._onduty_ping_flash_on
+        flash = QColor(theme.PEACH or "#ff8533")
+        if self._onduty_ping_flash_on:
+            flash.setAlpha(90)
+        else:
+            flash.setAlpha(28)
+        clear = QColor(0, 0, 0, 0)
+        for i in range(self.onduty_staffchecks_list.count()):
+            item = self.onduty_staffchecks_list.item(i)
+            if item is None:
+                continue
+            if item.data(Qt.ItemDataRole.UserRole) == "onduty_ping":
+                item.setBackground(flash)
+            else:
+                item.setBackground(clear)
+
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
         self.recommendations_list.blockSignals(True)
@@ -1637,6 +1762,12 @@ class QueueWindow(AppWindow):
             if action == "process" and summary.startswith("Prep:"):
                 summary = "Process:" + summary[len("Prep:") :]
                 rec["summary"] = summary
+            pending_prep = action == "process" and self._recommendation_has_pending_prep(
+                rec
+            )
+            if pending_prep and "pending prep" not in summary.lower():
+                summary = f"{summary} · pending prep"
+                rec["summary"] = summary
             primary_label = "Prep" if action == "prep" else "Process"
 
             item = QListWidgetItem()
@@ -1651,6 +1782,9 @@ class QueueWindow(AppWindow):
             label.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
+            if pending_prep:
+                peach = theme.PEACH or "#ff8533"
+                label.setStyleSheet(f"color: {peach};")
             row_layout.addWidget(label, stretch=1)
 
             btn = QPushButton(primary_label)
@@ -1681,6 +1815,21 @@ class QueueWindow(AppWindow):
             self.recommendation_detail.setText(
                 f"{len(recs)} option(s) — select one to inspect"
             )
+
+    def _recommendation_has_pending_prep(self, rec: dict) -> bool:
+        """True while prep is still waiting for an answer (not ready/expired)."""
+        for member in rec.get("members") or []:
+            uid = str(member.get("user_id") or "")
+            if not uid:
+                continue
+            if self._user_has_open_prep(uid):
+                return True
+            # Optimistic local /prep until the open prep row appears.
+            if uid in self._recently_prepped_user_ids and not self._user_has_active_prep(
+                uid
+            ):
+                return True
+        return False
 
     def _effective_recommendation_action(self, rec: dict) -> str:
         """Force process when the member is already prepped (or just prepped locally)."""
@@ -1718,7 +1867,20 @@ class QueueWindow(AppWindow):
             if uid not in live_prep and uid not in processing
         }
 
+    def _user_has_open_prep(self, user_id: str) -> bool:
+        """Prep still pending a response (status=open)."""
+        uid = str(user_id or "")
+        if not uid:
+            return False
+        for prep in self._last_snapshot.get("active_preps") or []:
+            if str(prep.get("user_id") or "") != uid:
+                continue
+            if (prep.get("status") or "open") == "open":
+                return True
+        return False
+
     def _user_has_active_prep(self, user_id: str) -> bool:
+        """Any live prep row (open/ready/timeout) — used for Process / Unprep."""
         uid = str(user_id or "")
         if not uid:
             return False

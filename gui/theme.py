@@ -231,6 +231,16 @@ def _qss() -> str:
     QPushButton#hubHeaderButton:pressed {{
         background-color: {SURFACE2};
     }}
+    QPushButton#hubHeaderButton:disabled {{
+        color: {OVERLAY0};
+        background-color: {MANTLE};
+        border-color: {SURFACE0};
+    }}
+    QPushButton#hubHeaderButton:disabled:hover {{
+        background-color: {MANTLE};
+        border-color: {SURFACE0};
+        color: {OVERLAY0};
+    }}
     QGroupBox {{
         background-color: {MANTLE};
         border: 1px solid {SURFACE0};

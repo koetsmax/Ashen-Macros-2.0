@@ -17,6 +17,7 @@ from gui.views.command_executor_window import CommandExecutorWindow
 from gui.views.fill_new_fleet_window import FillNewFleetWindow
 from gui.views.gamertag_lookup_window import GamertagLookupWindow
 from gui.views.hammertime_window import HammertimeWindow
+from gui.views.permissions_window import PermissionsWindow
 from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
 from gui.views.ship_holder_window import ShipHolderWindow
@@ -51,6 +52,7 @@ APP_REGISTRY = [
     AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
     AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
     AppEntry("Stats", StatsWindow, "stats"),
+    AppEntry("Permissions", PermissionsWindow, "administrator"),
 ]
 
 APP_BY_KEY = {entry.window_cls.__name__: entry for entry in APP_REGISTRY}

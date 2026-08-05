@@ -208,51 +208,67 @@ def confirm_shipswap_after_process(self) -> None:
 
 
 def apply_update_bonus_on_queue_message(self, offset: int | None = None) -> None:
-    """Focus a #queue message and run Apps → update bonus.
+    """Open a #queue banner's ⋯ menu and run Apps → update bonus.
 
-    When offset is set (1-based history count), navigate to that message.
-    Otherwise: Shift+Tab → Up once (newest message), same family as shipswap follow-up.
+    Discord's Shift+F10 → Apps path is unreliable, so we open the message
+    context menu (⋯) instead:
 
-    Then: Shift+F10 → Down × 9 → Right → type \"update bonus\" → Down → Enter
+    - Banner is newest (offset 1 / unknown): clear typing bar → Shift+Tab × 3
+      (focus lands on that message's ⋯).
+    - Banner has a newer message below it (offset ≥ 2): navigate to the
+      message *below* the banner (offset - 1) → Shift+Tab → Enter (⋯ of the
+      banner above).
+
+    Then: Down × N → Right → paste \"update bonus\" → Down → Enter
     """
     config = read_config()
     follow_up = float(config.get("follow_up") or 0.4)
     step = max(follow_up, 0.2)
-    if offset is not None and int(offset) >= 1:
-        navigate_to_channel_message(self, int(offset), in_on_duty_chat=False)
-    else:
+    # Newest message in channel history (1-based). No message below it.
+    is_newest = offset is None or int(offset) <= 1
+
+    if is_newest:
         with keyboard_automation(), self.keyboard_lock:
             interruptible_sleep(self, 1.0)
             check_abort(self)
             clear_typing_bar()
             interruptible_sleep(self, step)
+            for _ in range(3):
+                check_abort(self)
+                keyboard.press_and_release("shift+tab")
+                interruptible_sleep(self, step)
+    else:
+        # One message below the banner = one newer = offset - 1 from bottom.
+        navigate_to_channel_message(self, int(offset) - 1, in_on_duty_chat=False)
+        with keyboard_automation(), self.keyboard_lock:
+            check_abort(self)
             keyboard.press_and_release("shift+tab")
             interruptible_sleep(self, step)
             check_abort(self)
-            keyboard.press_and_release("up")
-            interruptible_sleep(self, step)
+            keyboard.press_and_release("enter")
+            interruptible_sleep(self, max(step, 0.35))
 
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
-        keyboard.press_and_release("shift+f10")
-        interruptible_sleep(self, max(step, 0.35))
         for _ in range(9):
             check_abort(self)
             keyboard.press_and_release("down")
             interruptible_sleep(self, step)
+        # Extra settle after Apps row is highlighted before opening the submenu.
+        interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
         keyboard.press_and_release("right")
-        interruptible_sleep(self, max(step, 0.35))
+        interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
         with _clipboard_scope("update bonus"):
             keyboard.press_and_release("ctrl+v")
-            interruptible_sleep(self, follow_up)
+            interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
         keyboard.press_and_release("down")
-        interruptible_sleep(self, step)
+        interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
         keyboard.press_and_release("enter")
-        interruptible_sleep(self, step)
+        interruptible_sleep(self, max(step, 0.45))
     clear_typing_bar()
 
 
@@ -351,9 +367,7 @@ def react_to_channel_message(
     clear_typing_bar()
 
 
-def edit_on_duty_message(
-    self, n: int, new_content: str, *, extra_ups: int = 0
-) -> None:
+def edit_on_duty_message(self, n: int, new_content: str, *, extra_ups: int = 0) -> None:
     """Navigate to the Nth message, press E to edit, replace content, save."""
     step = _ON_DUTY_FOCUS_STEP
     navigate_to_on_duty_message(self, n, extra_ups=extra_ups)
