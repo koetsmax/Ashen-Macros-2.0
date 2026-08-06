@@ -391,7 +391,7 @@ def determine_method(self):
         from staffcheck import elemental_commands
 
         elemental_commands.elemental_commands(self)
-    elif self.method.get() == "Elemental Commands":
+    elif self.method.get() == "Bettermoderation Commands":
         from staffcheck import elemental_commands
 
         elemental_commands.elemental_commands(self)

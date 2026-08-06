@@ -184,7 +184,7 @@ class StaffcheckView(QWidget):
         self.method_combo_box = QComboBox()
         self.method_combo_box.setMinimumHeight(FIELD_HEIGHT)
         self.method_combo_box.addItems([
-            "All Commands", "Elemental Commands", "Ashen Commands",
+            "All Commands", "Bettermoderation Commands", "Ashen Commands",
             "Invite Tracker", "SOT Official", "Check Message",
         ])
         self.method = Var(self.method_combo_box.currentText, self.method_combo_box.setCurrentText)
