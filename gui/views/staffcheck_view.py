@@ -297,8 +297,15 @@ class StaffcheckView(QWidget):
             idle_tooltip=SECTION_IDLE_TOOLTIPS["sot_official"],
             always_show_keys=frozenset({"total_messages"}),
         )
+        self.result_sections["flagged_messages"] = ResultSection("Flagged Messages", [])
+        self.result_sections["flagged_messages"]._button_row.setVisible(False)
+        self.result_sections["flagged_messages"]._button_row.setMinimumHeight(0)
+        self.result_sections["flagged_messages"].setVisible(False)
 
-        for key in ("mutual_servers", "user_report", "search", "invite_tracker", "sot_official"):
+        for key in (
+            "mutual_servers", "user_report", "search", "invite_tracker",
+            "sot_official", "flagged_messages",
+        ):
             section = self.result_sections[key]
             section.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
             layout.addWidget(section, alignment=Qt.AlignmentFlag.AlignTop)
@@ -362,6 +369,11 @@ class StaffcheckView(QWidget):
             ],
             [self.check_for_yourself_button],
         )
+        self.result_sections["flagged_messages"] = ClassicResultSection(
+            "Flagged Messages",
+            [("Flagged messages", "flagged_count")],
+        )
+        self.result_sections["flagged_messages"].setVisible(False)
 
         left.addWidget(self.result_sections["mutual_servers"], alignment=Qt.AlignmentFlag.AlignTop)
         left.addWidget(self.result_sections["user_report"], alignment=Qt.AlignmentFlag.AlignTop)
@@ -369,6 +381,7 @@ class StaffcheckView(QWidget):
 
         right.addWidget(self.result_sections["search"], alignment=Qt.AlignmentFlag.AlignTop)
         right.addWidget(self.result_sections["sot_official"], alignment=Qt.AlignmentFlag.AlignTop)
+        right.addWidget(self.result_sections["flagged_messages"], alignment=Qt.AlignmentFlag.AlignTop)
 
         outer.addLayout(left, stretch=1)
         outer.addLayout(right, stretch=1)

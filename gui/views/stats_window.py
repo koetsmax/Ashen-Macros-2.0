@@ -46,6 +46,7 @@ _METRICS: list[tuple[str, str, int, str | None]] = [
     ("Fleet mix", "fleet-mix", 7, None),
     ("Private / fill", "private-fill", 7, None),
     ("Queue depth", "queue-depth", 7, None),
+    ("Queue hours", "queue-hours", 7, None),
     ("Wait times", "wait", 7, None),
     ("Shipswap / recs", "shipswap", 7, None),
     ("Odds", "odds", 30, "activity"),
@@ -521,7 +522,8 @@ class StatsWindow(AppWindow):
             "This permanently deletes:\n"
             "• queue analytics events\n"
             "• fleet snapshots\n"
-            "• queue depth snapshots\n\n"
+            "• queue depth snapshots\n"
+            "• queue open/close sessions\n\n"
             "Staffcheck history is kept. Continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -666,6 +668,7 @@ class StatsWindow(AppWindow):
             self._add_kpi("Events", str(cleared.get("queue_analytics_events", 0)))
             self._add_kpi("Fleet snaps", str(cleared.get("fleet_snapshots", 0)))
             self._add_kpi("Depth snaps", str(cleared.get("queue_depth_snapshots", 0)))
+            self._add_kpi("Sessions", str(cleared.get("queue_board_sessions", 0)))
             self._add_summary_line("Analytics tables wiped. New scrapes will refill them.")
             self.chart_label.setText("Cleared — pick a metric after new data arrives")
             self.summary_layout.addStretch(1)
@@ -709,10 +712,16 @@ class StatsWindow(AppWindow):
                 logger.exception("Failed to decode chart")
                 self.chart_label.setText("(chart decode failed)")
         elif data.get("collecting"):
-            self.chart_label.setText(
-                "Still collecting data for this metric.\n"
-                "Snapshots only record when the fleet or queue depth changes."
-            )
+            if path.endswith("/queue-hours"):
+                self.chart_label.setText(
+                    "Still collecting data for this metric.\n"
+                    "Open/close times are recorded when the queue board opens or closes."
+                )
+            else:
+                self.chart_label.setText(
+                    "Still collecting data for this metric.\n"
+                    "Snapshots only record when the fleet or queue depth changes."
+                )
         elif path.endswith("/summary"):
             self.chart_label.setText("Summary view — pick a metric for charts")
         else:
@@ -855,6 +864,57 @@ class StatsWindow(AppWindow):
                     f"(n={h.get('samples')})",
                     muted=True,
                 )
+
+        elif path.endswith("/queue-hours"):
+            self._add_kpi("Opens", str(data.get("opens") or 0))
+            self._add_kpi("Closes", str(data.get("closes") or 0))
+            avg_dur = data.get("avg_duration_minutes")
+            self._add_kpi(
+                "Avg open",
+                f"{avg_dur}m" if avg_dur is not None else "—",
+            )
+            med = data.get("median_duration_minutes")
+            self._add_summary_line(
+                f"Median duration {med}m  ·  "
+                f"total open {data.get('total_open_minutes') or 0}m  ·  "
+                f"{'currently open' if data.get('currently_open') else 'currently closed'}"
+            )
+            open_busy = sorted(
+                [h for h in (data.get("open_hours") or []) if h.get("opens")],
+                key=lambda h: -(h.get("opens") or 0),
+            )[:4]
+            close_busy = sorted(
+                [h for h in (data.get("close_hours") or []) if h.get("closes")],
+                key=lambda h: -(h.get("closes") or 0),
+            )[:4]
+            if open_busy:
+                self._add_summary_line(
+                    "Busy open hours (UTC): "
+                    + ", ".join(
+                        f"{h.get('hour_utc'):02d}:00×{h.get('opens')}" for h in open_busy
+                    ),
+                    muted=True,
+                )
+            if close_busy:
+                self._add_summary_line(
+                    "Busy close hours (UTC): "
+                    + ", ".join(
+                        f"{h.get('hour_utc'):02d}:00×{h.get('closes')}" for h in close_busy
+                    ),
+                    muted=True,
+                )
+            for s in (data.get("sessions") or [])[:12]:
+                opened = s.get("opened_at") or "—"
+                if s.get("open"):
+                    self._add_summary_line(f"Open since {opened}", muted=True)
+                else:
+                    closed = s.get("closed_at") or "—"
+                    dur = s.get("duration_minutes")
+                    dur_s = f"{dur}m" if dur is not None else "—"
+                    self._add_summary_line(
+                        f"{opened} → {closed}  ({dur_s})",
+                        muted=True,
+                    )
 
         elif path.endswith("/wait"):
             self._add_kpi("Samples", str(data.get("samples") or 0))

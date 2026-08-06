@@ -47,6 +47,56 @@ def _section(view, key):
 def reset_all(view) -> None:
     for section in view.result_sections.values():
         section.reset()
+    _hide_flagged_messages(view)
+
+
+def _hide_flagged_messages(view) -> None:
+    sec = view.result_sections.get("flagged_messages")
+    if sec is not None:
+        sec.setVisible(False)
+
+
+def _flagged_messages_detail(messages: list) -> str:
+    lines = []
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        content = str(msg.get("content") or "").strip()
+        if content:
+            lines.append(content)
+    return "\n".join(lines)
+
+
+def _apply_flagged_messages(view, response: dict) -> None:
+    """Show Flagged Messages only when count > 0; otherwise hide."""
+    sec = view.result_sections.get("flagged_messages")
+    if sec is None:
+        return
+
+    try:
+        count = int(response.get("flagged_alert_count") or 0)
+    except (TypeError, ValueError):
+        count = 0
+    messages = response.get("flagged_alert_messages") or []
+    if not isinstance(messages, list):
+        messages = []
+
+    if count <= 0:
+        sec.reset()
+        sec.setVisible(False)
+        return
+
+    detail = _flagged_messages_detail(messages) or f"Flagged messages: {count}"
+    sec.clear_fields()
+    sec.set_field(
+        "flagged_count",
+        "Flagged messages",
+        str(count),
+        is_issue=True,
+        detail=detail,
+    )
+    sec.set_success_or_issues()
+    sec.setVisible(True)
 
 
 def mutual_servers_apply(view, guilds: list[str]) -> None:
@@ -285,10 +335,14 @@ def invite_apply(view, response: dict) -> None:
     sec.set_success_or_issues()
 
 
-def sot_failed(view, message: str = "Failed") -> None:
+def sot_failed(view, message: str = "Failed", response: dict | None = None) -> None:
     sec = _section(view, "sot_official")
     sec.clear_fields()
     sec.set_state("failed", error_message=message)
+    if response is not None:
+        _apply_flagged_messages(view, response)
+    else:
+        _hide_flagged_messages(view)
 
 
 def sot_apply(view, response: dict) -> None:
@@ -325,3 +379,4 @@ def sot_apply(view, response: dict) -> None:
         detail=f"Other flagged messages: {len(r['other_messages'])}",
     )
     sec.set_success_or_issues()
+    _apply_flagged_messages(view, response)

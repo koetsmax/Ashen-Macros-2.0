@@ -139,13 +139,16 @@ class ClassicResultSection(QWidget):
         if self._state in ("idle", "loading"):
             for key in self._row_keys:
                 label_set(self._value_labels[key], "N/A", "orange")
+                self._value_labels[key].setToolTip("")
         elif self._state == "failed":
             for key in self._row_keys:
                 if key in self._fields:
                     field = self._fields[key]
                     label_set(self._value_labels[key], field.value, "red" if field.is_issue else "orange")
+                    self._value_labels[key].setToolTip(field.detail)
                 else:
                     label_set(self._value_labels[key], "N/A", "orange")
+                    self._value_labels[key].setToolTip("")
         else:
             for key in self._row_keys:
                 if key in self._fields:
@@ -155,8 +158,10 @@ class ClassicResultSection(QWidget):
                         field.value,
                         "red" if field.is_issue else "green",
                     )
+                    self._value_labels[key].setToolTip(field.detail)
                 else:
                     label_set(self._value_labels[key], "N/A", "orange")
+                    self._value_labels[key].setToolTip("")
 
         status_text, status_color = self._status_display()
         label_set(self._status_label, status_text, status_color)

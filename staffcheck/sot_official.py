@@ -55,11 +55,13 @@ def api_request(self):
             return
         if response.status_code != 200:
             request_error = True
-        elif response.json()["error"] != "none":
-            result_panel.sot_failed(self, response.json()["error"])
         else:
-            result_panel.sot_apply(self, response.json())
-            btn_enable(self.check_for_yourself_button, True)
+            payload = response.json()
+            if payload["error"] != "none":
+                result_panel.sot_failed(self, payload["error"], response=payload)
+            else:
+                result_panel.sot_apply(self, payload)
+                btn_enable(self.check_for_yourself_button, True)
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
