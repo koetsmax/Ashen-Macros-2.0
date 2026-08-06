@@ -66,6 +66,8 @@ class SettingsDialog(QDialog):
         self.edit_nav_offset_entry.setMaximumWidth(60)
         nav_row.addWidget(self.edit_nav_offset_entry)
         self.edit_nav_test_btn = QPushButton("Test navigate in on-duty-chat")
+        self.edit_nav_test_btn.setAutoDefault(False)
+        self.edit_nav_test_btn.setDefault(False)
         self.edit_nav_test_btn.setToolTip(
             "Switch to #on-duty-chat and move focus up N messages. Does not open edit."
         )
@@ -97,6 +99,8 @@ class SettingsDialog(QDialog):
             grid.addWidget(entry, i, 1)
             if key == "abort_key":
                 test_btn = QPushButton("Test key")
+                test_btn.setAutoDefault(False)
+                test_btn.setDefault(False)
                 test_btn.clicked.connect(self._test_key)
                 grid.addWidget(test_btn, i, 2)
                 self._key_test_label = QLabel("")
@@ -104,13 +108,19 @@ class SettingsDialog(QDialog):
         layout.addLayout(grid)
 
         reset_apps_btn = QPushButton("Reset app window positions to 0, 0")
+        reset_apps_btn.setAutoDefault(False)
+        reset_apps_btn.setDefault(False)
         reset_apps_btn.clicked.connect(self._reset_app_positions)
         layout.addWidget(reset_apps_btn)
 
         btn_row = QHBoxLayout()
         save = QPushButton("Save Changes")
+        save.setAutoDefault(True)
+        save.setDefault(True)
         save.clicked.connect(self._save)
         reset = QPushButton("Reset To Default")
+        reset.setAutoDefault(False)
+        reset.setDefault(False)
         reset.clicked.connect(self._reset)
         btn_row.addWidget(save)
         btn_row.addWidget(reset)
