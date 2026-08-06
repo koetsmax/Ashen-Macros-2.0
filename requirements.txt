@@ -4,7 +4,6 @@ PySide6
 catppuccin
 packaging
 requests
-pyuac
 filelock
 keyring
 pyperclip

@@ -1,9 +1,12 @@
 from PySide6.QtWidgets import QLabel
 
+from core import updates
+
 
 class VersionBadge(QLabel):
     def __init__(self, version: str, parent=None):
-        super().__init__(f"v{version}", parent)
+        display = updates.display_version(version)
+        super().__init__(f"v{display}", parent)
         self.setObjectName("versionBadge")
         self._outdated = False
 

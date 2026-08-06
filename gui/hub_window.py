@@ -591,6 +591,14 @@ class StaffcheckHub(QMainWindow):
     def _download_update(self):
         if not self._online_version:
             return
+        if not updates.is_frozen():
+            self.toast_stack.show_toast(
+                "update",
+                "Zip updates are only available in packaged builds. "
+                "You're running from source (dev).",
+                dismiss_ms=8000,
+            )
+            return
         self.toast_stack.show_toast(
             "update",
             f"Downloading update (v{self._online_version})…",
@@ -607,13 +615,13 @@ class StaffcheckHub(QMainWindow):
 
     def _download_update_worker(self, online_version: str, tag_name: str | None = None) -> None:
         try:
-            installer_path = updates.download_update(online_version, tag_name=tag_name)
+            zip_path = updates.download_update(online_version, tag_name=tag_name)
         except Exception:
             logger.exception("Update download failed")
             self._update_download_failed.emit()
             return
         # Marshal to the UI thread — QTimer.singleShot from a worker thread is a no-op.
-        self._update_download_ready.emit(installer_path)
+        self._update_download_ready.emit(zip_path)
 
     def _on_update_download_failed(self) -> None:
         self.toast_stack.show_toast(
@@ -624,26 +632,26 @@ class StaffcheckHub(QMainWindow):
             action_label="Retry",
         )
 
-    def _start_installer_and_quit(self, installer_path: str) -> None:
+    def _start_installer_and_quit(self, zip_path: str) -> None:
         try:
-            updates.launch_installer_after_exit(installer_path)
+            updates.launch_update_after_exit(zip_path)
         except Exception:
-            logger.exception("Failed to schedule installer")
+            logger.exception("Failed to schedule update helper")
             self.toast_stack.show_toast(
                 "update",
-                "Could not start the installer. Try running Ashen.Macro.Installer.exe manually.",
+                "Could not start the update helper. Try again from Check for updates.",
                 dismiss_ms=10000,
             )
             return
         self._quit_for_update()
 
     def _quit_for_update(self) -> None:
-        """Fully exit so the installer can overwrite launcher files."""
+        """Fully exit so the update helper can overwrite launcher files."""
         from PySide6.QtWidgets import QApplication
 
         self.toast_stack.show_toast(
             "update",
-            "Update downloaded — closing to install…",
+            "Update downloaded — closing to apply…",
             dismiss_ms=0,
         )
         app = QApplication.instance()
