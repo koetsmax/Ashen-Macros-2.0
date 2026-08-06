@@ -26,6 +26,11 @@ from gui.views.app_window import AppWindow
 logger = logging.getLogger(__name__)
 
 
+_PERMISSION_LABELS = {
+    "prerelease": "prerelease — force beta / pre-release updates",
+}
+
+
 class PermissionsWindow(AppWindow):
     DEFAULT_SIZE = (720, 560)
 
@@ -193,7 +198,7 @@ class PermissionsWindow(AppWindow):
                 widget.deleteLater()
         self._checks.clear()
         for key in self._keys:
-            check = QCheckBox(key)
+            check = QCheckBox(_PERMISSION_LABELS.get(key, key))
             check.toggled.connect(
                 lambda checked, k=key: self._on_permission_toggled(k, checked)
             )

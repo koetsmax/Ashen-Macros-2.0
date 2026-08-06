@@ -4,13 +4,26 @@ import secrets
 import keyring
 import requests
 
-from core.settings import read_config
+from core.settings import read_config, set_custom_value
 
 logger = logging.getLogger(__name__)
 
 
+def _sync_prefer_prerelease(enabled: bool) -> None:
+    """Apply server/admin beta-channel force to local updater config."""
+    set_custom_value(
+        "UPDATES",
+        "prefer_prerelease",
+        "true" if enabled else "false",
+    )
+
+
 def check_login(force_new_token: bool = False) -> tuple[bool, str | None, list[str]]:
-    """Return (verified, username, permissions)."""
+    """Return (verified, username, permissions).
+
+    When verified, syncs local prefer_prerelease from the `prerelease` permission
+    (or prefer_prerelease field) so Permissions can force users onto/off beta.
+    """
     try:
         if force_new_token:
             raise ValueError("Force new token")
@@ -44,6 +57,10 @@ def check_login(force_new_token: bool = False) -> tuple[bool, str | None, list[s
         permissions = list(data.get("permissions") or [])
         valid = data.get("valid")
         if valid is True or valid == "true":
+            prefer = data.get("prefer_prerelease")
+            if prefer is None:
+                prefer = "prerelease" in permissions
+            _sync_prefer_prerelease(bool(prefer))
             return True, data.get("username"), permissions
 
         if valid is False or valid == "false":

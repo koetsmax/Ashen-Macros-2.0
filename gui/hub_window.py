@@ -344,12 +344,14 @@ class StaffcheckHub(QMainWindow):
         self.username = username if verified else None
         self.permissions = list(permissions or []) if verified else []
         self._set_welcome_text(self.username)
+        self._update_prerelease_badge()
         if log:
             logger.info(
-                "Auth sync: verified=%s username=%s permissions=%s",
+                "Auth sync: verified=%s username=%s permissions=%s prefer_prerelease=%s",
                 self.verified,
                 self.username or "none",
                 self.permissions,
+                updates.prefer_prerelease_enabled(),
             )
 
     def _refresh_auth(self):
