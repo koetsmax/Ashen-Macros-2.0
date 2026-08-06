@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 # Mutuals limited to these are fine (green). Any other server → orange header.
 _ALLOWED_MUTUAL_SERVER_NAMES = frozenset(
@@ -10,6 +17,9 @@ _ALLOWED_MUTUAL_SERVER_NAMES = frozenset(
         "Sea of Thieves",
     }
 )
+
+# Beyond this count, spill into a second column instead of growing forever.
+_MAX_SINGLE_COLUMN = 5
 
 
 def _guild_base_name(label: str) -> str:
@@ -34,6 +44,7 @@ class MutualServersSection(QWidget):
     def __init__(self):
         super().__init__()
         self._state = "idle"
+        self._guilds: list[str] = []
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         outer = QVBoxLayout(self)
@@ -44,25 +55,53 @@ class MutualServersSection(QWidget):
         self._header.setObjectName("sectionHeader")
         outer.addWidget(self._header)
 
-        self._list = QLabel("—")
-        self._list.setObjectName("resultSectionSummary")
-        self._list.setWordWrap(True)
-        self._list.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        outer.addWidget(self._list)
+        columns = QHBoxLayout()
+        columns.setContentsMargins(0, 0, 0, 0)
+        columns.setSpacing(8)
 
-        self._divider = QFrame()
-        self._divider.setObjectName("sectionDivider")
-        self._divider.setFixedHeight(1)
-        outer.addWidget(self._divider)
+        self._col1 = QLabel("—")
+        self._col1.setObjectName("resultSectionSummary")
+        self._col1.setWordWrap(True)
+        self._col1.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._col1.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Maximum,
+        )
+        columns.addWidget(self._col1, stretch=1)
+
+        self._vdivider = QFrame()
+        self._vdivider.setObjectName("sectionDividerVertical")
+        self._vdivider.setFrameShape(QFrame.Shape.VLine)
+        self._vdivider.setFixedWidth(1)
+        self._vdivider.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Expanding,
+        )
+        columns.addWidget(self._vdivider)
+
+        self._col2 = QLabel("")
+        self._col2.setObjectName("resultSectionSummary")
+        self._col2.setWordWrap(True)
+        self._col2.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._col2.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Maximum,
+        )
+        columns.addWidget(self._col2, stretch=1)
+
+        outer.addLayout(columns)
+
+        self._hdivider = QFrame()
+        self._hdivider.setObjectName("sectionDivider")
+        self._hdivider.setFixedHeight(1)
+        outer.addWidget(self._hdivider)
 
         self.reset()
 
     def set_guilds(self, guilds: list[str]) -> None:
-        if guilds:
-            self._list.setText("\n".join(guilds))
-        else:
-            self._list.setText("None")
-        if mutuals_have_extra_servers(guilds):
+        self._guilds = list(guilds or [])
+        self._render_guilds()
+        if mutuals_have_extra_servers(self._guilds):
             self._state = "issues"
             self._apply_header_style("issues")
         else:
@@ -71,8 +110,35 @@ class MutualServersSection(QWidget):
 
     def reset(self) -> None:
         self._state = "idle"
-        self._list.setText("—")
+        self._guilds = []
+        self._col1.setText("—")
+        self._col2.clear()
+        self._col2.hide()
+        self._vdivider.hide()
         self._apply_header_style("idle")
+
+    def _render_guilds(self) -> None:
+        guilds = self._guilds
+        if not guilds:
+            self._col1.setText("None")
+            self._col2.clear()
+            self._col2.hide()
+            self._vdivider.hide()
+            return
+
+        if len(guilds) <= _MAX_SINGLE_COLUMN:
+            self._col1.setText("\n".join(guilds))
+            self._col2.clear()
+            self._col2.hide()
+            self._vdivider.hide()
+            return
+
+        # Balanced split so both columns stay short instead of one tall list.
+        mid = (len(guilds) + 1) // 2
+        self._col1.setText("\n".join(guilds[:mid]))
+        self._col2.setText("\n".join(guilds[mid:]))
+        self._col2.show()
+        self._vdivider.show()
 
     def _apply_header_style(self, state: str) -> None:
         self._header.setProperty("state", state)

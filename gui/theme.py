@@ -291,6 +291,12 @@ def _qss() -> str:
         border: none;
         max-height: 1px;
     }}
+    QFrame#sectionDividerVertical {{
+        background-color: {SURFACE0};
+        border: none;
+        max-width: 1px;
+        min-width: 1px;
+    }}
     QScrollArea {{
         background: transparent;
         border: none;
