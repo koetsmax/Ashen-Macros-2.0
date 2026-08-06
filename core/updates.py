@@ -165,10 +165,10 @@ echo [%date% %time%] cleaning staging>>"%LOG%"
 rmdir /s /q "!STAGING!" >NUL 2>&1
 
 if exist "!APPEXE!" (
-  echo [%date% %time%] starting !APPEXE!>>"%LOG%"
+  echo [%date% %time%] starting !APPEXE! ^(cwd=!INSTALL!^)>>"%LOG%"
   echo.
   echo Install complete. Starting Ashen Macros...
-  start "" "!APPEXE!"
+  start "" /D "!INSTALL!" "!APPEXE!"
 ) else (
   echo [%date% %time%] ERROR: AppExe missing: !APPEXE!>>"%LOG%"
   echo.
@@ -189,12 +189,25 @@ def is_frozen() -> bool:
 
 
 def read_local_version() -> str:
-    for path in ("_internal/version", "version"):
-        try:
-            with open(path, "r", encoding="UTF-8") as f:
-                return f.read().strip()
-        except FileNotFoundError:
-            continue
+    """Read the packaged or repo version file.
+
+    Frozen builds resolve paths from the install directory (next to the exe),
+    not the process cwd — after an in-app update the helper may relaunch with
+    cwd still in %TEMP%, which made the badge show v0.0.0 until a normal restart.
+    """
+    bases: list[Path] = []
+    if is_frozen():
+        bases.append(Path(sys.executable).resolve().parent)
+    bases.append(Path.cwd())
+    for base in bases:
+        for name in ("_internal/version", "version"):
+            path = base / name
+            try:
+                return path.read_text(encoding="UTF-8").strip()
+            except FileNotFoundError:
+                continue
+            except OSError:
+                continue
     return "0.0.0"
 
 
