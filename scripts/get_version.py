@@ -11,9 +11,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = REPO_ROOT / "version"
 
-# YYYY.WW or YYYY.WW.Rev, optional -beta.N
+# YYYY.WW or YYYY.WW.Rev
 VERSION_RE = re.compile(
-    r"^(?P<year>\d{4})\.(?P<week>\d{1,2})(?:\.(?P<rev>\d+))?(?:-beta\.(?P<beta>\d+))?$"
+    r"^(?P<year>\d{4})\.(?P<week>\d{1,2})(?:\.(?P<rev>\d+))?$"
 )
 
 
@@ -21,8 +21,8 @@ def parse_version(value: str) -> re.Match[str]:
     match = VERSION_RE.fullmatch(value.strip())
     if not match:
         raise ValueError(
-            f"Invalid version {value!r}. Expected YYYY.WW, YYYY.WW.Rev, "
-            "or optional -beta.N suffix (e.g. 2026.32, 2026.32.1, 2026.32-beta.1)."
+            f"Invalid version {value!r}. Expected YYYY.WW or YYYY.WW.Rev "
+            "(e.g. 2026.32, 2026.32.1)."
         )
     week = int(match.group("week"))
     if week < 1 or week > 53:

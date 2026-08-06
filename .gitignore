@@ -1,4 +1,5 @@
 ashen-macros
+RELEASE.md
 api_tester.spec
 openai.token
 pyproject.toml

@@ -23,26 +23,10 @@ def next_revision(current: str) -> str:
     year = match.group("year")
     week = int(match.group("week"))
     rev = match.group("rev")
-    beta = match.group("beta")
     base = f"{year}.{week}"
-    if beta is not None:
-        next_rev = 1 if rev is None else int(rev) + 1
-        return f"{base}.{next_rev}"
     if rev is None:
         return f"{base}.1"
     return f"{base}.{int(rev) + 1}"
-
-
-def next_beta(current: str) -> str:
-    match = parse_version(current)
-    year = match.group("year")
-    week = int(match.group("week"))
-    rev = match.group("rev")
-    beta = match.group("beta")
-    base = f"{year}.{week}" if rev is None else f"{year}.{week}.{int(rev)}"
-    if beta is None:
-        return f"{base}-beta.1"
-    return f"{base}-beta.{int(beta) + 1}"
 
 
 def write_version(value: str, path: Path = VERSION_FILE) -> None:
@@ -63,11 +47,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Increment revision on the current train (YYYY.WW -> YYYY.WW.1, etc.).",
     )
-    mode.add_argument(
-        "--beta",
-        action="store_true",
-        help="Increment or create a -beta.N prerelease on the current train/rev.",
-    )
     parser.add_argument(
         "--path",
         type=Path,
@@ -85,11 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.train:
             new_value = current_train()
         else:
-            current = read_version(args.path)
-            if args.rev:
-                new_value = next_revision(current)
-            else:
-                new_value = next_beta(current)
+            new_value = next_revision(read_version(args.path))
         parse_version(new_value)
         if args.dry_run:
             print(new_value)

@@ -18,24 +18,26 @@ import get_version  # noqa: E402
 
 class VersionHelperTests(unittest.TestCase):
     def test_parse_valid_versions(self) -> None:
-        for value in ("2026.32", "2026.32.1", "2026.32.6", "2026.32-beta.1", "2026.32.1-beta.2"):
+        for value in ("2026.32", "2026.32.1", "2026.32.6"):
             match = get_version.parse_version(value)
             self.assertEqual(match.group("year"), "2026")
 
     def test_parse_rejects_invalid(self) -> None:
-        for value in ("4.6.3", "26.32", "2026.99", "2026", "v2026.32", "5.0.0-alpha14"):
+        for value in (
+            "4.6.3",
+            "26.32",
+            "2026.99",
+            "2026",
+            "v2026.32",
+            "2026.32-beta.1",
+            "5.0.0-alpha14",
+        ):
             with self.assertRaises(ValueError):
                 get_version.parse_version(value)
 
     def test_next_revision(self) -> None:
         self.assertEqual(bump_version.next_revision("2026.32"), "2026.32.1")
         self.assertEqual(bump_version.next_revision("2026.32.1"), "2026.32.2")
-        self.assertEqual(bump_version.next_revision("2026.32-beta.1"), "2026.32.1")
-
-    def test_next_beta(self) -> None:
-        self.assertEqual(bump_version.next_beta("2026.32"), "2026.32-beta.1")
-        self.assertEqual(bump_version.next_beta("2026.32.1"), "2026.32.1-beta.1")
-        self.assertEqual(bump_version.next_beta("2026.32-beta.1"), "2026.32-beta.2")
 
     def test_tag_name(self) -> None:
         self.assertEqual(get_version.tag_name("2026.32.6"), "v2026.32.6")
