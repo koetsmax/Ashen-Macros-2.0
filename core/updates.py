@@ -27,135 +27,100 @@ GITHUB_DOWNLOAD_BASE = (
     "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download"
 )
 
-# Process names used by the installed / built launcher (without .exe for Stop-Process).
-LAUNCHER_PROCESS_BASENAMES = (
-    "launcher",
-    "Ashen Macros",
-)
-
 # Survive parent exit when the launcher is in a Windows job object (common with PyInstaller).
 _CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 _CREATE_NEW_PROCESS_GROUP = 0x00000200
+_CREATE_NEW_CONSOLE = 0x00000010
 
-UPDATE_HELPER_PS1 = r"""param(
-    [Parameter(Mandatory = $true)][int]$ProcessId,
-    [Parameter(Mandatory = $true)][string]$StagingDir,
-    [Parameter(Mandatory = $true)][string]$InstallDir,
-    [Parameter(Mandatory = $true)][string]$AppExe
+# cmd.exe helper — no PowerShell (avoids execution-policy / Constrained Language failures).
+UPDATE_HELPER_CMD = r"""@echo off
+setlocal EnableExtensions EnableDelayedExpansion
+title Installing Ashen Macros
+set "LOG=%TEMP%\AshenMacrosUpdateApply.log"
+set "PID=%~1"
+set "STAGING=%~2"
+set "INSTALL=%~3"
+set "APPEXE=%~4"
+
+echo.>>"%LOG%"
+echo [%date% %time%] apply_update start PID=!PID!>>"%LOG%"
+echo [%date% %time%] staging=!STAGING!>>"%LOG%"
+echo [%date% %time%] install=!INSTALL!>>"%LOG%"
+echo [%date% %time%] appexe=!APPEXE!>>"%LOG%"
+
+if not defined PID (
+  echo [%date% %time%] ERROR: missing PID>>"%LOG%"
+  exit /b 1
+)
+if not exist "!STAGING!\" (
+  echo [%date% %time%] staging missing - nothing to apply>>"%LOG%"
+  exit /b 0
 )
 
-$ErrorActionPreference = "Stop"
+echo Waiting for Ashen Macros to exit...
+set /a WAITED=0
+:wait_loop
+tasklist /FI "PID eq !PID!" /NH 2>NUL | find /I ".exe" >NUL
+if errorlevel 1 goto wait_done
+timeout /t 1 /nobreak >NUL
+set /a WAITED+=1
+if !WAITED! LSS 120 goto wait_loop
+echo [%date% %time%] PID !PID! still alive after 120s - forcing stop>>"%LOG%"
+taskkill /PID !PID! /F >NUL 2>&1
+:wait_done
+echo [%date% %time%] process gone ^(waited !WAITED!s^)>>"%LOG%"
+timeout /t 1 /nobreak >NUL
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+set "PAYLOAD=!STAGING!"
+set /a DIR_COUNT=0
+set "ONLY_DIR="
+for /d %%D in ("!STAGING!\*") do (
+  set /a DIR_COUNT+=1
+  set "ONLY_DIR=%%~fD"
+)
+if !DIR_COUNT! EQU 1 if defined ONLY_DIR set "PAYLOAD=!ONLY_DIR!"
+echo [%date% %time%] payload=!PAYLOAD!>>"%LOG%"
 
-# Only one apply at a time — a second helper must not Stop-Process the
-# instance the first helper already relaunched.
-$mutex = New-Object System.Threading.Mutex($false, "Global\AshenMacrosZipUpdate")
-$taken = $false
-$form = $null
-try {
-    $taken = $mutex.WaitOne([TimeSpan]::FromMinutes(5))
-    if (-not $taken) { exit 1 }
+echo.
+echo Installing update into:
+echo   !INSTALL!
+echo.
 
-    # Another helper already applied and deleted staging.
-    if (-not (Test-Path -LiteralPath $StagingDir)) { exit 0 }
+if not exist "!INSTALL!\" mkdir "!INSTALL!" >NUL 2>&1
 
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ($sw.Elapsed.TotalSeconds -lt 120) {
-        try {
-            Get-Process -Id $ProcessId -ErrorAction Stop | Out-Null
-            Start-Sleep -Milliseconds 250
-        } catch {
-            break
-        }
-    }
-    # Kill only the waited-for process if it hung — never all "Ashen Macros"
-    # by name (that races with a newly relaunched instance).
-    try {
-        Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
-    } catch {}
-    Start-Sleep -Seconds 1
+robocopy "!PAYLOAD!" "!INSTALL!" /E /IS /IT /R:2 /W:1
+set "RC=!ERRORLEVEL!"
+echo [%date% %time%] robocopy exit=!RC!>>"%LOG%"
+rem robocopy: 0-7 = success / partial copy; 8+ = failure
+if !RC! GEQ 8 (
+  echo.
+  echo Update copy failed ^(robocopy !RC!^). See:
+  echo   !LOG!
+  echo [%date% %time%] ERROR: robocopy failed>>"%LOG%"
+  pause
+  exit /b 1
+)
 
-    $payload = $StagingDir
-    $children = @(Get-ChildItem -LiteralPath $StagingDir -ErrorAction SilentlyContinue)
-    if (($children.Count -eq 1) -and $children[0].PSIsContainer) {
-        $payload = $children[0].FullName
-    }
+echo [%date% %time%] cleaning staging>>"%LOG%"
+rmdir /s /q "!STAGING!" >NUL 2>&1
 
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Installing Ashen Macros"
-    $form.Size = New-Object System.Drawing.Size(420, 150)
-    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
-    $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-    $form.MaximizeBox = $false
-    $form.MinimizeBox = $false
-    $form.ControlBox = $false
-    $form.TopMost = $true
+if exist "!APPEXE!" (
+  echo [%date% %time%] starting !APPEXE!>>"%LOG%"
+  echo.
+  echo Install complete. Starting Ashen Macros...
+  start "" "!APPEXE!"
+) else (
+  echo [%date% %time%] ERROR: AppExe missing: !APPEXE!>>"%LOG%"
+  echo.
+  echo Update copied but could not find:
+  echo   !APPEXE!
+  pause
+  exit /b 1
+)
 
-    $label = New-Object System.Windows.Forms.Label
-    $label.Text = "Installing update..."
-    $label.AutoSize = $true
-    $label.Location = New-Object System.Drawing.Point(16, 18)
-
-    $bar = New-Object System.Windows.Forms.ProgressBar
-    $bar.Location = New-Object System.Drawing.Point(16, 52)
-    $bar.Size = New-Object System.Drawing.Size(370, 24)
-    $bar.Minimum = 0
-    $bar.Maximum = 100
-    $bar.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
-
-    $form.Controls.Add($label)
-    $form.Controls.Add($bar)
-    $form.Show()
-    $form.Refresh()
-    [System.Windows.Forms.Application]::DoEvents()
-
-    try {
-        $files = @(Get-ChildItem -LiteralPath $payload -Recurse -File -ErrorAction Stop)
-        $total = $files.Count
-        if ($total -le 0) {
-            throw "Update staging has no files to install."
-        }
-
-        $stagingRoot = [IO.Path]::GetFullPath($payload).TrimEnd('\')
-        $i = 0
-        foreach ($file in $files) {
-            $full = [IO.Path]::GetFullPath($file.FullName)
-            if (-not $full.StartsWith($stagingRoot, [StringComparison]::OrdinalIgnoreCase)) {
-                continue
-            }
-            $rel = $full.Substring($stagingRoot.Length).TrimStart('\')
-            $dest = Join-Path $InstallDir $rel
-            $destParent = Split-Path -Parent $dest
-            if (-not (Test-Path -LiteralPath $destParent)) {
-                New-Item -ItemType Directory -Path $destParent -Force | Out-Null
-            }
-            Copy-Item -LiteralPath $file.FullName -Destination $dest -Force
-            $i++
-            $bar.Value = [Math]::Min(100, [int](($i * 100) / $total))
-            $label.Text = "Installing update... ($i / $total)"
-            [System.Windows.Forms.Application]::DoEvents()
-        }
-        $bar.Value = 100
-        $label.Text = "Install complete. Starting Ashen Macros..."
-        [System.Windows.Forms.Application]::DoEvents()
-        Start-Sleep -Milliseconds 400
-    } finally {
-        Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-
-    if (Test-Path -LiteralPath $AppExe) {
-        Start-Process -FilePath $AppExe
-    }
-} finally {
-    if ($form -ne $null) {
-        try { $form.Close() } catch {}
-        try { $form.Dispose() } catch {}
-    }
-    if ($taken) { [void]$mutex.ReleaseMutex() }
-    $mutex.Dispose()
-}
+echo [%date% %time%] apply_update done>>"%LOG%"
+timeout /t 2 /nobreak >NUL
+exit /b 0
 """
 
 
@@ -376,18 +341,54 @@ def extract_update(zip_path: str, progress_callback=None) -> str:
     return str(staging.resolve())
 
 
+def apply_helper_log_path() -> Path:
+    return Path(tempfile.gettempdir()) / "AshenMacrosUpdateApply.log"
+
+
 def _write_update_helper(dest_dir: Path) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
-    helper_path = dest_dir / "apply_update.ps1"
-    helper_path.write_text(UPDATE_HELPER_PS1, encoding="UTF-8")
+    helper_path = dest_dir / "apply_update.cmd"
+    # cmd scripts are ANSI/OEM on many systems; ASCII-only body is safe as UTF-8.
+    helper_path.write_text(UPDATE_HELPER_CMD, encoding="utf-8", newline="\r\n")
     return helper_path
 
 
+def _helper_arg_list(helper: Path, staging: Path, target: Path, exe: Path) -> list[str]:
+    return [
+        str(helper),
+        str(os.getpid()),
+        str(staging),
+        str(target),
+        str(exe),
+    ]
+
+
+def _elevate_cmd_helper(helper: Path, staging: Path, target: Path, exe: Path) -> int:
+    """Launch elevated cmd via ShellExecuteW runas. Returns ShellExecute result (>32 = ok)."""
+    import ctypes
+
+    # Nested quotes required when the .cmd path contains spaces:
+    #   cmd /c ""C:\path\apply_update.cmd" pid "staging" "install" "appexe"
+    params = (
+        f'/c ""{helper}" {os.getpid()} "{staging}" "{target}" "{exe}""'
+    )
+    return int(
+        ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            "cmd.exe",
+            params,
+            None,
+            1,  # SW_SHOWNORMAL — visible Installing window
+        )
+    )
+
+
 def launch_update_after_exit(staging_dir: str) -> None:
-    """Start a breakaway helper that waits for exit, copies staging, relaunches.
+    """Start a breakaway cmd helper that waits for exit, copies staging, relaunches.
 
     Elevates the helper only when the install directory is not writable
-    (e.g. custom install under Program Files).
+    (e.g. custom install under Program Files). Does not use PowerShell.
     """
     staging = Path(staging_dir).resolve()
     if not staging.is_dir():
@@ -397,67 +398,39 @@ def launch_update_after_exit(staging_dir: str) -> None:
     exe = app_executable()
     elevate = not dir_is_writable(target)
     helper = _write_update_helper(staging.parent)
+    log_path = apply_helper_log_path()
 
-    creationflags = _CREATE_BREAKAWAY_FROM_JOB | _CREATE_NEW_PROCESS_GROUP
+    creationflags = (
+        _CREATE_BREAKAWAY_FROM_JOB
+        | _CREATE_NEW_PROCESS_GROUP
+        | _CREATE_NEW_CONSOLE
+    )
 
+    helper_pid: int | None = None
     if elevate and os.name == "nt":
         logger.info(
             "Install dir %s is not writable; elevating update helper",
             target,
         )
-        ps_args = " ".join(
-            [
-                "-NoProfile",
-                "-ExecutionPolicy Bypass",
-                f'-File "{helper}"',
-                f"-ProcessId {os.getpid()}",
-                f'-StagingDir "{staging}"',
-                f'-InstallDir "{target}"',
-                f'-AppExe "{exe}"',
-            ]
-        )
-        proc = subprocess.Popen(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-Command",
-                f"Start-Process -FilePath powershell.exe -Verb RunAs -ArgumentList '{ps_args}'",
-            ],
-            creationflags=creationflags,
-            close_fds=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        ret = _elevate_cmd_helper(helper, staging, target, exe)
+        if ret <= 32:
+            raise RuntimeError(f"Failed to elevate update helper (ShellExecute={ret})")
+        helper_pid = ret  # ShellExecute may return HINSTANCE, not a PID
     else:
         proc = subprocess.Popen(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(helper),
-                "-ProcessId",
-                str(os.getpid()),
-                "-StagingDir",
-                str(staging),
-                "-InstallDir",
-                str(target),
-                "-AppExe",
-                str(exe),
-            ],
+            ["cmd.exe", "/c", *_helper_arg_list(helper, staging, target, exe)],
             creationflags=creationflags,
             close_fds=True,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            # Own console via CREATE_NEW_CONSOLE — leave stdout/stderr attached.
         )
+        helper_pid = proc.pid
 
     logger.info(
-        "Scheduled staging update after exit: %s -> %s (elevate=%s helper pid %s)",
+        "Scheduled staging update after exit: %s -> %s (elevate=%s helper=%s log=%s)",
         staging,
         target,
         elevate,
-        proc.pid,
+        helper_pid,
+        log_path,
     )
