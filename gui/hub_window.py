@@ -11,6 +11,7 @@ from core.settings import read_config, set_custom_value
 from core.window_positions import load_window_geometry, save_window_geometry, track_window_geometry
 from gui.apps.registry import APP_BY_KEY, APP_REGISTRY, app_allowed, open_app, restore_session_apps
 from gui.components.toast import ToastStack
+from gui.components.update_progress_dialog import UpdateProgressDialog
 from gui.components.version_badge import VersionBadge
 from gui.settings_dialog import SettingsDialog
 from gui.views.app_window import AppWindow
@@ -47,6 +48,8 @@ class UpdateWorker(QThread):
 class StaffcheckHub(QMainWindow):
     _update_download_ready = Signal(str)
     _update_download_failed = Signal()
+    _update_download_progress = Signal(int, int)
+    _update_extract_started = Signal()
 
     def __init__(
         self,
@@ -68,6 +71,9 @@ class StaffcheckHub(QMainWindow):
         self._update_worker = None
         self._poll_worker = None
         self._update_request_id = 0
+        self._update_download_in_progress = False
+        self._update_apply_scheduled = False
+        self._update_progress_dialog: UpdateProgressDialog | None = None
         self._verify_action = None
         self._apps_menu = None
         self._settings_action = None
@@ -75,6 +81,8 @@ class StaffcheckHub(QMainWindow):
 
         self._update_download_ready.connect(self._start_installer_and_quit)
         self._update_download_failed.connect(self._on_update_download_failed)
+        self._update_download_progress.connect(self._on_update_download_progress)
+        self._update_extract_started.connect(self._on_update_extract_started)
 
         self.setWindowTitle("Ashen Macros")
         # Content is ~700–800px wide and left-aligned; a 960px floor left a
@@ -591,6 +599,8 @@ class StaffcheckHub(QMainWindow):
     def _download_update(self):
         if not self._online_version:
             return
+        if self._update_apply_scheduled or self._update_download_in_progress:
+            return
         if not updates.is_frozen():
             self.toast_stack.show_toast(
                 "update",
@@ -599,13 +609,13 @@ class StaffcheckHub(QMainWindow):
                 dismiss_ms=8000,
             )
             return
-        self.toast_stack.show_toast(
-            "update",
-            f"Downloading update (v{self._online_version})…",
-            dismiss_ms=0,
-        )
+        self._update_download_in_progress = True
+        self.toast_stack.dismiss("update")
         version = self._online_version
         tag_name = self._online_tag_name or version
+        dialog = UpdateProgressDialog(self, version=version)
+        self._update_progress_dialog = dialog
+        dialog.show()
         worker = threading.Thread(
             target=self._download_update_worker,
             args=(version, tag_name),
@@ -615,33 +625,89 @@ class StaffcheckHub(QMainWindow):
 
     def _download_update_worker(self, online_version: str, tag_name: str | None = None) -> None:
         try:
-            zip_path = updates.download_update(online_version, tag_name=tag_name)
+            zip_path = updates.download_update(
+                online_version,
+                tag_name=tag_name,
+                progress_callback=lambda received, total: self._update_download_progress.emit(
+                    received, total
+                ),
+            )
+            self._update_extract_started.emit()
+            staging_dir = updates.extract_update(
+                zip_path,
+                progress_callback=lambda received, total: self._update_download_progress.emit(
+                    received, total
+                ),
+            )
         except Exception:
-            logger.exception("Update download failed")
+            logger.exception("Update download/extract failed")
+            self._update_download_in_progress = False
             self._update_download_failed.emit()
             return
         # Marshal to the UI thread — QTimer.singleShot from a worker thread is a no-op.
-        self._update_download_ready.emit(zip_path)
+        self._update_download_ready.emit(staging_dir)
+
+    def _on_update_download_progress(self, received: int, total: int) -> None:
+        dialog = self._update_progress_dialog
+        if dialog is None or not isValid(dialog):
+            return
+        dialog.set_progress(received, total)
+
+    def _on_update_extract_started(self) -> None:
+        dialog = self._update_progress_dialog
+        if dialog is None or not isValid(dialog):
+            return
+        dialog.begin_extract_phase(self._online_version)
+
+    def _close_update_progress_dialog(self) -> None:
+        dialog = self._update_progress_dialog
+        self._update_progress_dialog = None
+        if dialog is not None and isValid(dialog):
+            dialog.force_close()
 
     def _on_update_download_failed(self) -> None:
+        self._update_download_in_progress = False
+        self._close_update_progress_dialog()
         self.toast_stack.show_toast(
             "update",
-            "Update download failed. Try again from Check for updates.",
+            "Update failed. Try again from Check for updates.",
             dismiss_ms=8000,
             on_click=self._download_update,
             action_label="Retry",
         )
 
-    def _start_installer_and_quit(self, zip_path: str) -> None:
+    def _start_installer_and_quit(self, staging_dir: str) -> None:
+        if self._update_apply_scheduled:
+            return
+        self._update_apply_scheduled = True
+        self._update_download_in_progress = False
+
+        dialog = self._update_progress_dialog
+        if dialog is not None and isValid(dialog):
+            dialog.begin_restart_countdown(
+                3,
+                lambda: self._apply_update_and_quit(staging_dir),
+            )
+            return
+        self._apply_update_and_quit(staging_dir)
+
+    def _apply_update_and_quit(self, staging_dir: str) -> None:
         try:
-            updates.launch_update_after_exit(zip_path)
+            updates.launch_update_after_exit(staging_dir)
         except Exception:
             logger.exception("Failed to schedule update helper")
-            self.toast_stack.show_toast(
-                "update",
-                "Could not start the update helper. Try again from Check for updates.",
-                dismiss_ms=10000,
-            )
+            self._update_apply_scheduled = False
+            dialog = self._update_progress_dialog
+            if dialog is not None and isValid(dialog):
+                dialog.show_error(
+                    "Could not start the update helper. Close this window and try again."
+                )
+            else:
+                self.toast_stack.show_toast(
+                    "update",
+                    "Could not start the update helper. Try again from Check for updates.",
+                    dismiss_ms=10000,
+                )
             return
         self._quit_for_update()
 
@@ -649,11 +715,7 @@ class StaffcheckHub(QMainWindow):
         """Fully exit so the update helper can overwrite launcher files."""
         from PySide6.QtWidgets import QApplication
 
-        self.toast_stack.show_toast(
-            "update",
-            "Update downloaded — closing to apply…",
-            dismiss_ms=0,
-        )
+        self._close_update_progress_dialog()
         app = QApplication.instance()
         if app is not None:
             app.quit()

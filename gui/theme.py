@@ -485,6 +485,27 @@ def _qss() -> str:
     QScrollBar::handle:vertical:hover {{
         background: {SURFACE2};
     }}
+    QProgressBar {{
+        background-color: {CRUST};
+        border: 1px solid {SURFACE0};
+        border-radius: 6px;
+        text-align: center;
+        color: {TEXT};
+        min-height: 16px;
+    }}
+    QProgressBar::chunk {{
+        background-color: {MAUVE};
+        border-radius: 5px;
+    }}
+    QLabel#updateProgressStatus {{
+        font-weight: 600;
+        color: {TEXT};
+        background: transparent;
+    }}
+    QLabel#updateProgressDetail {{
+        color: {SUBTEXT0};
+        background: transparent;
+    }}
     """
 
 
