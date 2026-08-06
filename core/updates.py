@@ -79,13 +79,49 @@ ping -n 2 127.0.0.1 >NUL
 
 set "PAYLOAD=!STAGING!"
 set /a DIR_COUNT=0
+set /a FILE_COUNT=0
 set "ONLY_DIR="
 for /d %%D in ("!STAGING!\*") do (
   set /a DIR_COUNT+=1
   set "ONLY_DIR=%%~fD"
 )
-if !DIR_COUNT! EQU 1 if defined ONLY_DIR set "PAYLOAD=!ONLY_DIR!"
-echo [%date% %time%] payload=!PAYLOAD!>>"%LOG%"
+for %%F in ("!STAGING!\*") do (
+  if not exist "%%~fF\" set /a FILE_COUNT+=1
+)
+rem Onedir zips are flat: Ashen Macros.exe + _internal\. Only unwrap when the
+rem staging root is a single wrapper folder (no sibling files). Never treat
+rem _internal alone as the payload — that copies DLLs over the install root
+rem and skips the exe (version becomes 0.0.0 / stale).
+if !DIR_COUNT! EQU 1 if !FILE_COUNT! EQU 0 if defined ONLY_DIR (
+  for %%I in ("!ONLY_DIR!") do (
+    if /I not "%%~nxI"=="_internal" set "PAYLOAD=!ONLY_DIR!"
+  )
+)
+echo [%date% %time%] payload=!PAYLOAD! dirs=!DIR_COUNT! files=!FILE_COUNT!>>"%LOG%"
+
+for %%I in ("!APPEXE!") do set "EXENAME=%%~nxI"
+for %%I in ("!PAYLOAD!") do set "PAYLOAD_NAME=%%~nxI"
+if /I "!PAYLOAD_NAME!"=="_internal" (
+  echo [%date% %time%] ERROR: refusing bare _internal payload>>"%LOG%"
+  echo Refusing to install from bare _internal folder. See:
+  echo   !LOG!
+  pause
+  exit /b 1
+)
+if not exist "!PAYLOAD!\!EXENAME!" (
+  echo [%date% %time%] ERROR: payload missing !EXENAME!>>"%LOG%"
+  echo Update payload is missing !EXENAME!. See:
+  echo   !LOG!
+  pause
+  exit /b 1
+)
+if not exist "!PAYLOAD!\_internal\version" (
+  echo [%date% %time%] ERROR: payload missing _internal\version>>"%LOG%"
+  echo Update payload is missing _internal\version. See:
+  echo   !LOG!
+  pause
+  exit /b 1
+)
 
 echo.
 echo Installing update into:
@@ -103,6 +139,24 @@ if !RC! GEQ 8 (
   echo Update copy failed ^(robocopy !RC!^). See:
   echo   !LOG!
   echo [%date% %time%] ERROR: robocopy failed>>"%LOG%"
+  pause
+  exit /b 1
+)
+
+if exist "!INSTALL!\_internal\version" (
+  set /p INSTALLED_VER=<"!INSTALL!\_internal\version"
+  echo [%date% %time%] installed version=!INSTALLED_VER!>>"%LOG%"
+) else (
+  echo [%date% %time%] ERROR: _internal\version missing after copy>>"%LOG%"
+  echo Update copy finished but version file is missing. See:
+  echo   !LOG!
+  pause
+  exit /b 1
+)
+if not exist "!INSTALL!\!EXENAME!" (
+  echo [%date% %time%] ERROR: !EXENAME! missing after copy>>"%LOG%"
+  echo Update copy finished but !EXENAME! is missing. See:
+  echo   !LOG!
   pause
   exit /b 1
 )
