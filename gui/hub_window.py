@@ -580,19 +580,19 @@ class StaffcheckHub(QMainWindow):
                 self.toast_stack.dismiss("update")
                 self.toast_stack.show_toast(
                     "update_status",
-                    "You're on the latest version.",
+                    "You are on the latest version.",
                     dismiss_ms=6000,
                 )
             elif kind == "dev":
                 self.toast_stack.show_toast(
                     "update_status",
-                    "You're on a dev version — ahead of the latest release.",
+                    "You are on a dev version — ahead of the latest release.",
                     dismiss_ms=6000,
                 )
             else:
                 self.toast_stack.show_toast(
                     "update_status",
-                    "Couldn't check for updates right now.",
+                    "Could not check for updates right now.",
                     dismiss_ms=6000,
                 )
 
@@ -605,7 +605,7 @@ class StaffcheckHub(QMainWindow):
             self.toast_stack.show_toast(
                 "update",
                 "Zip updates are only available in packaged builds. "
-                "You're running from source (dev).",
+                "You are running from source (dev).",
                 dismiss_ms=8000,
             )
             return
