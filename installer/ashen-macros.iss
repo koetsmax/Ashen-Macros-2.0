@@ -3,7 +3,7 @@
 ; Custom directories are allowed; Inno elevates when the chosen path requires it.
 ;
 ; Build with:
-;   ISCC /DMyAppVersion=2026.32-beta.1 installer\ashen-macros.iss
+;   ISCC /DMyAppVersion=2026.32 installer\ashen-macros.iss
 ;
 ; Expects PyInstaller output at dist\Ashen Macros\
 
@@ -15,6 +15,7 @@
 #define MyAppPublisher "Ashen Macros"
 #define MyAppExeName "Ashen Macros.exe"
 #define MyAppURL "https://github.com/koetsmax/Ashen-Macros-2.0"
+#define MyAppIcon "..\images\AshenAllianceLogo.ico"
 
 [Setup]
 AppId={{A8E5C2F1-4B3D-4E9A-9C1F-7D2E6B8A5F01}
@@ -36,6 +37,7 @@ OutputBaseFilename=Ashen.Macro.installer
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#MyAppIcon}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -52,8 +54,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\dist\Ashen Macros\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
