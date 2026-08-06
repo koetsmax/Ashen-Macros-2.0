@@ -5,6 +5,7 @@ pyproject.toml
 /.vscode
 *.ifp
 Ashen.Macro.Installer.exe
+Ashen-Macros-*.zip
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

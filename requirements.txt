@@ -3,7 +3,6 @@ pywin32
 sv-ttk
 packaging
 requests
-pyuac
 pyautogui
 python-socketio
 filelock

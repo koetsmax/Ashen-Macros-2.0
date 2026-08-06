@@ -5,7 +5,6 @@ Creates the launcher window and checks for updates.
 import os
 import secrets
 import keyring
-import subprocess
 from tkinter import FALSE, Tk, Toplevel, ttk, TclError
 from typing import Callable, Optional
 import sys
@@ -13,7 +12,6 @@ import sys
 import threading
 import requests
 from packaging import version
-from pyuac import isUserAdmin, runAsAdmin
 
 from modules import add_to_ban_list
 from modules import fill_new_fleet
@@ -27,6 +25,8 @@ from modules.submodules.verification import start_verification
 from modules.submodules.functions import widgets
 from modules.submodules.functions import theme
 from modules.submodules.functions import window_positions
+from modules.submodules.functions import app_version
+from modules.submodules.functions import updater
 from modules import warning
 from modules import queue
 
@@ -35,9 +35,9 @@ class Launcher:
     """
     Builds the launcher screen inside an existing root and exposes navigation callbacks.
 
-    Cold-start work (token validation HTTP, icacls subprocess, version-file read,
-    documents-dir creation) lives on App; this class only paints the UI from cached
-    state so re-showing the launcher after a script returns is instant.
+    Cold-start work (token validation HTTP, version-file read, documents-dir
+    creation) lives on App; this class only paints the UI from cached state so
+    re-showing the launcher after a script returns is instant.
     """
 
     # Create the launcher window
@@ -138,7 +138,13 @@ class Launcher:
             self.verify_label = widgets.create_label(self.mainframe, "Please verify your account", 1, 1, "W, E")
 
         self.api_label = widgets.create_label(self.mainframe, "API Status: waiting", 82, 1, "W, E", foreground="orange")
-        widgets.create_label(self.mainframe, f"Version: {local_version}", 83, 1, "E")
+        widgets.create_label(
+            self.mainframe,
+            f"Version: {app_version.display_version(local_version)}",
+            83,
+            1,
+            "E",
+        )
 
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=25, pady=5)
@@ -201,6 +207,11 @@ class Launcher:
 
     def _compute_update_check_result(self, silent: bool) -> tuple:
         try:
+            # Never elevate just to check or prompt — only the apply step may elevate
+            # when the install directory is not writable.
+            if not app_version.is_frozen() and silent:
+                return ("noop",)
+
             request = requests.get(
                 "https://api.github.com/repos/koetsmax/ashen-macros-2.0/releases/latest",
                 timeout=15,
@@ -209,22 +220,16 @@ class Launcher:
                 print(f"Failed to check for updates. Error code: {request.status_code}")
                 return ("noop",)
             request_dictionary = request.json()
-            try:
-                with open("_internal/version", "r", encoding="UTF-8") as versionfile:
-                    local_version = versionfile.read().strip()
-            except FileNotFoundError:
-                with open("version", "r", encoding="UTF-8") as versionfile:
-                    local_version = versionfile.read().strip()
-            if local_version is None:
-                local_version = "0.0.0"
+            local_version = app_version.read_plain_version()
             online_version = request_dictionary["name"]
+            release_tag = request_dictionary.get("tag_name") or online_version
             if version.parse(local_version) < version.parse(online_version):
-                if isUserAdmin():
-                    return ("prompt_update", online_version)
-                return ("elevate",)
+                return ("prompt_update", online_version, release_tag)
             if version.parse(local_version) == version.parse(online_version) and not silent:
                 return ("inform_current",)
             if version.parse(local_version) > version.parse(online_version) and not silent:
+                return ("inform_dev",)
+            if not app_version.is_frozen() and not silent:
                 return ("inform_dev",)
             return ("noop",)
         except Exception as e:  # pylint: disable=broad-except
@@ -243,26 +248,36 @@ class Launcher:
             return
         if kind == "prompt_update":
             self.online_version = result[1]
+            self.release_tag = result[2] if len(result) > 2 else result[1]
             self.update_window(
                 "There is an update available.\nWould you like to download it?",
                 True,
             )
-        elif kind == "elevate":
-            self.root.destroy()
-            runAsAdmin()
         elif kind == "inform_current":
             self.update_window("You are currently on the most up-to-date version.", False)
         elif kind == "inform_dev":
             self.update_window("You are currently on the dev version", False)
 
     def commence_update(self) -> Callable[[], None]:
-        """
-        Commences the update.
-        """
-        url = "https://github.com/koetsmax/Ashen-Macros-2.0/releases/download/" + f"{self.online_version}/Ashen.Macro.installer.exe"
-        download = requests.get(url, allow_redirects=True, timeout=30)
-        open("Ashen.Macro.Installer.exe", "wb").write(download.content)
-        os.startfile("Ashen.Macro.Installer.exe")
+        """Download the release zip and apply it via helper (elevates only if needed)."""
+        if not app_version.is_frozen():
+            self.update_window(
+                "Zip updates are only available in packaged builds.\n"
+                "You are running from source (dev).",
+                False,
+            )
+            return lambda: None
+
+        try:
+            updater.commence_zip_update(
+                self.online_version,
+                release_tag=getattr(self, "release_tag", self.online_version),
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            print(f"Failed to start update: {e}")
+            self.update_window(f"Failed to start update:\n{e}", False)
+            return lambda: None
+
         self.root.destroy()
         return lambda: None
 
@@ -344,10 +359,10 @@ class App:
     without nested mainloops or recreated roots. This avoids the call-stack growth and the
     accumulating Dummy threads from the previous runpy.run_module pattern.
 
-    Cold-start work (token validation HTTP, icacls subprocess, version-file read,
-    documents-dir creation) is done here once at startup; show_launcher() is then a pure
-    UI rebuild from cached state, so returning from a script feels instant rather than
-    like a full app restart.
+    Cold-start work (token validation HTTP, version-file read, documents-dir
+    creation) is done here once at startup; show_launcher() is then a pure UI
+    rebuild from cached state, so returning from a script feels instant rather
+    than like a full app restart.
     """
 
     def __init__(self, root: Tk):
@@ -356,8 +371,7 @@ class App:
 
         # One-time process setup. None of this should run on every launcher swap.
         os.makedirs(os.path.expanduser("~/Documents/Ashen Macros"), exist_ok=True)
-        self.local_version = self._read_local_version()
-        self._ensure_launcher_permissions()
+        self.local_version = app_version.read_plain_version()
         self.valid_login, self.username = self._check_login(False)
         print(f"Valid login: {self.valid_login}")
 
@@ -381,49 +395,6 @@ class App:
         if isinstance(self._screen, Launcher):
             self._screen.check_for_updates(True)
         self.root.mainloop()
-
-    @staticmethod
-    def _read_local_version() -> str:
-        try:
-            with open("_internal/version", "r", encoding="UTF-8") as versionfile:
-                return versionfile.read().strip()
-        except FileNotFoundError:
-            try:
-                with open("version", "r", encoding="UTF-8") as versionfile:
-                    return versionfile.read().strip()
-            except FileNotFoundError:
-                return "0.0.0"
-
-    def _ensure_launcher_permissions(self) -> None:
-        """Mirror the original installer permission check; runs once at startup only."""
-        try:
-            directory_path = "../launcher"
-            result = subprocess.run(["icacls", directory_path], capture_output=True, text=True, check=True)
-            output = result.stdout.strip()
-
-            if "Everyone:(OI)(CI)(F)" in output:
-                return
-
-            print("current permissions: %s", output)
-            if isUserAdmin():
-                subprocess.run(
-                    ["icacls", directory_path, "/grant:r", "Everyone:(OI)(CI)F"],
-                    check=True,
-                )
-                print("Permissions updated to 777")
-            else:
-                # Re-run the program with admin rights; the elevated child
-                # takes over from here. wait=False so this process doesn't
-                # block in WaitForSingleObject for the entire child session,
-                # and sys.exit prevents App.__init__ from continuing to use
-                # the now-destroyed root (which would raise TclError from
-                # option_add and surface as an unhandled exception dialog
-                # when the elevated child eventually closes).
-                self.root.destroy()
-                runAsAdmin(wait=False)
-                sys.exit(0)
-        except (AttributeError, FileNotFoundError, subprocess.CalledProcessError):
-            print("Launcher folder not found")
 
     def _check_login(self, force_new_token: bool):
         """Validate (or create) the keyring token via the API. Returns (valid_login, username)."""
