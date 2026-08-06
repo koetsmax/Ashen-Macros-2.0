@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.auth import get_token
+from core.auth import auth_headers
 from core.settings import read_config
 from gui.views.app_window import AppWindow
 
@@ -89,7 +89,7 @@ class PermissionsWindow(AppWindow):
         self.root_layout.addLayout(body, stretch=1)
 
     def _auth_headers(self) -> dict[str, str]:
-        return {"Authorization": get_token() or ""}
+        return auth_headers()
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.status_label.setText(text)

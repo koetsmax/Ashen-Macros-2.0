@@ -61,56 +61,14 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 
 [Code]
 const
-  OurUninstallKey = '{A8E5C2F1-4B3D-4E9A-9C1F-7D2E6B8A5F01}_is1';
-
-function IsOurInnoKey(const SubKey: String): Boolean;
-begin
-  Result := SameText(SubKey, OurUninstallKey);
-end;
-
-function IsLegacyAshen(const SubKey, DisplayName: String): Boolean;
-var
-  LowerName: String;
-begin
-  if IsOurInnoKey(SubKey) then
-  begin
-    Result := False;
-    Exit;
-  end;
-
-  { Known InstallForge product key / name }
-  if SameText(SubKey, 'Ashen Macro''s 2.0') then
-  begin
-    Result := True;
-    Exit;
-  end;
-
-  LowerName := LowerCase(DisplayName);
-  if Pos('ashen macro', LowerName) = 0 then
-  begin
-    Result := False;
-    Exit;
-  end;
-
-  { New Inno display names look like "Ashen Macros 2026.32" — skip those. }
-  if Pos('ashen macros 20', LowerName) = 1 then
-  begin
-    Result := False;
-    Exit;
-  end;
-
-  Result :=
-    (Pos('ashen macro''s', LowerName) > 0) or
-    (Pos('2.0', DisplayName) > 0) or
-    (Pos('ashen alliance', LowerName) > 0);
-end;
+  LegacyUninstallSubkey =
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\Ashen Macro''s 2.0';
 
 function FindLegacyUninstall(var UninstallCmd, DisplayName: String): Boolean;
 var
   Roots: array[0..2] of Integer;
-  RootIdx, I: Integer;
-  SubKeys: TArrayOfString;
-  SubKey, Name, Cmd: String;
+  RootIdx: Integer;
+  Name, Cmd: String;
 begin
   Result := False;
   UninstallCmd := '';
@@ -122,39 +80,17 @@ begin
 
   for RootIdx := 0 to GetArrayLength(Roots) - 1 do
   begin
-    if not RegGetSubkeyNames(Roots[RootIdx], 'Software\Microsoft\Windows\CurrentVersion\Uninstall', SubKeys) then
+    if not RegQueryStringValue(Roots[RootIdx], LegacyUninstallSubkey, 'UninstallString', Cmd) then
+      Continue;
+    if Trim(Cmd) = '' then
       Continue;
 
-    for I := 0 to GetArrayLength(SubKeys) - 1 do
-    begin
-      SubKey := SubKeys[I];
-      if not RegQueryStringValue(
-        Roots[RootIdx],
-        'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + SubKey,
-        'DisplayName',
-        Name
-      ) then
-        Continue;
-
-      if not IsLegacyAshen(SubKey, Name) then
-        Continue;
-
-      if not RegQueryStringValue(
-        Roots[RootIdx],
-        'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + SubKey,
-        'UninstallString',
-        Cmd
-      ) then
-        Continue;
-
-      if Trim(Cmd) = '' then
-        Continue;
-
-      UninstallCmd := Trim(Cmd);
-      DisplayName := Name;
-      Result := True;
-      Exit;
-    end;
+    UninstallCmd := Trim(Cmd);
+    if not RegQueryStringValue(Roots[RootIdx], LegacyUninstallSubkey, 'DisplayName', Name) then
+      Name := 'Ashen Macro''s 2.0';
+    DisplayName := Name;
+    Result := True;
+    Exit;
   end;
 end;
 
@@ -185,6 +121,7 @@ procedure RunLegacyUninstaller(const Cmd: String);
 var
   Path, Params: String;
   ResultCode: Integer;
+  Started: Boolean;
 begin
   SplitCommand(Cmd, Path, Params);
   if (Path = '') or not FileExists(Path) then
@@ -197,36 +134,28 @@ begin
     Exit;
   end;
 
-  { Old install lives under Program Files — request elevation. }
-  if ShellExec('runas', Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+  { Old install is under Program Files — request elevation, then fall back. }
+  Started := ShellExec('runas', Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
+  if not Started then
+    Started := Exec(Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
+
+  if not Started then
   begin
-    if ResultCode <> 0 then
-      MsgBox(
-        'The old uninstall finished with exit code ' + IntToStr(ResultCode) +
-        '. Continuing with the new install.',
-        mbInformation,
-        MB_OK
-      );
+    MsgBox(
+      'Failed to start the old uninstaller. You can remove it later from Windows Settings. Continuing with the new install.',
+      mbError,
+      MB_OK
+    );
     Exit;
   end;
 
-  if Exec(Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
-  begin
-    if ResultCode <> 0 then
-      MsgBox(
-        'The old uninstall finished with exit code ' + IntToStr(ResultCode) +
-        '. Continuing with the new install.',
-        mbInformation,
-        MB_OK
-      );
-    Exit;
-  end;
-
-  MsgBox(
-    'Failed to start the old uninstaller. You can remove it later from Windows Settings. Continuing with the new install.',
-    mbError,
-    MB_OK
-  );
+  if ResultCode <> 0 then
+    MsgBox(
+      'The old uninstall finished with exit code ' + IntToStr(ResultCode) +
+      '. Continuing with the new install.',
+      mbInformation,
+      MB_OK
+    );
 end;
 
 function InitializeSetup(): Boolean;

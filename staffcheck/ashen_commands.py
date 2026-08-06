@@ -34,7 +34,7 @@ def ashen_commands(self):
     if abort.is_abort_requested(self):
         return
 
-    run_background(make_api_request, self)
+    run_background(ashen_api_request, self)
     abort.set_continue_button(self)
     btn_config(self.function_button, "Needs to remove banned friends", lambda: needs_to_remove_friends(self))
     btn_enable(self.function_button, True)
@@ -97,11 +97,6 @@ def needs_to_unprivate_xbox(self):
 def needs_to_verify(self):
     self.reason.set("Needs to verify account")
     not_good_to_check(self)
-
-
-def make_api_request(self):
-    if self.method.get() in ("All Commands", "Ashen Commands"):
-        ashen_api_request(self)
 
 
 def ashen_api_request(self):

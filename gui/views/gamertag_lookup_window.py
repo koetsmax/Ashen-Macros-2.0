@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.auth import get_token
+from core.auth import auth_headers
 from core.settings import read_config
 from gui.views.app_window import AppWindow
 
@@ -117,7 +117,7 @@ class GamertagLookupWindow(AppWindow):
         self.status_label.setStyleSheet("color: #c44;" if error else "")
 
     def _auth_headers(self) -> dict[str, str]:
-        return {"Authorization": get_token() or ""}
+        return auth_headers()
 
     def _lookup_profile(self) -> None:
         if self._busy_profile:

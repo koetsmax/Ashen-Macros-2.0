@@ -495,7 +495,7 @@ class StaffcheckHub(QMainWindow):
             response = requests.post(
                 f"{api_url.rstrip('/')}/macros/prerelease_toggle",
                 json={"enabled": enabled},
-                headers={"Authorization": token},
+                headers=auth.auth_headers(),
                 timeout=10,
             )
             if response.status_code >= 400:

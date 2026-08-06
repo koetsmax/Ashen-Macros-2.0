@@ -19,8 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.auth import get_token
-from core.settings import read_config, set_custom_value
+from core.auth import auth_headers
+from core.settings import config_bool, read_config, set_custom_value
 from staffcheck import abort, pipeline
 from staffcheck.build_example_message import build_example_message
 from staffcheck.elemental_commands import fix_issues as elemental_fix
@@ -78,14 +78,12 @@ class StaffcheckView(QWidget):
     def __init__(self, hub):
         super().__init__()
         self.hub = hub
-        self.headers = {"Authorization": get_token()}
+        self.headers = auth_headers()
         self.keyboard_lock = __import__("threading").Lock()
         self.mutual_guilds = []
         self.customize_actions = {}
         self.result_sections = {}
         self.loghistory_issues = []
-        self.search_issues = []
-        self._user_report_data = None
         self.check_in_progress = False
         self.user_name = None
         self.xbox_gt = None
@@ -232,7 +230,7 @@ class StaffcheckView(QWidget):
 
     @staticmethod
     def use_compact_panels() -> bool:
-        return read_config().get("compact_panels", "true").lower() in ("1", "true", "yes")
+        return config_bool("compact_panels", "true")
 
     def _create_result_buttons(self):
         self.loghistory_fix_issues_button = self._make_button("Add GT note", lambda: elemental_fix(self))

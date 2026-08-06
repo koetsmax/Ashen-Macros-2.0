@@ -3,30 +3,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING
 
-from core.keyboard import react_to_channel_message
+from core.keyboard import extra_ups_for_date_dividers, react_to_channel_message
 
 if TYPE_CHECKING:
     from core.queue_ws import QueueWsClient
 
 logger = logging.getLogger(__name__)
-
-
-def extra_ups_for_date_dividers(created_at: str | None) -> int:
-    """How many Discord date-divider rows sit between now and the message (local time)."""
-    if not created_at:
-        return 0
-    try:
-        when = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
-        if when.tzinfo is None:
-            when = when.astimezone()
-        msg_day = when.astimezone().date()
-        now_day = datetime.now().astimezone().date()
-        return max(0, (now_day - msg_day).days)
-    except Exception:
-        return 0
 
 
 def fetch_leave_message(client: "QueueWsClient | None", message_id: str) -> dict:

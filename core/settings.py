@@ -24,6 +24,11 @@ def read_config() -> dict:
         return _read_config_values(config)
 
 
+def config_bool(key: str, default: str = "false") -> bool:
+    """Parse a settings.ini string flag as bool (1/true/yes/on)."""
+    return str(read_config().get(key, default)).lower() in ("1", "true", "yes", "on")
+
+
 def read_section(section: str) -> dict:
     config = configparser.ConfigParser()
     with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):

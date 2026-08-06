@@ -59,6 +59,10 @@ def get_token() -> str | None:
     return keyring.get_password("AshenMacros", "token")
 
 
+def auth_headers() -> dict[str, str]:
+    return {"Authorization": get_token() or ""}
+
+
 def check_connection() -> bool:
     api_url = read_config()["api_url"]
     try:

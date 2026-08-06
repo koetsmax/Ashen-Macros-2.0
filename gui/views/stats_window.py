@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.auth import get_token
+from core.auth import auth_headers
 from core.settings import read_config
 from gui import theme
 from gui.views.app_window import AppWindow
@@ -443,7 +443,7 @@ class StatsWindow(AppWindow):
         )
 
     def _auth_headers(self) -> dict[str, str]:
-        return {"Authorization": get_token() or ""}
+        return auth_headers()
 
     def _set_status(self, text: str, *, state: str = "idle") -> None:
         self.status_pill.setText(text)

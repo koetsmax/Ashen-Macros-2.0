@@ -13,8 +13,6 @@ from pathlib import Path
 import requests
 from packaging import version
 
-from core.settings import read_config
-
 logger = logging.getLogger(__name__)
 
 GITHUB_RELEASES_LATEST = (
@@ -107,13 +105,9 @@ def display_version(plain: str | None = None) -> str:
 
 
 def prefer_prerelease_enabled() -> bool:
-    config = read_config()
-    return str(config.get("prefer_prerelease", "false")).lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    from core.settings import config_bool
+
+    return config_bool("prefer_prerelease", "false")
 
 
 def install_dir() -> Path:
@@ -333,6 +327,3 @@ def launch_update_after_exit(zip_path: str) -> None:
     )
 
 
-# Back-compat aliases used by older call sites / docs.
-def launch_installer_after_exit(installer_path: str) -> None:
-    launch_update_after_exit(installer_path)

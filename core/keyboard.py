@@ -21,6 +21,23 @@ from staffcheck.abort import (
 logger = logging.getLogger(__name__)
 
 
+def extra_ups_for_date_dividers(created_at: str | None) -> int:
+    """How many Discord date-divider rows sit between now and the message (local time)."""
+    from datetime import datetime
+
+    if not created_at:
+        return 0
+    try:
+        when = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+        if when.tzinfo is None:
+            when = when.astimezone()
+        msg_day = when.astimezone().date()
+        now_day = datetime.now().astimezone().date()
+        return max(0, (now_day - msg_day).days)
+    except Exception:
+        return 0
+
+
 def _window_enumeration_handler(hwnd, top_windows):
     if win32gui.IsWindowVisible(hwnd):
         top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
@@ -76,8 +93,9 @@ def clear_typing_bar(*, in_on_duty_chat: bool = False):
     with keyboard_automation(), suppress_abort_hotkey():
         activate_window("discord")
         if in_on_duty_chat:
-            config = read_config()
-            if config.get("edit_check_message", "true").lower() in ("1", "true", "yes"):
+            from staffcheck.edit_check import edit_check_enabled
+
+            if edit_check_enabled():
                 keyboard.press_and_release("up")
                 keyboard.press_and_release("esc")
                 keyboard.press_and_release("esc")
@@ -277,20 +295,6 @@ def type_text(self, text: str, *, press_enter: bool = True) -> None:
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         keyboard.write(text)
-        if press_enter:
-            check_abort(self)
-            keyboard.press_and_release("enter")
-
-
-def paste_text(self, text: str, *, press_enter: bool = True) -> None:
-    """Paste text via clipboard (safer for markdown / multiline than keyboard.write)."""
-    config = read_config()
-    follow_up = float(config.get("follow_up") or 0.4)
-    with keyboard_automation(), self.keyboard_lock:
-        check_abort(self)
-        with _clipboard_scope(text):
-            keyboard.press_and_release("ctrl+v")
-            interruptible_sleep(self, follow_up)
         if press_enter:
             check_abort(self)
             keyboard.press_and_release("enter")

@@ -93,9 +93,7 @@ def apply_last_check_label(self, data: dict | None = None):
 
 def _reset_result_panels(self):
     result_panel.reset_all(self)
-    self._user_report_data = None
     self.loghistory_issues = []
-    self.search_issues = []
     btn_enable(self.loghistory_fix_issues_button, False)
     btn_enable(self.jump_to_message_button, False)
     btn_enable(self.invited_by_loghistory_button, False)

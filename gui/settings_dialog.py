@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.settings import read_config, set_custom_value
+from core.settings import config_bool, read_config, set_custom_value
 from core.window_positions import reset_app_window_positions
 from gui import theme
 
@@ -43,9 +43,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(theme_row)
 
         self.compact_panels_check = QCheckBox("Compact panels")
-        self.compact_panels_check.setChecked(
-            config.get("compact_panels", "true").lower() in ("1", "true", "yes")
-        )
+        self.compact_panels_check.setChecked(config_bool("compact_panels", "true"))
         self.compact_panels_check.setToolTip(
             "When enabled, result panels show a compact summary. "
             "When disabled, a classic 2×2 grid shows every field with color-coded values."
@@ -53,9 +51,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.compact_panels_check)
 
         self.edit_check_message_check = QCheckBox("Edit previous check message")
-        self.edit_check_message_check.setChecked(
-            config.get("edit_check_message", "true").lower() in ("1", "true", "yes")
-        )
+        self.edit_check_message_check.setChecked(config_bool("edit_check_message", "true"))
         self.edit_check_message_check.setToolTip(
             "When enabled, if you posted a good/not-good check for this user in "
             "#on-duty-chat within the last 30 minutes, edit that message instead of posting a new one."

@@ -108,13 +108,6 @@ def mutual_servers_reset(view) -> None:
         view.result_sections["mutual_servers"].reset()
 
 
-def user_report_idle(view, message: str = "—") -> None:
-    sec = _section(view, "user_report")
-    sec.reset()
-    if hasattr(sec, "_summary"):
-        sec._summary.setText(message)
-
-
 def user_report_failed(view, message: str) -> None:
     sec = _section(view, "user_report")
     sec.clear_fields()
@@ -179,7 +172,6 @@ def user_report_apply(view, response: dict, *, xbox_gt) -> None:
         "Anti Alliance Note": r["anti_alliance_note"],
     }
     view.loghistory_issues = [k for k, v in issues.items() if v]
-    view._user_report_data = r
 
 
 def user_report_skipped(view) -> None:
@@ -279,16 +271,6 @@ def search_apply(view, response: dict) -> None:
         detail=f"Has verified: {r['has_verified']}",
     )
     sec.set_success_or_issues()
-
-    issues = {
-        "Gamertag Exists": not r["gamertag_exists"],
-        "Completion": not r["completion_achieved"],
-        "Partial Matches": partial_matches > 0,
-        "Exact Matches": exact_matches > 0,
-        "Alts Found": r["alts_found"] != "0",
-        "Has Verified": not r["has_verified"],
-    }
-    view.search_issues = [k for k, v in issues.items() if v]
 
 
 def invite_failed(view) -> None:

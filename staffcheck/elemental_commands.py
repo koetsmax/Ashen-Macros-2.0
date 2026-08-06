@@ -26,7 +26,7 @@ def elemental_commands(self, *args):
     if abort.is_abort_requested(self):
         return
 
-    run_background(make_api_request, self)
+    run_background(elemental_api_request, self)
     btn_enable(self.stop_button, True)
 
     if not args:
@@ -89,11 +89,6 @@ def tell_to_verify(self):
     btn_enable(self.start_button, True)
     self.currentstate = "SOTOfficial"
     abort.set_continue_button(self)
-
-
-def make_api_request(self):
-    if self.method.get() in ("All Commands", "Elemental Commands"):
-        elemental_api_request(self)
 
 
 def elemental_api_request(self):

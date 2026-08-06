@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import requests
 
-from core.keyboard import edit_on_duty_message, type_text
-from core.settings import read_config
+from core.keyboard import edit_on_duty_message, extra_ups_for_date_dividers, type_text
+from core.settings import config_bool
 
 
 def edit_check_enabled() -> bool:
-    return read_config().get("edit_check_message", "true").lower() in ("1", "true", "yes")
+    return config_bool("edit_check_message", "true")
 
 
 def smart_strike_previous(prev: str) -> str:
@@ -33,21 +31,6 @@ def build_edited_content(previous: str, new_line: str) -> str:
     if struck:
         return f"{struck}\n{new_line}"
     return new_line
-
-
-def extra_ups_for_date_dividers(created_at: str | None) -> int:
-    """How many Discord date-divider rows sit between now and the message (local time)."""
-    if not created_at:
-        return 0
-    try:
-        when = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
-        if when.tzinfo is None:
-            when = when.astimezone()
-        msg_day = when.astimezone().date()
-        now_day = datetime.now().astimezone().date()
-        return max(0, (now_day - msg_day).days)
-    except Exception:
-        return 0
 
 
 def empty_edit_check() -> dict:
