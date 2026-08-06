@@ -117,6 +117,38 @@ begin
   end;
 end;
 
+{ InstallForge stores UninstallString without a .exe suffix. }
+function ResolveUninstallExe(const Path: String): String;
+var
+  Candidate: String;
+begin
+  Result := Path;
+  if (Path <> '') and FileExists(Path) then
+    Exit;
+
+  if Path <> '' then
+  begin
+    Candidate := Path + '.exe';
+    if FileExists(Candidate) then
+    begin
+      Result := Candidate;
+      Exit;
+    end;
+  end;
+
+  if Path <> '' then
+  begin
+    Candidate := AddBackslash(ExtractFilePath(Path)) + 'Uninstall.exe';
+    if FileExists(Candidate) then
+    begin
+      Result := Candidate;
+      Exit;
+    end;
+  end;
+
+  Result := '';
+end;
+
 procedure RunLegacyUninstaller(const Cmd: String);
 var
   Path, Params: String;
@@ -124,7 +156,8 @@ var
   Started: Boolean;
 begin
   SplitCommand(Cmd, Path, Params);
-  if (Path = '') or not FileExists(Path) then
+  Path := ResolveUninstallExe(Path);
+  if Path = '' then
   begin
     MsgBox(
       'Could not find the old Ashen Macros uninstaller. You can remove it later from Windows Settings.',
