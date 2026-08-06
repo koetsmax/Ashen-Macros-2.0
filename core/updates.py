@@ -31,8 +31,10 @@ GITHUB_DOWNLOAD_BASE = (
 _CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 _CREATE_NEW_PROCESS_GROUP = 0x00000200
 _CREATE_NEW_CONSOLE = 0x00000010
+_DETACHED_PROCESS = 0x00000008
 
 # cmd.exe helper — no PowerShell (avoids execution-policy / Constrained Language failures).
+# Wait uses ping (not timeout): timeout fails when stdin is redirected and can stall/abort.
 UPDATE_HELPER_CMD = r"""@echo off
 setlocal EnableExtensions EnableDelayedExpansion
 title Installing Ashen Macros
@@ -62,14 +64,18 @@ set /a WAITED=0
 :wait_loop
 tasklist /FI "PID eq !PID!" /NH 2>NUL | find /I ".exe" >NUL
 if errorlevel 1 goto wait_done
-timeout /t 1 /nobreak >NUL
+rem ~1s sleep without timeout.exe (stdin-safe)
+ping -n 2 127.0.0.1 >NUL
 set /a WAITED+=1
+if !WAITED! EQU 1 echo [%date% %time%] waiting for PID !PID! ...>>"%LOG%"
+if !WAITED! EQU 10 echo [%date% %time%] still waiting ^(!WAITED!s^)>>"%LOG%"
+if !WAITED! EQU 30 echo [%date% %time%] still waiting ^(!WAITED!s^)>>"%LOG%"
 if !WAITED! LSS 120 goto wait_loop
 echo [%date% %time%] PID !PID! still alive after 120s - forcing stop>>"%LOG%"
 taskkill /PID !PID! /F >NUL 2>&1
 :wait_done
 echo [%date% %time%] process gone ^(waited !WAITED!s^)>>"%LOG%"
-timeout /t 1 /nobreak >NUL
+ping -n 2 127.0.0.1 >NUL
 
 set "PAYLOAD=!STAGING!"
 set /a DIR_COUNT=0
@@ -119,7 +125,7 @@ if exist "!APPEXE!" (
 )
 
 echo [%date% %time%] apply_update done>>"%LOG%"
-timeout /t 2 /nobreak >NUL
+ping -n 3 127.0.0.1 >NUL
 exit /b 0
 """
 
@@ -353,33 +359,37 @@ def _write_update_helper(dest_dir: Path) -> Path:
     return helper_path
 
 
-def _helper_arg_list(helper: Path, staging: Path, target: Path, exe: Path) -> list[str]:
-    return [
-        str(helper),
-        str(os.getpid()),
-        str(staging),
-        str(target),
-        str(exe),
-    ]
+def _helper_params(staging: Path, target: Path, exe: Path) -> str:
+    """Argument string for apply_update.cmd (ShellExecute lpParameters)."""
+    return f'{os.getpid()} "{staging}" "{target}" "{exe}"'
 
 
-def _elevate_cmd_helper(helper: Path, staging: Path, target: Path, exe: Path) -> int:
-    """Launch elevated cmd via ShellExecuteW runas. Returns ShellExecute result (>32 = ok)."""
+def _shell_execute_helper(
+    helper: Path,
+    staging: Path,
+    target: Path,
+    exe: Path,
+    *,
+    elevate: bool,
+) -> int:
+    """Launch helper detached via ShellExecuteW (survives PyInstaller job exit).
+
+    Returns ShellExecute result (>32 = success).
+    """
     import ctypes
 
-    # Nested quotes required when the .cmd path contains spaces:
-    #   cmd /c ""C:\path\apply_update.cmd" pid "staging" "install" "appexe"
-    params = (
-        f'/c ""{helper}" {os.getpid()} "{staging}" "{target}" "{exe}""'
-    )
+    verb = "runas" if elevate else "open"
+    # open/runas on the .cmd file — Explorer/Shell starts an independent process
+    # tree, unlike Popen which often stays in the frozen app's job object and
+    # dies when the app quits (log truncates right after "apply_update start").
     return int(
         ctypes.windll.shell32.ShellExecuteW(
             None,
-            "runas",
-            "cmd.exe",
-            params,
-            None,
-            1,  # SW_SHOWNORMAL — visible Installing window
+            verb,
+            str(helper),
+            _helper_params(staging, target, exe),
+            str(helper.parent),
+            1,  # SW_SHOWNORMAL
         )
     )
 
@@ -400,37 +410,54 @@ def launch_update_after_exit(staging_dir: str) -> None:
     helper = _write_update_helper(staging.parent)
     log_path = apply_helper_log_path()
 
-    creationflags = (
-        _CREATE_BREAKAWAY_FROM_JOB
-        | _CREATE_NEW_PROCESS_GROUP
-        | _CREATE_NEW_CONSOLE
-    )
-
-    helper_pid: int | None = None
-    if elevate and os.name == "nt":
+    if elevate:
         logger.info(
             "Install dir %s is not writable; elevating update helper",
             target,
         )
-        ret = _elevate_cmd_helper(helper, staging, target, exe)
-        if ret <= 32:
-            raise RuntimeError(f"Failed to elevate update helper (ShellExecute={ret})")
-        helper_pid = ret  # ShellExecute may return HINSTANCE, not a PID
-    else:
+
+    ret = _shell_execute_helper(
+        helper, staging, target, exe, elevate=elevate
+    )
+    if ret <= 32:
+        # Fallback: Popen with every detach flag we have (less reliable under jobs).
+        logger.warning(
+            "ShellExecute helper failed (%s); falling back to detached Popen",
+            ret,
+        )
+        creationflags = (
+            _CREATE_BREAKAWAY_FROM_JOB
+            | _CREATE_NEW_PROCESS_GROUP
+            | _CREATE_NEW_CONSOLE
+            | _DETACHED_PROCESS
+        )
         proc = subprocess.Popen(
-            ["cmd.exe", "/c", *_helper_arg_list(helper, staging, target, exe)],
+            [
+                "cmd.exe",
+                "/c",
+                str(helper),
+                str(os.getpid()),
+                str(staging),
+                str(target),
+                str(exe),
+            ],
             creationflags=creationflags,
             close_fds=True,
             stdin=subprocess.DEVNULL,
-            # Own console via CREATE_NEW_CONSOLE — leave stdout/stderr attached.
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            cwd=str(helper.parent),
+            start_new_session=True,
         )
-        helper_pid = proc.pid
+        helper_ref: int | str = proc.pid
+    else:
+        helper_ref = ret
 
     logger.info(
         "Scheduled staging update after exit: %s -> %s (elevate=%s helper=%s log=%s)",
         staging,
         target,
         elevate,
-        helper_pid,
+        helper_ref,
         log_path,
     )
