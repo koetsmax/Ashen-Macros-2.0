@@ -63,7 +63,6 @@ def good_to_check(self):
         from staffcheck import analytics as sc_analytics
 
         sc_analytics.report_outcome(self, outcome="good")
-        switch_channel(self, "#on-duty-chat")
 
         config = read_config()
         message = config["good_to_check_message"]
@@ -72,6 +71,7 @@ def good_to_check(self):
 
         info = resolve_edit_at_click(self)
         self._edit_check = info
+        switch_channel(self, "#on-duty-chat")
         post_or_edit_check_message(self, message, info)
     except abort.AbortError:
         return
@@ -80,11 +80,6 @@ def good_to_check(self):
 
 def not_good_to_check(self):
     self.currentstate = "Done"
-    try:
-        switch_channel(self, "#on-duty-chat")
-        clear_typing_bar(in_on_duty_chat=True)
-    except abort.AbortError:
-        return
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
     btn_enable(self.function_button, False)
@@ -109,11 +104,10 @@ def build_not_good_to_check(self):
     try:
         from staffcheck import analytics as sc_analytics
 
-        sc_analytics.report_outcome(
-            self, outcome="not_good", reason=self.reason.get()
-        )
+        sc_analytics.report_outcome(self, outcome="not_good", reason=self.reason.get())
         info = resolve_edit_at_click(self)
         self._edit_check = info
+        switch_channel(self, "#on-duty-chat")
         if not info.get("editable"):
             clear_typing_bar(in_on_duty_chat=True)
         post_or_edit_check_message(self, message, info)
