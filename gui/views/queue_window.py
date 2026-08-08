@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QCursor, QKeySequence, QShortcut
@@ -1561,14 +1561,7 @@ class QueueWindow(AppWindow):
             item.setForeground(process_color)
             self.preps_processes_list.addItem(item)
 
-    def _new_staffcheck_ttl_anchor(self, row: dict) -> datetime | None:
-        """UTC start time used for the 1h auto-clear countdown."""
-        status = str(row.get("status") or "")
-        raw = None
-        if status == "on_fleet":
-            raw = row.get("joined_fleet_at") or row.get("role_granted_at") or row.get("created_at")
-        else:
-            raw = row.get("role_granted_at") or row.get("created_at")
+    def _parse_iso_utc(self, raw) -> datetime | None:
         if not raw:
             return None
         try:
@@ -1578,6 +1571,67 @@ class QueueWindow(AppWindow):
             return dt
         except Exception:
             return None
+
+    def _new_staffcheck_countdown(
+        self, row: dict, data: dict, *, now: datetime
+    ) -> tuple[str, int] | None:
+        """Return (kind, remaining_seconds) for new-staffcheck display.
+
+        kind:
+          process — 3m window until process forfeits (awaiting_spot)
+          keep — 1h on-fleet keep timer (joined)
+          clear — 1h auto-clear after miss
+        """
+        status = str(row.get("status") or "")
+        user_id = str(row.get("user_id") or "")
+        process_seconds = 3 * 60
+        keep_seconds = 3600
+
+        if status == "awaiting_spot":
+            deadline = None
+            for proc in data.get("outstanding_processes") or []:
+                if str(proc.get("user_id") or "") != user_id:
+                    continue
+                deadline = self._parse_iso_utc(proc.get("expires_at"))
+                if deadline is not None:
+                    break
+            if deadline is None:
+                processed = self._parse_iso_utc(row.get("processed_at"))
+                if processed is not None:
+                    deadline = processed + timedelta(seconds=process_seconds)
+            if deadline is None:
+                return None
+            return (
+                "process",
+                max(0, int((deadline - now).total_seconds())),
+            )
+
+        if status == "on_fleet":
+            joined = self._parse_iso_utc(
+                row.get("joined_fleet_at")
+                or row.get("processed_at")
+                or row.get("role_granted_at")
+            )
+            if joined is None:
+                return None
+            return (
+                "keep",
+                max(0, keep_seconds - int((now - joined).total_seconds())),
+            )
+
+        if status == "missed_spot":
+            # 1h clear starts when they missed (updated_at), not when role was granted.
+            missed = self._parse_iso_utc(
+                row.get("updated_at") or row.get("processed_at") or row.get("created_at")
+            )
+            if missed is None:
+                return None
+            return (
+                "clear",
+                max(0, keep_seconds - int((now - missed).total_seconds())),
+            )
+
+        return None
 
     def _apply_onduty_staffchecks(self, data: dict) -> None:
         self.onduty_staffchecks_list.clear()
@@ -1623,7 +1677,6 @@ class QueueWindow(AppWindow):
             "missed_spot": QColor(theme.RED or "#ff4444"),
             "left_early": QColor(theme.PEACH or "#ff8533"),
         }
-        keep_seconds = 3600
 
         for row in rows:
             user_id = str(row.get("user_id") or "")
@@ -1650,14 +1703,7 @@ class QueueWindow(AppWindow):
             else:
                 detail = "Staffchecked, waiting to process"
 
-            remaining = None
-            anchor = self._new_staffcheck_ttl_anchor(row)
-            if anchor is not None:
-                remaining = max(
-                    0,
-                    keep_seconds - int((now - anchor).total_seconds()),
-                )
-
+            countdown = self._new_staffcheck_countdown(row, data, now=now)
             ship = self._clean_ship_label(
                 row.get("ship_name")
             ) or self._clean_ship_label(row.get("ship_channel_id"))
@@ -1669,11 +1715,26 @@ class QueueWindow(AppWindow):
                 "missed_spot",
             ):
                 head = f"New SC: {name} -> {ship}"
-            if status == "on_fleet" and remaining is not None:
-                detail = f"On fleet, can keep role in {self._format_duration(remaining)}"
+
+            if countdown is not None:
+                kind, remaining = countdown
+                if kind == "process":
+                    detail = (
+                        f"Waiting to take spot · process ends in "
+                        f"{self._format_duration(remaining)}"
+                    )
+                elif kind == "keep":
+                    detail = (
+                        f"On fleet, can keep role in "
+                        f"{self._format_duration(remaining)}"
+                    )
+                elif kind == "clear":
+                    detail = (
+                        f"Missed their spot, remove staffchecked · "
+                        f"clears in {self._format_duration(remaining)}"
+                    )
+
             bits = [head, detail]
-            if remaining is not None and status != "on_fleet":
-                bits.append(f"clears in {self._format_duration(remaining)}")
             item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(colors.get(status, colors["awaiting_process"]))
             self.onduty_staffchecks_list.addItem(item)
