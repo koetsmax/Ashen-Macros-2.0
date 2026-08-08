@@ -82,9 +82,6 @@ class PermissionsWindow(AppWindow):
         right.addWidget(scroll, stretch=1)
 
         bulk = QHBoxLayout()
-        grant_all_btn = QPushButton("Grant all")
-        grant_all_btn.clicked.connect(lambda: self._bulk("grant"))
-        bulk.addWidget(grant_all_btn)
         revoke_all_btn = QPushButton("Revoke all")
         revoke_all_btn.clicked.connect(lambda: self._bulk("revoke"))
         bulk.addWidget(revoke_all_btn)
