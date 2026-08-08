@@ -1,15 +1,17 @@
 import logging
 
-from PySide6.QtCore import QByteArray, QEvent, QObject
+from PySide6.QtCore import QByteArray, QEvent, QObject, QTimer
 from PySide6.QtWidgets import QWidget
 
-from core.settings import read_section, set_custom_value
+from core.settings import read_section, set_custom_values
 
 logger = logging.getLogger(__name__)
 
 HUB_SECTION = "WINDOW"
 APP_SECTION_PREFIX = "APP_"
 DEFAULT_APP_SIZE = (420, 340)
+# Writing settings.ini on every Move event makes dragging feel low-FPS.
+_GEOMETRY_SAVE_DEBOUNCE_MS = 300
 
 
 def _section_for(window: QWidget) -> str:
@@ -29,13 +31,17 @@ def save_window_geometry(window: QWidget, *, force: bool = False):
         # saveGeometry/restoreGeometry include the window frame correctly on Windows;
         # raw geometry().y() + move() drifts downward by the title-bar height each open.
         geo = window.saveGeometry().toHex().data().decode("ascii")
-        set_custom_value(section, "geometry", geo)
-        # Keep legacy keys updated for older builds / reset tooling.
         frame = window.frameGeometry()
-        set_custom_value(section, "x", str(frame.x()))
-        set_custom_value(section, "y", str(frame.y()))
-        set_custom_value(section, "width", str(window.width()))
-        set_custom_value(section, "height", str(window.height()))
+        set_custom_values(
+            section,
+            {
+                "geometry": geo,
+                "x": str(frame.x()),
+                "y": str(frame.y()),
+                "width": str(window.width()),
+                "height": str(window.height()),
+            },
+        )
     except PermissionError as e:
         logger.warning("Could not save window geometry: %s", e)
 
@@ -89,8 +95,16 @@ def reset_app_window_positions(hub=None):
 
     for entry in APP_REGISTRY:
         section = f"{APP_SECTION_PREFIX}{entry.window_cls.__name__}"
-        for option in ("geometry", "x", "y", "width", "height"):
-            set_custom_value(section, option, "0" if option != "geometry" else "")
+        set_custom_values(
+            section,
+            {
+                "geometry": "",
+                "x": "0",
+                "y": "0",
+                "width": "0",
+                "height": "0",
+            },
+        )
 
     if hub is None:
         return
@@ -103,14 +117,23 @@ class _GeometryTracker(QObject):
     def __init__(self, window: QWidget):
         super().__init__(window)
         self._window = window
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.setInterval(_GEOMETRY_SAVE_DEBOUNCE_MS)
+        self._save_timer.timeout.connect(self._flush_save)
         window.installEventFilter(self)
+
+    def _flush_save(self) -> None:
+        save_window_geometry(self._window)
 
     def eventFilter(self, watched, event):
         if watched is not self._window:
             return False
         if event.type() == QEvent.Type.Close:
             # Still save on close even if Qt has already marked the window hidden.
+            self._save_timer.stop()
             save_window_geometry(self._window, force=True)
         elif event.type() in (QEvent.Type.Move, QEvent.Type.Resize):
-            save_window_geometry(self._window)
+            # Debounce disk writes — Move fires continuously while dragging.
+            self._save_timer.start()
         return False

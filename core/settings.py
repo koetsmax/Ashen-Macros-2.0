@@ -42,6 +42,13 @@ def read_section(section: str) -> dict:
 
 
 def set_custom_value(section, option, value):
+    set_custom_values(section, {option: value})
+
+
+def set_custom_values(section, values: dict):
+    """Write multiple keys in one lock/read/write cycle."""
+    if not values:
+        return
     config = configparser.ConfigParser()
     with FileLock(LOCK_FILE_PATH, timeout=LOCK_TIMEOUT):
         try:
@@ -51,7 +58,8 @@ def set_custom_value(section, option, value):
 
         if section not in config:
             config[section] = {}
-        config[section][option] = value
+        for option, value in values.items():
+            config[section][option] = value
         _write_config_file(config)
 
 
