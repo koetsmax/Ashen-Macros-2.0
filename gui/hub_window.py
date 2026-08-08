@@ -355,9 +355,34 @@ class StaffcheckHub(QMainWindow):
             )
 
     def _refresh_auth(self):
+        was_verified = self.verified
         self._verification_in_progress = False
-        self._sync_auth_from_login()
+        self._sync_auth_from_login(log=True)
         self._apply_gating()
+        if self.verified and not was_verified:
+            if self.permissions:
+                self.toast_stack.show_toast(
+                    "verify_result",
+                    "Verification successful!\n"
+                    f"Signed in as {self.username or 'unknown'}.\n"
+                    f"Permissions: {', '.join(self.permissions)}",
+                    dismiss_ms=7000,
+                )
+            else:
+                # Permissions toast from _apply_gating already explains next steps.
+                self.toast_stack.show_toast(
+                    "verify_result",
+                    "Verification successful!\n"
+                    "Ask Max to grant app access, then press Recheck permissions.",
+                    dismiss_ms=7000,
+                )
+        elif not self.verified:
+            self.toast_stack.show_toast(
+                "verify_result",
+                "Verification did not complete.\n"
+                "Check the bot’s DM reply, then try Verify now again.",
+                dismiss_ms=8000,
+            )
 
     def _recheck_permissions(self):
         if not self.connected:
