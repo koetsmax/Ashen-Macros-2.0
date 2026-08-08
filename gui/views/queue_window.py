@@ -46,8 +46,6 @@ from core.leave_pending import fetch_leave_message, react_pending_on_leave
 from core.queue_status_banner import (
     BANNER_BUTTON_LABELS,
     BANNER_RECALL_NAMES,
-    fetch_status_banner_offset,
-    wait_for_status_banner,
 )
 from core.queue_ws import QueueWsClient
 from core.settings import read_config, set_custom_value
@@ -171,7 +169,7 @@ class QueueWindow(AppWindow):
         self.queue_banner_button.setMinimumWidth(130)
         self.queue_banner_button.setToolTip(
             "Post /message-store recall for the recommended Ships full / "
-            "requiring crew banner, then Apps > update bonus"
+            "requiring crew banner"
         )
         self.queue_banner_button.clicked.connect(self._start_set_queue_banner)
         status_row.addWidget(self.queue_banner_button)
@@ -1246,7 +1244,6 @@ class QueueWindow(AppWindow):
             self._set_status("No recommended queue banner to set")
             return
 
-        previous_id = str(banner.get("message_id") or "") or None
         self._command_busy = True
         self.abort_requested = False
         self._set_rec_buttons_enabled(False)
@@ -1255,14 +1252,12 @@ class QueueWindow(AppWindow):
 
         thread = threading.Thread(
             target=self._set_queue_banner_worker,
-            args=(target, recall_name, previous_id),
+            args=(recall_name,),
             daemon=True,
         )
         thread.start()
 
-    def _set_queue_banner_worker(
-        self, expected_type: str, recall_name: str, previous_message_id: str | None
-    ) -> None:
+    def _set_queue_banner_worker(self, recall_name: str) -> None:
         start_abort_session(self)
         try:
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
@@ -1276,33 +1271,8 @@ class QueueWindow(AppWindow):
             execute_command(
                 self, f"/message-store recall name:{recall_name}"
             )
-            self._command_status.emit("Waiting for new queue banner…")
-
-            def _snap():
-                return self._last_snapshot
-
-            def _abort():
-                return bool(getattr(self, "abort_requested", False))
-
-            new_banner = wait_for_status_banner(
-                _snap,
-                expected_type=expected_type,
-                previous_message_id=previous_message_id,
-                timeout_s=20.0,
-                abort_check=_abort,
-            )
-            check_abort(self)
-            offset = None
-            if new_banner and new_banner.get("message_id"):
-                self._command_status.emit("Resolving banner position…")
-                info = fetch_status_banner_offset(
-                    self._client, str(new_banner["message_id"])
-                )
-                check_abort(self)
-                if info.get("found") and info.get("offset"):
-                    offset = int(info["offset"])
-            self._command_status.emit("Apps > update bonus...")
-            apply_update_bonus_on_queue_message(self, offset)
+            # Hook for future Apps → update bonus automation.
+            apply_update_bonus_on_queue_message(self, None)
             self._command_status.emit(f"Queue banner set: {recall_name}")
         except AbortError:
             self._command_status.emit("Queue banner set aborted")
