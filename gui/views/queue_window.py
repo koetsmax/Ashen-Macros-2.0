@@ -87,6 +87,15 @@ def _process_ship_option(ship_name: str) -> str | None:
     return f"{match.group(1)} {match.group(2)}"
 
 
+def _process_ship_sort_key(ship: dict) -> tuple[int, int, str]:
+    """Sort key: FL number, ship number, then name (unparsed ships last)."""
+    name = str(ship.get("channel_name") or "").strip()
+    match = _PROCESS_SHIP_OPTION_RE.search(name)
+    if not match:
+        return (10**9, 10**9, name.lower())
+    return (int(match.group(1)), int(match.group(2)), name.lower())
+
+
 def _queue_debug_enabled() -> bool:
     return read_config().get("queue_debug", "false").lower() in ("1", "true", "yes")
 
@@ -650,15 +659,83 @@ class QueueWindow(AppWindow):
         self._selected_user_id = user_id
 
         menu = QMenu(self)
+        commands_ok = (
+            not self._sim_enabled
+            and not self._command_busy
+            and bool(self._last_snapshot.get("active", True))
+        )
+        lock = self._action_lock_for_user(user_id)
+        locked_by_other = bool(
+            lock and str(lock.get("holder_user_id") or "") != self._my_user_id
+        )
+        if locked_by_other:
+            holder = (
+                lock.get("holder_username")
+                or lock.get("holder_user_id")
+                or "someone"
+            )
+            lock_tip = f"{holder} is already preparing/processing this person"
+        else:
+            lock_tip = ""
+
+        prep_menu = menu.addMenu("Prep")
+        prep_action = prep_menu.addAction("Prep")
+        prep_action.setEnabled(commands_ok and not locked_by_other)
+        if locked_by_other:
+            prep_action.setToolTip(lock_tip)
+        elif self._sim_enabled:
+            prep_action.setToolTip("Sim mode — Discord commands disabled")
+        prep_action.triggered.connect(
+            lambda _checked=False, e=entry: self._start_queue_member_command(
+                e, "prep"
+            )
+        )
+        unprep_action = prep_menu.addAction("Unprep")
+        unprep_action.setEnabled(commands_ok and not locked_by_other)
+        if locked_by_other:
+            unprep_action.setToolTip(lock_tip)
+        elif self._sim_enabled:
+            unprep_action.setToolTip("Sim mode — Discord commands disabled")
+        unprep_action.triggered.connect(
+            lambda _checked=False, e=entry: self._start_queue_member_command(
+                e, "unprep"
+            )
+        )
+
+        process_menu = menu.addMenu("Process")
+        ships = self._ships_for_process_menu()
+        if not ships:
+            empty = process_menu.addAction("No ships available")
+            empty.setEnabled(False)
+        else:
+            for ship in ships:
+                label, enabled = self._process_ship_menu_label(ship)
+                action = process_menu.addAction(label)
+                action.setEnabled(commands_ok and not locked_by_other and enabled)
+                if locked_by_other:
+                    action.setToolTip(lock_tip)
+                elif not enabled:
+                    action.setToolTip("Cannot parse FL/ship numbers for /process")
+                elif self._sim_enabled:
+                    action.setToolTip("Sim mode — Discord commands disabled")
+                else:
+                    action.setToolTip("Run /process to this ship")
+                action.triggered.connect(
+                    lambda _checked=False, e=entry, s=ship: self._start_queue_member_command(
+                        e, "process", ship=s
+                    )
+                )
+
+        menu.addSeparator()
         edit_action = menu.addAction("Edit activities…")
-        process_menu = menu.addMenu("Process together")
+        together_menu = menu.addMenu("Process together")
         current = entry.get("process_together")
         for label, value in (
             ("Unset", None),
             ("Together", "together"),
             ("Separately", "separate"),
         ):
-            action = process_menu.addAction(label)
+            action = together_menu.addAction(label)
             action.setCheckable(True)
             action.setChecked(current == value)
             action.triggered.connect(
@@ -670,6 +747,43 @@ class QueueWindow(AppWindow):
         chosen = menu.exec(self.queue_table.viewport().mapToGlobal(pos))
         if chosen is edit_action:
             self._open_edit_activities_dialog(user_id)
+
+    def _ships_for_process_menu(self) -> list[dict]:
+        """All ships ordered FL1 ship1–6, FL2 ship1–6, …"""
+        ships = list(self._last_snapshot.get("ships") or [])
+        ships.sort(key=_process_ship_sort_key)
+        return ships
+
+    def _process_ship_menu_label(self, ship: dict) -> tuple[str, bool]:
+        name = str(ship.get("channel_name") or "").strip()
+        channel_id = str(ship.get("channel_id") or "").strip()
+        label = name if name and name != channel_id else (f"#{channel_id}" if channel_id else "?")
+        needs = ship.get("needs")
+        if needs is not None:
+            label = f"{label} — Needs {needs}"
+        enabled = bool(name and _process_ship_option(name))
+        return label, enabled
+
+    def _start_queue_member_command(
+        self, entry: dict, action: str, *, ship: dict | None = None
+    ) -> None:
+        """Run prep/process/unprep for a queue-table row (same delay as recommendations)."""
+        user_id = str(entry.get("user_id") or "").strip()
+        if not user_id:
+            self._set_status("Queue entry missing user id")
+            return
+        rec = {
+            "members": [
+                {
+                    "user_id": user_id,
+                    "display_name": entry.get("display_name") or user_id,
+                    "valid_shipswap": bool(entry.get("valid_shipswap")),
+                }
+            ],
+            "ship": dict(ship or {}),
+            "action": action,
+        }
+        self._start_queue_command(rec, action)
 
     def _set_process_together(self, user_id: str, value) -> None:
         if not self._client:
