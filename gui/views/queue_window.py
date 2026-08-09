@@ -1000,12 +1000,13 @@ class QueueWindow(AppWindow):
                 if entry.get("needs_prep"):
                     flags.append("Needs prep")
                 if entry.get("staffchecked") is False:
-                    flags.append("Not staffchecked")
                     mark = entry.get("od_check_mark")
                     if mark == "good":
                         flags.append("Good to check")
                     elif mark == "not_good":
                         flags.append("Not good to check")
+                    else:
+                        flags.append("Not staffchecked")
                 avoid_with = entry.get("avoid_with") or []
                 if avoid_with:
                     names = []
