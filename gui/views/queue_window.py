@@ -1332,6 +1332,9 @@ class QueueWindow(AppWindow):
             bool(recommended)
             and recommended in BANNER_RECALL_NAMES
             and current != recommended
+            # Fleet spike may be intentional while a second fleet is opened —
+            # keep Set available, but don't peach-highlight the label.
+            and current != "fleet_spike"
         )
         if mismatch:
             self.queue_banner_label.setStyleSheet(f"color: {theme.PEACH or '#ff8533'};")
