@@ -224,6 +224,12 @@ class QueueWindow(AppWindow):
         leaves_rejoins_layout = QVBoxLayout(leaves_rejoins_box)
         self.leaves_rejoins_list = QListWidget()
         self.leaves_rejoins_list.setWordWrap(True)
+        self.leaves_rejoins_list.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.leaves_rejoins_list.customContextMenuRequested.connect(
+            self._on_leaves_rejoins_context_menu
+        )
         leaves_rejoins_layout.addWidget(self.leaves_rejoins_list)
         workflow_col.addWidget(leaves_rejoins_box)
 
@@ -238,6 +244,12 @@ class QueueWindow(AppWindow):
         onduty_sc_layout = QVBoxLayout(onduty_sc_box)
         self.onduty_staffchecks_list = QListWidget()
         self.onduty_staffchecks_list.setWordWrap(True)
+        self.onduty_staffchecks_list.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.onduty_staffchecks_list.customContextMenuRequested.connect(
+            self._on_onduty_staffchecks_context_menu
+        )
         onduty_sc_layout.addWidget(self.onduty_staffchecks_list)
         workflow_col.addWidget(onduty_sc_box)
 
@@ -1593,6 +1605,15 @@ class QueueWindow(AppWindow):
             bits.append(detail)
             item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(color)
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "leave_notice",
+                    "message_id": str(notice.get("message_id") or ""),
+                    "user_id": user_id,
+                    "display_name": name,
+                },
+            )
             self.leaves_rejoins_list.addItem(item)
 
     def _apply_preps_processes(self, data: dict) -> None:
@@ -1847,9 +1868,85 @@ class QueueWindow(AppWindow):
                     pass
             item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(uncheck_color)
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "uncheck_watch",
+                    "user_id": user_id,
+                    "message_id": str(watch.get("message_id") or ""),
+                    "display_name": name,
+                },
+            )
             self.onduty_staffchecks_list.addItem(item)
 
         self._sync_onduty_ping_flash_timer()
+
+    def _on_leaves_rejoins_context_menu(self, pos) -> None:
+        item = self.leaves_rejoins_list.itemAt(pos)
+        if item is None:
+            return
+        payload = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
+            return
+        message_id = str(payload.get("message_id") or "").strip()
+        if not message_id:
+            return
+        name = str(payload.get("display_name") or payload.get("user_id") or "?")
+
+        menu = QMenu(self)
+        dismiss = menu.addAction("Dismiss leave message")
+        dismiss.setToolTip("Remove this leave message from the monitor list")
+        chosen = menu.exec(self.leaves_rejoins_list.viewport().mapToGlobal(pos))
+        if chosen is dismiss:
+            self._dismiss_leave_notice(message_id, name)
+
+    def _on_onduty_staffchecks_context_menu(self, pos) -> None:
+        item = self.onduty_staffchecks_list.itemAt(pos)
+        if item is None:
+            return
+        payload = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(payload, dict) or payload.get("kind") != "uncheck_watch":
+            return
+        user_id = str(payload.get("user_id") or "").strip()
+        message_id = str(payload.get("message_id") or "").strip()
+        if not user_id and not message_id:
+            return
+        name = str(payload.get("display_name") or user_id or "?")
+
+        menu = QMenu(self)
+        dismiss = menu.addAction("Dismiss uncheck")
+        dismiss.setToolTip("Remove this uncheck watch from the monitor list")
+        chosen = menu.exec(
+            self.onduty_staffchecks_list.viewport().mapToGlobal(pos)
+        )
+        if chosen is dismiss:
+            self._dismiss_uncheck_watch(user_id, message_id, name)
+
+    def _dismiss_leave_notice(self, message_id: str, display_name: str) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss leave message")
+            return
+        self._client.send(
+            {
+                "type": "dismiss_leave_notice",
+                "message_id": message_id,
+            }
+        )
+        self._set_status(f"Dismissing leave message for {display_name}…")
+
+    def _dismiss_uncheck_watch(
+        self, user_id: str, message_id: str, display_name: str
+    ) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss uncheck")
+            return
+        payload: dict = {"type": "dismiss_uncheck_watch"}
+        if message_id:
+            payload["message_id"] = message_id
+        if user_id:
+            payload["user_id"] = user_id
+        self._client.send(payload)
+        self._set_status(f"Dismissing uncheck for {display_name}…")
 
     def _sync_onduty_ping_flash_timer(self) -> None:
         has_ping = False
