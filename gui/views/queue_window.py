@@ -109,6 +109,7 @@ class QueueWindow(AppWindow):
         self._pending_report = False
         self._command_busy = False
         self.abort_requested = False
+        self._my_user_id: str = ""
         # User ids we just ran /prep for — flip Prep→Process until snapshot catches up.
         self._recently_prepped_user_ids: set[str] = set()
         # Leave message ids we already :pending:-reacted (or self-reacted).
@@ -559,6 +560,7 @@ class QueueWindow(AppWindow):
     def _on_message(self, data: dict) -> None:
         msg_type = data.get("type")
         if msg_type == "hello":
+            self._my_user_id = str(data.get("user_id") or "")
             self._apply_peers(data.get("peers") or [])
             self._maybe_update_known_activities(data.get("known_activities"))
             self._apply_sim_meta(data.get("sim") or {})
@@ -1800,6 +1802,19 @@ class QueueWindow(AppWindow):
                 summary = f"{summary} · pending prep"
                 rec["summary"] = summary
             primary_label = "Prep" if action == "prep" else "Process"
+            lock = self._action_lock_for_recommendation(rec, data)
+            locked_by_other = bool(
+                lock
+                and str(lock.get("holder_user_id") or "") != self._my_user_id
+            )
+            if locked_by_other:
+                holder = (
+                    lock.get("holder_username")
+                    or lock.get("holder_user_id")
+                    or "someone"
+                )
+                summary = f"{summary} · locked by {holder}"
+                rec["summary"] = summary
 
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, rec)
@@ -1821,9 +1836,20 @@ class QueueWindow(AppWindow):
             btn = QPushButton(primary_label)
             btn.setFixedSize(64, 22)
             btn.setStyleSheet("QPushButton { padding: 0px 4px; }")
-            btn.setEnabled(not self._command_busy and not self._sim_enabled)
+            btn.setEnabled(
+                not self._command_busy
+                and not self._sim_enabled
+                and not locked_by_other
+            )
             if self._sim_enabled:
                 btn.setToolTip("Sim mode — use double-click to apply")
+            elif locked_by_other:
+                holder = (
+                    lock.get("holder_username")
+                    or lock.get("holder_user_id")
+                    or "someone"
+                )
+                btn.setToolTip(f"{holder} is already preparing/processing this person")
             else:
                 btn.setToolTip(f"Run /{action} in #queue")
             btn.clicked.connect(
@@ -1922,6 +1948,88 @@ class QueueWindow(AppWindow):
                 return True
         return False
 
+    def _action_locks_from_snapshot(self, data: dict | None = None) -> list[dict]:
+        snap = data if data is not None else self._last_snapshot
+        locks = list(snap.get("action_locks") or [])
+        legacy = snap.get("action_lock")
+        if not locks and isinstance(legacy, dict) and legacy.get("target_user_id"):
+            locks = [legacy]
+        elif not locks and isinstance(legacy, dict) and legacy.get("holder_user_id"):
+            # Legacy global lock without target — treat as blocking all.
+            locks = [legacy]
+        return locks
+
+    def _action_lock_for_user(
+        self, user_id: str, data: dict | None = None
+    ) -> dict | None:
+        uid = str(user_id or "").strip()
+        if not uid:
+            return None
+        for lock in self._action_locks_from_snapshot(data):
+            target = str(lock.get("target_user_id") or "").strip()
+            if target and target == uid:
+                return lock
+            # Legacy single lock without target blocks everyone.
+            if not target and lock.get("holder_user_id"):
+                return lock
+        return None
+
+    def _action_lock_for_recommendation(
+        self, rec: dict, data: dict | None = None
+    ) -> dict | None:
+        members = rec.get("members") or []
+        member = members[0] if members else {}
+        return self._action_lock_for_user(str(member.get("user_id") or ""), data)
+
+    def _claim_queue_action(self, target_user_id: str) -> tuple[bool, str]:
+        """Claim exclusive prep/process for this queue person via the hub."""
+        if self._client is None:
+            return False, "Not connected to queue hub"
+        try:
+            resp = self._client.request(
+                {
+                    "type": "claim_action",
+                    "target_user_id": str(target_user_id),
+                },
+                timeout=10.0,
+            )
+        except Exception:
+            logger.exception("claim_action failed for %s", target_user_id)
+            return False, "Could not claim action (error)"
+        if not isinstance(resp, dict):
+            return False, "Could not claim action (timeout)"
+        err = resp.get("error")
+        if resp.get("type") == "error" or err:
+            lock = resp.get("action_lock") or {}
+            holder = (
+                lock.get("holder_username")
+                or lock.get("holder_user_id")
+                or "someone else"
+            )
+            if err == "lock_held":
+                return (
+                    False,
+                    f"{holder} is already preparing/processing this person",
+                )
+            if err == "missing_target":
+                return False, "Missing target user for action lock"
+            return False, f"Could not claim action: {err or 'error'}"
+        return True, "ok"
+
+    def _release_queue_action(self, target_user_id: str) -> None:
+        if self._client is None:
+            return
+        try:
+            self._client.request(
+                {
+                    "type": "release_action",
+                    "target_user_id": str(target_user_id),
+                },
+                timeout=5.0,
+            )
+        except Exception:
+            logger.exception("release_action failed for %s", target_user_id)
+
     def _on_recommendation_context_menu(self, pos) -> None:
         item = self.recommendations_list.itemAt(pos)
         if item is None:
@@ -1935,10 +2043,25 @@ class QueueWindow(AppWindow):
         alternate = "process" if primary == "prep" else "prep"
         members = rec.get("members") or []
         user_id = str((members[0] if members else {}).get("user_id") or "")
+        lock = self._action_lock_for_user(user_id)
+        locked_by_other = bool(
+            lock and str(lock.get("holder_user_id") or "") != self._my_user_id
+        )
 
         menu = QMenu(self)
         alt_action = QAction(alternate.capitalize(), self)
-        alt_action.setEnabled(not self._command_busy and not self._sim_enabled)
+        alt_action.setEnabled(
+            not self._command_busy and not self._sim_enabled and not locked_by_other
+        )
+        if locked_by_other:
+            holder = (
+                lock.get("holder_username")
+                or lock.get("holder_user_id")
+                or "someone"
+            )
+            alt_action.setToolTip(
+                f"{holder} is already preparing/processing this person"
+            )
         alt_action.triggered.connect(
             lambda: self._start_queue_command(rec, alternate)
         )
@@ -1946,7 +2069,9 @@ class QueueWindow(AppWindow):
 
         if self._user_has_active_prep(user_id):
             unprep_action = QAction("Unprep", self)
-            unprep_action.setEnabled(not self._command_busy and not self._sim_enabled)
+            unprep_action.setEnabled(
+                not self._command_busy and not self._sim_enabled and not locked_by_other
+            )
             unprep_action.triggered.connect(
                 lambda: self._start_queue_command(rec, "unprep")
             )
@@ -1995,6 +2120,14 @@ class QueueWindow(AppWindow):
             lines.append(f"Score: {score}")
         if any(m.get("staffchecked") is False for m in members):
             lines.append("Warning: not staffchecked")
+        lock = self._action_lock_for_recommendation(rec)
+        if lock and str(lock.get("holder_user_id") or "") != self._my_user_id:
+            holder = (
+                lock.get("holder_username")
+                or lock.get("holder_user_id")
+                or "someone"
+            )
+            lines.append(f"Locked: {holder} is preparing/processing this person")
         if self._sim_enabled:
             lines.append("Sim: double-click to process")
         else:
@@ -2045,6 +2178,21 @@ class QueueWindow(AppWindow):
             ship_option = ""
         if action not in ("prep", "process", "unprep"):
             self._set_status(f"Unknown action: {action}")
+            return
+
+        existing = self._action_lock_for_user(user_id)
+        if (
+            existing
+            and str(existing.get("holder_user_id") or "") != self._my_user_id
+        ):
+            holder = (
+                existing.get("holder_username")
+                or existing.get("holder_user_id")
+                or "someone"
+            )
+            self._set_status(
+                f"{holder} is already preparing/processing this person"
+            )
             return
 
         if action == "prep" and user_id:
@@ -2171,7 +2319,19 @@ class QueueWindow(AppWindow):
         ship_channel_id: str = "",
     ) -> None:
         start_abort_session(self)
+        claimed = False
         try:
+            self._command_status.emit(
+                f"Claiming /{action} for {display_name}…"
+            )
+            ok, err = self._claim_queue_action(user_id)
+            if not ok:
+                if action == "prep" and user_id:
+                    self._recently_prepped_user_ids.discard(user_id)
+                self._command_status.emit(err)
+                return
+            claimed = True
+
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit(f"Opening #queue for {display_name}…")
             switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
@@ -2216,6 +2376,8 @@ class QueueWindow(AppWindow):
             logger.exception("Queue slash command failed (%s %s)", action, user_id)
             self._command_status.emit(f"Failed: /{action} for {display_name}")
         finally:
+            if claimed:
+                self._release_queue_action(user_id)
             end_abort_session(self)
             self._command_finished.emit()
 
