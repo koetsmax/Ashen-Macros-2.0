@@ -1062,6 +1062,48 @@ class QueueWindow(AppWindow):
         if self._debug_visible:
             self._apply_raw(data)
 
+    def _top_recommendation_user_ids(self, data: dict) -> set[str]:
+        """User ids on the highest-scored recommendation (hub sorts score desc)."""
+        if not data.get("active", True):
+            return set()
+        recs = data.get("recommendations") or []
+        if not recs:
+            return set()
+        top = max(recs, key=lambda r: int(r.get("score") or 0))
+        return {
+            str(m.get("user_id"))
+            for m in (top.get("members") or [])
+            if m.get("user_id")
+        }
+
+    def _top_recommendation_row_color(self) -> QColor:
+        """Muted green tint so the top process target stands out at a glance."""
+        base = QColor(theme.MANTLE or theme.BASE or "#181825")
+        accent = QColor(theme.GREEN or "#a6e3a1")
+        mix = 0.28
+        return QColor(
+            int(base.red() * (1 - mix) + accent.red() * mix),
+            int(base.green() * (1 - mix) + accent.green() * mix),
+            int(base.blue() * (1 - mix) + accent.blue() * mix),
+        )
+
+    def _highlight_top_recommendation_queue_rows(self, data: dict) -> None:
+        """Color entire queue rows for members of the top recommendation."""
+        target_ids = self._top_recommendation_user_ids(data)
+        highlight = self._top_recommendation_row_color()
+        clear = QColor(0, 0, 0, 0)
+        cols = self.queue_table.columnCount()
+        for row in range(self.queue_table.rowCount()):
+            name_item = self.queue_table.item(row, 0)
+            uid = ""
+            if name_item is not None:
+                uid = str(name_item.data(Qt.ItemDataRole.UserRole) or "")
+            bg = highlight if uid and uid in target_ids else clear
+            for col in range(cols):
+                item = self.queue_table.item(row, col)
+                if item is not None:
+                    item.setBackground(bg)
+
     def _display_name_for_user(self, user_id: str, *, fallback: str = "") -> str:
         """Prefer Ashen nick from the live queue; only then stored workflow fallback."""
         for entry in self._last_snapshot.get("queue") or []:
@@ -1993,11 +2035,13 @@ class QueueWindow(AppWindow):
             self.recommendation_detail.setText("Queue closed — no recommendations")
             self.recommendations_list.blockSignals(False)
             self._selected_recommendation_id = None
+            self._highlight_top_recommendation_queue_rows(data)
             return
         if not recs:
             self.recommendation_detail.setText("No process recommendations right now")
             self.recommendations_list.blockSignals(False)
             self._selected_recommendation_id = None
+            self._highlight_top_recommendation_queue_rows(data)
             return
 
         restore_row = -1
@@ -2086,6 +2130,7 @@ class QueueWindow(AppWindow):
             self.recommendation_detail.setText(
                 f"{len(recs)} option(s) — select one to inspect"
             )
+        self._highlight_top_recommendation_queue_rows(data)
 
     def _recommendation_has_pending_prep(self, rec: dict) -> bool:
         """True while prep is still waiting for an answer (not ready/expired)."""
