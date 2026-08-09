@@ -225,6 +225,31 @@ def confirm_shipswap_after_process(self) -> None:
         keyboard.press_and_release("enter")
 
 
+def confirm_staffcheck_after_process(self) -> None:
+    """After /process when target lacks StaffChecked but is good to check.
+
+    Ashen asks to confirm granting the role. Same focus as shipswap, then
+    Tab × 6 → Enter.
+    """
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    step = max(follow_up, 0.2)
+    with keyboard_automation(), self.keyboard_lock:
+        interruptible_sleep(self, 2.0)
+        check_abort(self)
+        keyboard.press_and_release("shift+tab")
+        interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("up")
+        interruptible_sleep(self, step)
+        for _ in range(6):
+            check_abort(self)
+            keyboard.press_and_release("tab")
+            interruptible_sleep(self, step)
+        check_abort(self)
+        keyboard.press_and_release("enter")
+
+
 def apply_update_bonus_on_queue_message(self, offset: int | None = None) -> None:
     """No-op placeholder for future Apps → update bonus automation."""
     return

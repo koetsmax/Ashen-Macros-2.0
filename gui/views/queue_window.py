@@ -38,6 +38,7 @@ from core.keyboard import (
     apply_update_bonus_on_queue_message,
     clear_typing_bar,
     confirm_shipswap_after_process,
+    confirm_staffcheck_after_process,
     execute_command,
     execute_slash_command,
     switch_channel,
@@ -715,8 +716,12 @@ class QueueWindow(AppWindow):
         )
 
         process_menu = menu.addMenu("Process")
+        process_block = self._process_blocked_reason(entry)
         ships = self._ships_for_process_menu()
-        if not ships:
+        if process_block:
+            blocked = process_menu.addAction(process_block)
+            blocked.setEnabled(False)
+        elif not ships:
             empty = process_menu.addAction("No ships available")
             empty.setEnabled(False)
         else:
@@ -790,6 +795,8 @@ class QueueWindow(AppWindow):
                     "user_id": user_id,
                     "display_name": entry.get("display_name") or user_id,
                     "valid_shipswap": bool(entry.get("valid_shipswap")),
+                    "staffchecked": entry.get("staffchecked"),
+                    "od_check_mark": entry.get("od_check_mark"),
                 }
             ],
             "ship": dict(ship or {}),
@@ -1076,10 +1083,23 @@ class QueueWindow(AppWindow):
             if m.get("user_id")
         }
 
-    def _top_recommendation_row_color(self) -> QColor:
-        """Muted green tint so the top process target stands out at a glance."""
+    def _top_recommendation_is_process_blocked(self, data: dict) -> bool:
+        recs = data.get("recommendations") or []
+        if not recs:
+            return False
+        top = max(recs, key=lambda r: int(r.get("score") or 0))
+        action = self._effective_recommendation_action(dict(top))
+        if action != "process":
+            return False
+        members = top.get("members") or []
+        return bool(self._process_blocked_reason(members[0] if members else {}))
+
+    def _top_recommendation_row_color(self, *, blocked: bool = False) -> QColor:
+        """Muted tint so the top process target stands out at a glance."""
         base = QColor(theme.MANTLE or theme.BASE or "#181825")
-        accent = QColor(theme.GREEN or "#a6e3a1")
+        accent = QColor(
+            (theme.RED or "#f38ba8") if blocked else (theme.GREEN or "#a6e3a1")
+        )
         mix = 0.28
         return QColor(
             int(base.red() * (1 - mix) + accent.red() * mix),
@@ -1090,7 +1110,8 @@ class QueueWindow(AppWindow):
     def _highlight_top_recommendation_queue_rows(self, data: dict) -> None:
         """Color entire queue rows for members of the top recommendation."""
         target_ids = self._top_recommendation_user_ids(data)
-        highlight = self._top_recommendation_row_color()
+        blocked = self._top_recommendation_is_process_blocked(data)
+        highlight = self._top_recommendation_row_color(blocked=blocked)
         clear = QColor(0, 0, 0, 0)
         cols = self.queue_table.columnCount()
         for row in range(self.queue_table.rowCount()):
@@ -1103,6 +1124,36 @@ class QueueWindow(AppWindow):
                 item = self.queue_table.item(row, col)
                 if item is not None:
                     item.setBackground(bg)
+
+    def _member_staffcheck_state(self, member: dict) -> tuple[bool, str | None]:
+        """Prefer live queue row for staffchecked / OD check mark."""
+        uid = str((member or {}).get("user_id") or "").strip()
+        entry = self._entry_by_user_id(uid) if uid else None
+        src = entry if entry is not None else (member or {})
+        staffchecked = src.get("staffchecked")
+        if staffchecked is None:
+            staffchecked = True
+        mark = src.get("od_check_mark")
+        mark_s = str(mark).strip() if mark else None
+        if mark_s not in ("good", "not_good"):
+            mark_s = None
+        return bool(staffchecked), mark_s
+
+    def _process_blocked_reason(self, member: dict) -> str | None:
+        """Lock /process when not staffchecked unless flagged Good to check."""
+        staffchecked, mark = self._member_staffcheck_state(member)
+        if staffchecked:
+            return None
+        if mark == "good":
+            return None
+        if mark == "not_good":
+            return "Not good to check — process locked (prep still allowed)"
+        return "Not staffchecked — needs Good to check before process"
+
+    def _needs_staffcheck_confirm(self, member: dict) -> bool:
+        """True when /process will prompt to grant StaffChecked (good-to-check only)."""
+        staffchecked, mark = self._member_staffcheck_state(member)
+        return (not staffchecked) and mark == "good"
 
     def _display_name_for_user(self, user_id: str, *, fallback: str = "") -> str:
         """Prefer Ashen nick from the live queue; only then stored workflow fallback."""
@@ -2074,6 +2125,21 @@ class QueueWindow(AppWindow):
                 summary = f"{summary} · locked by {holder}"
                 rec["summary"] = summary
 
+            members = rec.get("members") or []
+            primary_member = members[0] if members else {}
+            process_block = (
+                self._process_blocked_reason(primary_member)
+                if action == "process"
+                else None
+            )
+            if process_block and "not good" not in summary.lower():
+                _, mark = self._member_staffcheck_state(primary_member)
+                if mark == "not_good":
+                    summary = f"{summary} · not good to check"
+                else:
+                    summary = f"{summary} · needs good to check"
+                rec["summary"] = summary
+
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, rec)
 
@@ -2086,7 +2152,22 @@ class QueueWindow(AppWindow):
             label.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
-            if pending_prep:
+            if process_block:
+                tint = self._top_recommendation_row_color(blocked=True)
+                red = theme.RED or "#f38ba8"
+                row.setAutoFillBackground(True)
+                row_palette = row.palette()
+                row_palette.setColor(row.backgroundRole(), tint)
+                row.setPalette(row_palette)
+                row.setStyleSheet(f"background-color: {tint.name()};")
+                label.setStyleSheet(
+                    f"color: {red}; background-color: transparent;"
+                )
+                item.setBackground(tint)
+                item.setToolTip(process_block)
+                label.setToolTip(process_block)
+                row.setToolTip(process_block)
+            elif pending_prep:
                 peach = theme.PEACH or "#ff8533"
                 label.setStyleSheet(f"color: {peach};")
             row_layout.addWidget(label, stretch=1)
@@ -2098,6 +2179,7 @@ class QueueWindow(AppWindow):
                 not self._command_busy
                 and not self._sim_enabled
                 and not locked_by_other
+                and not process_block
             )
             if self._sim_enabled:
                 btn.setToolTip("Sim mode — use double-click to apply")
@@ -2108,6 +2190,8 @@ class QueueWindow(AppWindow):
                     or "someone"
                 )
                 btn.setToolTip(f"{holder} is already preparing/processing this person")
+            elif process_block:
+                btn.setToolTip(process_block)
             else:
                 btn.setToolTip(f"Run /{action} in #queue")
             btn.clicked.connect(
@@ -2309,8 +2393,16 @@ class QueueWindow(AppWindow):
 
         menu = QMenu(self)
         alt_action = QAction(alternate.capitalize(), self)
+        alt_blocked = (
+            self._process_blocked_reason(members[0] if members else {})
+            if alternate == "process"
+            else None
+        )
         alt_action.setEnabled(
-            not self._command_busy and not self._sim_enabled and not locked_by_other
+            not self._command_busy
+            and not self._sim_enabled
+            and not locked_by_other
+            and not alt_blocked
         )
         if locked_by_other:
             holder = (
@@ -2321,6 +2413,8 @@ class QueueWindow(AppWindow):
             alt_action.setToolTip(
                 f"{holder} is already preparing/processing this person"
             )
+        elif alt_blocked:
+            alt_action.setToolTip(alt_blocked)
         alt_action.triggered.connect(
             lambda: self._start_queue_command(rec, alternate)
         )
@@ -2379,6 +2473,15 @@ class QueueWindow(AppWindow):
             lines.append(f"Score: {score}")
         if any(m.get("staffchecked") is False for m in members):
             lines.append("Warning: not staffchecked")
+            for m in members:
+                _, mark = self._member_staffcheck_state(m)
+                if mark == "good":
+                    lines.append("Good to check — process will confirm StaffChecked")
+                elif mark == "not_good":
+                    lines.append("Not good to check — process locked")
+                else:
+                    lines.append("Needs Good to check before process")
+                break
         lock = self._action_lock_for_recommendation(rec)
         if lock and str(lock.get("holder_user_id") or "") != self._my_user_id:
             holder = (
@@ -2439,6 +2542,12 @@ class QueueWindow(AppWindow):
             self._set_status(f"Unknown action: {action}")
             return
 
+        if action == "process":
+            blocked = self._process_blocked_reason(member)
+            if blocked:
+                self._set_status(blocked)
+                return
+
         existing = self._action_lock_for_user(user_id)
         if (
             existing
@@ -2463,6 +2572,7 @@ class QueueWindow(AppWindow):
             self._apply_recommendations(self._last_snapshot or {})
 
         is_shipswap = bool(member.get("valid_shipswap"))
+        needs_staffcheck_confirm = self._needs_staffcheck_confirm(member)
         ship_channel_id = str(ship.get("channel_id") or "").strip()
 
         self._command_busy = True
@@ -2480,6 +2590,7 @@ class QueueWindow(AppWindow):
                 display_name,
                 is_shipswap,
                 ship_channel_id,
+                needs_staffcheck_confirm,
             ),
             daemon=True,
         )
@@ -2576,6 +2687,7 @@ class QueueWindow(AppWindow):
         display_name: str,
         is_shipswap: bool = False,
         ship_channel_id: str = "",
+        needs_staffcheck_confirm: bool = False,
     ) -> None:
         start_abort_session(self)
         claimed = False
@@ -2617,6 +2729,11 @@ class QueueWindow(AppWindow):
                         f"Confirming shipswap button for {display_name}…"
                     )
                     confirm_shipswap_after_process(self)
+                if needs_staffcheck_confirm:
+                    self._command_status.emit(
+                        f"Confirming StaffChecked for {display_name}…"
+                    )
+                    confirm_staffcheck_after_process(self)
             elif action == "prep":
                 self._command_status.emit(f"Running /prep for {display_name}…")
                 execute_slash_command(self, "/prep", [user_id])
