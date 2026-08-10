@@ -139,6 +139,8 @@ class QueueWindow(AppWindow):
         self._reacted_leave_message_ids: set[str] = set()
         # Leave message ids claimed by someone else's :pending: — do not handle.
         self._skipped_leave_message_ids: set[str] = set()
+        # Optimistic tick/cross before the next leave_notices snapshot lands.
+        self._leave_notice_local_marks: dict[str, str] = {}
         self._onduty_ping_flash_on = False
         super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
@@ -1750,7 +1752,14 @@ class QueueWindow(AppWindow):
                 or self._clean_ship_label(notice.get("ship_channel_id"))
                 or ""
             )
+            mid = str(notice.get("message_id") or "")
             mark = str(notice.get("staff_mark") or "none").lower()
+            local_mark = self._leave_notice_local_marks.get(mid, "").lower()
+            if local_mark in ("tick", "cross"):
+                mark = local_mark
+            elif mark in ("tick", "cross") and mid:
+                # Snapshot caught up — drop optimistic override.
+                self._leave_notice_local_marks.pop(mid, None)
             if mark == "pending":
                 detail = "pending"
                 color = colors["notice_pending"]
@@ -1766,9 +1775,10 @@ class QueueWindow(AppWindow):
             bits.append(detail)
             payload = {
                 "kind": "leave_notice",
-                "message_id": str(notice.get("message_id") or ""),
+                "message_id": mid,
                 "user_id": user_id,
                 "display_name": name,
+                "staff_mark": mark,
             }
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, payload)
@@ -1786,53 +1796,64 @@ class QueueWindow(AppWindow):
             label.setStyleSheet(f"color: {color.name()}; background: transparent;")
             row_layout.addWidget(label, stretch=1)
 
-            actions_enabled = not self._command_busy and not self._sim_enabled
-            tick_btn = QPushButton("Tick")
-            tick_btn.setFixedHeight(22)
-            tick_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
-            tick_btn.setToolTip(
-                "React with the tick emoji on this leave message"
-                if actions_enabled
-                else "Sim mode — Discord commands disabled"
-                if self._sim_enabled
-                else "Another command is running"
-            )
-            tick_btn.setEnabled(actions_enabled)
-            tick_btn.clicked.connect(
-                lambda _checked=False, n=payload: self._start_leave_notice_action(
-                    "tick",
-                    str(n.get("message_id") or ""),
-                    str(n.get("user_id") or ""),
-                    str(n.get("display_name") or ""),
+            # Already ticked/crossed — no inline actions (context menu keeps Dismiss).
+            if mark not in ("tick", "cross"):
+                actions_enabled = not self._command_busy and not self._sim_enabled
+                tick_btn = QPushButton("Tick")
+                tick_btn.setFixedHeight(22)
+                tick_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
+                tick_btn.setToolTip(
+                    "React with the tick emoji on this leave message"
+                    if actions_enabled
+                    else "Sim mode — Discord commands disabled"
+                    if self._sim_enabled
+                    else "Another command is running"
                 )
-            )
-            row_layout.addWidget(tick_btn)
+                tick_btn.setEnabled(actions_enabled)
+                tick_btn.clicked.connect(
+                    lambda _checked=False, n=payload: self._start_leave_notice_action(
+                        "tick",
+                        str(n.get("message_id") or ""),
+                        str(n.get("user_id") or ""),
+                        str(n.get("display_name") or ""),
+                    )
+                )
+                row_layout.addWidget(tick_btn)
 
-            cross_btn = QPushButton("Cross & Warn")
-            cross_btn.setFixedHeight(22)
-            cross_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
-            cross_btn.setToolTip(
-                "Cross, then /warn Rule #3 and /user_report in #on-duty-commands"
-                if actions_enabled
-                else "Sim mode — Discord commands disabled"
-                if self._sim_enabled
-                else "Another command is running"
-            )
-            cross_btn.setEnabled(actions_enabled)
-            cross_btn.clicked.connect(
-                lambda _checked=False, n=payload: self._start_leave_notice_action(
-                    "cross_warn",
-                    str(n.get("message_id") or ""),
-                    str(n.get("user_id") or ""),
-                    str(n.get("display_name") or ""),
+                cross_btn = QPushButton("Cross & Warn")
+                cross_btn.setFixedHeight(22)
+                cross_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
+                cross_btn.setToolTip(
+                    "Cross, then /warn Rule #3 and /user_report in #on-duty-commands"
+                    if actions_enabled
+                    else "Sim mode — Discord commands disabled"
+                    if self._sim_enabled
+                    else "Another command is running"
                 )
-            )
-            row_layout.addWidget(cross_btn)
+                cross_btn.setEnabled(actions_enabled)
+                cross_btn.clicked.connect(
+                    lambda _checked=False, n=payload: self._start_leave_notice_action(
+                        "cross_warn",
+                        str(n.get("message_id") or ""),
+                        str(n.get("user_id") or ""),
+                        str(n.get("display_name") or ""),
+                    )
+                )
+                row_layout.addWidget(cross_btn)
 
             self.leaves_rejoins_list.addItem(item)
             self.leaves_rejoins_list.setItemWidget(item, row)
             item.setSizeHint(row.sizeHint())
 
+        # Drop local marks for notices that left the snapshot.
+        live_ids = {
+            str(n.get("message_id") or "")
+            for n in notices
+            if n.get("message_id")
+        }
+        for mid in list(self._leave_notice_local_marks):
+            if mid not in live_ids:
+                self._leave_notice_local_marks.pop(mid, None)
     def _apply_preps_processes(self, data: dict) -> None:
         self.preps_processes_list.clear()
         processes = data.get("outstanding_processes") or []
@@ -2121,8 +2142,18 @@ class QueueWindow(AppWindow):
             payload = item.data(Qt.ItemDataRole.UserRole) if item else None
             if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
                 continue
+            mark = str(payload.get("staff_mark") or "none").lower()
+            mid = str(payload.get("message_id") or "")
+            if self._leave_notice_local_marks.get(mid, "").lower() in ("tick", "cross"):
+                mark = self._leave_notice_local_marks[mid].lower()
             row = self.leaves_rejoins_list.itemWidget(item)
             if row is None:
+                continue
+            # Marked notices should not keep interactive buttons.
+            if mark in ("tick", "cross"):
+                for btn in list(row.findChildren(QPushButton)):
+                    btn.setParent(None)
+                    btn.deleteLater()
                 continue
             for btn in row.findChildren(QPushButton):
                 btn.setEnabled(enabled)
@@ -2134,6 +2165,44 @@ class QueueWindow(AppWindow):
                     btn.setToolTip(
                         "Cross, then /warn Rule #3 and /user_report in #on-duty-commands"
                     )
+
+    def _mark_leave_notice_done(self, message_id: str, mark: str) -> None:
+        """Optimistic UI: drop Tick/Cross once the Discord react succeeded."""
+        mid = str(message_id or "").strip()
+        mark = str(mark or "").lower()
+        if not mid or mark not in ("tick", "cross"):
+            return
+        self._leave_notice_local_marks[mid] = mark
+        for i in range(self.leaves_rejoins_list.count()):
+            item = self.leaves_rejoins_list.item(i)
+            payload = item.data(Qt.ItemDataRole.UserRole) if item else None
+            if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
+                continue
+            if str(payload.get("message_id") or "") != mid:
+                continue
+            payload = {**payload, "staff_mark": mark}
+            item.setData(Qt.ItemDataRole.UserRole, payload)
+            row = self.leaves_rejoins_list.itemWidget(item)
+            if row is None:
+                break
+            for btn in list(row.findChildren(QPushButton)):
+                btn.setParent(None)
+                btn.deleteLater()
+            # Flip label detail to marked (green).
+            for label in row.findChildren(QLabel):
+                text = label.text()
+                if "needs mark" in text or "pending" in text:
+                    text = (
+                        text.replace("needs mark", "marked").replace("pending", "marked")
+                    )
+                    label.setText(text)
+                    label.setStyleSheet(
+                        f"color: {theme.GREEN or '#4ade80'}; background: transparent;"
+                    )
+                    item.setToolTip(text)
+                break
+            item.setSizeHint(row.sizeHint())
+            break
 
     def _on_leaves_rejoins_context_menu(self, pos) -> None:
         item = self.leaves_rejoins_list.itemAt(pos)
@@ -2147,12 +2216,26 @@ class QueueWindow(AppWindow):
             return
         name = str(payload.get("display_name") or payload.get("user_id") or "?")
         user_id = str(payload.get("user_id") or "").strip()
+        mark = str(payload.get("staff_mark") or "none").lower()
+        if self._leave_notice_local_marks.get(message_id, "").lower() in ("tick", "cross"):
+            mark = self._leave_notice_local_marks[message_id].lower()
+        already_marked = mark in ("tick", "cross")
 
         menu = QMenu(self)
         tick = menu.addAction("Tick")
-        tick.setToolTip("React with tick on this leave message")
+        tick.setToolTip(
+            "Already marked"
+            if already_marked
+            else "React with tick on this leave message"
+        )
+        tick.setEnabled(not already_marked and not self._command_busy and not self._sim_enabled)
         cross = menu.addAction("Cross & Warn")
-        cross.setToolTip("Cross, then warn Rule #3 + user_report")
+        cross.setToolTip(
+            "Already marked"
+            if already_marked
+            else "Cross, then warn Rule #3 + user_report"
+        )
+        cross.setEnabled(not already_marked and not self._command_busy and not self._sim_enabled)
         menu.addSeparator()
         dismiss = menu.addAction("Dismiss leave message")
         dismiss.setToolTip("Remove this leave message from the monitor list")
@@ -2181,6 +2264,15 @@ class QueueWindow(AppWindow):
         if not mid:
             self._set_status("Leave message id missing")
             return
+        mark = self._leave_notice_local_marks.get(mid, "").lower()
+        if mark not in ("tick", "cross") and self._last_snapshot:
+            for notice in self._last_snapshot.get("leave_notices") or []:
+                if str(notice.get("message_id") or "") == mid:
+                    mark = str(notice.get("staff_mark") or "none").lower()
+                    break
+        if mark in ("tick", "cross"):
+            self._set_status("Leave message already marked")
+            return
         if action == "cross_warn" and not str(user_id or "").strip():
             self._set_status("Leave message has no member id to warn")
             return
@@ -2207,6 +2299,7 @@ class QueueWindow(AppWindow):
         display_name: str,
     ) -> None:
         start_abort_session(self)
+        mark_done: str | None = None
         try:
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             if action == "tick":
@@ -2214,6 +2307,7 @@ class QueueWindow(AppWindow):
                 tick_leave_notice(
                     self, message_id=message_id, client=self._client
                 )
+                mark_done = "tick"
                 self._command_status.emit(f"Ticked leave message for {display_name}")
             else:
                 self._command_status.emit(
@@ -2225,6 +2319,7 @@ class QueueWindow(AppWindow):
                     user_id=user_id,
                     client=self._client,
                 )
+                mark_done = "cross"
                 self._command_status.emit(f"Cross & Warn done for {display_name}")
         except AbortError:
             self._command_status.emit("Aborted")
@@ -2234,9 +2329,16 @@ class QueueWindow(AppWindow):
             logger.exception("Leave notice action %s failed", action)
             self._command_status.emit(f"Failed: {exc}")
         finally:
+            if mark_done:
+                from staffcheck.qt_ui import on_main_thread
+
+                on_main_thread(
+                    lambda mid=message_id, m=mark_done: self._mark_leave_notice_done(
+                        mid, m
+                    )
+                )
             end_abort_session(self)
             self._command_finished.emit()
-
     def _on_onduty_staffchecks_context_menu(self, pos) -> None:
         item = self.onduty_staffchecks_list.itemAt(pos)
         if item is None:
