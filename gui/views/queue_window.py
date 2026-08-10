@@ -1525,7 +1525,12 @@ class QueueWindow(AppWindow):
             execute_slash_command(
                 self,
                 "message-store",
-                [opt_sub("recall", [opt_str("name", recall_name, autocomplete=True)])],
+                [
+                    opt_sub(
+                        "recall",
+                        [opt_str("name", recall_name, autocomplete=True)],
+                    )
+                ],
                 channel_id=queue_channel_id() or None,
             )
             self._command_status.emit("Waiting for new queue banner…")
@@ -1544,17 +1549,25 @@ class QueueWindow(AppWindow):
                 abort_check=_abort,
             )
             check_abort(self)
-            offset = None
-            banner_message_id = None
-            if new_banner and new_banner.get("message_id"):
-                banner_message_id = str(new_banner["message_id"])
-                self._command_status.emit("Resolving banner position…")
-                info = fetch_status_banner_offset(
-                    self._client, banner_message_id
+            if not new_banner or not new_banner.get("message_id"):
+                # Never fall through to update bonus on the slash reply / newest
+                # message — the recall posts an ephemeral ack first; the real
+                # #queue banner arrives later and is detected by the hub.
+                self._command_status.emit(
+                    "Timed out waiting for new queue banner "
+                    "(update bonus skipped)"
                 )
-                check_abort(self)
-                if info.get("found") and info.get("offset"):
-                    offset = int(info["offset"])
+                return
+
+            banner_message_id = str(new_banner["message_id"])
+            offset = None
+            self._command_status.emit("Resolving banner position…")
+            info = fetch_status_banner_offset(
+                self._client, banner_message_id
+            )
+            check_abort(self)
+            if info.get("found") and info.get("offset"):
+                offset = int(info["offset"])
             self._command_status.emit("Apps > update bonus...")
             apply_update_bonus_on_queue_message(
                 self,
@@ -3154,6 +3167,7 @@ class QueueWindow(AppWindow):
                 wait_response = is_enabled() and (
                     is_shipswap or needs_staffcheck_confirm
                 )
+                # member/ship both need Discord autocomplete (choice values).
                 process_result = execute_slash_command(
                     self,
                     "process",

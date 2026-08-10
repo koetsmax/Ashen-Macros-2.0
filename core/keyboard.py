@@ -324,11 +324,17 @@ def _slash_via_keyboard_tabs(self, name: str, values: list[str]) -> None:
         keyboard.press_and_release("enter")
 
 
-def opt_str(name: str, value: Any, *, autocomplete: bool = False) -> dict[str, Any]:
-    """STRING slash option helper for call sites."""
+def opt_str(
+    name: str, value: Any, *, autocomplete: bool | None = None
+) -> dict[str, Any]:
+    """STRING slash option helper for call sites.
+
+    ``autocomplete``: True force resolve, False skip even if schema says so,
+    None (default) follow the Discord command schema.
+    """
     out: dict[str, Any] = {"name": name, "type": 3, "value": value}
-    if autocomplete:
-        out["autocomplete"] = True
+    if autocomplete is not None:
+        out["autocomplete"] = bool(autocomplete)
     return out
 
 

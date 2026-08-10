@@ -24,7 +24,7 @@ from core.keyboard import (
     react_to_channel_message,
     switch_channel,
 )
-from staffcheck.abort import AbortError, check_abort
+from staffcheck.abort import AbortError, check_abort, interruptible_sleep
 
 if TYPE_CHECKING:
     from core.queue_ws import QueueWsClient
@@ -139,6 +139,9 @@ def warn_leave_rule_and_report(
         [opt_user("member", uid), opt_str("reason", reason)],
         channel_id=channel_id or None,
     )
+    check_abort(self)
+    # Full gap even with bridge — Discord still needs settle between slash posts.
+    interruptible_sleep(self, 1.5, bridge_fast=False)
     check_abort(self)
     clear_typing_bar()
     check_abort(self)

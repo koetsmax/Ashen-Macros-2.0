@@ -45,6 +45,7 @@ def _set_after_check_buttons_enabled(self, enabled: bool) -> None:
 
 
 def unprivate_xbox(self):
+    """Macro/bridge: /create → API returns modmail id/name → recall Unprivate Xbox."""
     from core.discord_bridge import DiscordBridgeError
 
     _set_after_check_buttons_enabled(self, False)
@@ -69,6 +70,7 @@ def unprivate_xbox(self):
 
 
 def unprivate_api_request(self):
+    """Ask the bot for modmail channel id/name, then recall via macro/bridge."""
     from core.discord_bridge import DiscordBridgeError
 
     if abort.is_abort_requested(self):
@@ -92,14 +94,22 @@ def unprivate_api_request(self):
             return
         if response.status_code != 200:
             request_error = True
-        elif response.json()["error"] != "none":
+        elif response.json().get("error") != "none":
             request_error = True
             err = response.json().get("error") or "Failed to get modmail channel"
             label_set(self.status_label, err, "red")
         else:
             r = response.json()
+            channel_name = str(r.get("modmail_channel") or "").strip()
+            # Prefer id from the bot — dynamic *-modmail is not in bridge meta.
+            channel_id = str(r.get("modmail_channel_id") or "").strip() or (
+                resolve_channel_id(f"#{channel_name}") if channel_name else None
+            )
             try:
-                switch_channel(self, f"#{r['modmail_channel']}")
+                switch_channel(
+                    self,
+                    channel_id or f"#{channel_name}",
+                )
                 clear_typing_bar()
                 execute_slash_command(
                     self,
@@ -113,7 +123,7 @@ def unprivate_api_request(self):
                             ],
                         )
                     ],
-                    channel_id=resolve_channel_id(f"#{r['modmail_channel']}"),
+                    channel_id=channel_id or None,
                 )
             except abort.AbortError:
                 on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
@@ -185,4 +195,3 @@ def verify_account(self):
         report_bridge_error(self, exc)
         return
     pipeline.continue_to_next(self)
-

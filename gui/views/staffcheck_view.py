@@ -142,9 +142,6 @@ class StaffcheckView(QWidget):
         buttons = [self.function_button, self.start_button, self.stop_button]
         if kill_visible:
             buttons.append(self.kill_button)
-        ban = getattr(self, "ban_request_button", None)
-        if ban is not None and ban.isVisibleTo(self):
-            buttons.append(ban)
 
         # Clear prior mins so sizeHint reflects current labels.
         for btn in (
@@ -154,8 +151,6 @@ class StaffcheckView(QWidget):
             self.stop_button,
         ):
             btn.setMinimumWidth(0)
-        if ban is not None:
-            ban.setMinimumWidth(0)
 
         col_w = max((btn.sizeHint().width() for btn in buttons), default=0)
         if kill_visible:
@@ -192,7 +187,6 @@ class StaffcheckView(QWidget):
         ) and watched in (
             getattr(self, "function_button", None),
             getattr(self, "kill_button", None),
-            getattr(self, "ban_request_button", None),
             getattr(self, "start_button", None),
             getattr(self, "stop_button", None),
         ):
@@ -278,8 +272,6 @@ class StaffcheckView(QWidget):
         self.function_button = self._make_button("Cool Button", pipeline._button_noop)
         self.kill_button = self._make_button("Not Good to Check", lambda: None)
         self.kill_button.setVisible(False)
-        self.ban_request_button = self._make_button("Ban request", lambda: None)
-        self.ban_request_button.setVisible(False)
         self.start_button = self._make_button("Start check!", lambda: pipeline.start_check(self))
         self.start_button.setObjectName("primary")
         self.stop_button = self._make_button("Stop check!", lambda: abort.abort_staffcheck(self))
@@ -287,7 +279,6 @@ class StaffcheckView(QWidget):
         for btn in (
             self.function_button,
             self.kill_button,
-            self.ban_request_button,
             self.start_button,
             self.stop_button,
         ):
@@ -298,7 +289,6 @@ class StaffcheckView(QWidget):
         btn_grid.addWidget(self.kill_button, 0, 1)
         btn_grid.addWidget(self.start_button, 1, 0)
         btn_grid.addWidget(self.stop_button, 1, 1)
-        btn_grid.addWidget(self.ban_request_button, 2, 0, 1, 2)
         self.input_layout.addLayout(btn_grid, row, 0, 1, 2)
         row += 1
 
@@ -536,16 +526,12 @@ class StaffcheckView(QWidget):
             build_example_message(self, 99, self.status_label)
             btn_enable(self.stop_button, False)
             self.kill_button.setVisible(False)
-            if hasattr(self, "ban_request_button"):
-                self.ban_request_button.setVisible(False)
             if hasattr(self, "shadow_suggestion_label"):
                 self.shadow_suggestion_label.setVisible(False)
         else:
             btn_enable(self.start_button, False)
             btn_enable(self.stop_button, False)
             btn_enable(self.kill_button, False)
-            if hasattr(self, "ban_request_button"):
-                btn_enable(self.ban_request_button, False)
             pipeline.disable_function_button(self)
             pipeline.disable_function_button_2(self)
             for section in self.result_sections.values():

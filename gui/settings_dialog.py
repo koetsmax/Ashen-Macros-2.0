@@ -33,6 +33,7 @@ class SettingsDialog(QDialog):
 
         tabs = QTabWidget()
         layout.addWidget(tabs)
+        self._tabs = tabs
 
         general = QWidget()
         general_layout = QVBoxLayout(general)
@@ -180,7 +181,7 @@ class SettingsDialog(QDialog):
         )
         self.staffcheck_shadow_check.setToolTip(
             "When enabled, live staffcheck shows the model suggestion + cited reasons "
-            "before Good / Not Good / Ban request. Training and silent prediction logs "
+            "before Good / Not Good. Training and silent prediction logs "
             "always run. Off by default. Never auto-applies."
         )
         shadow_layout.addWidget(self.staffcheck_shadow_check)
@@ -210,6 +211,7 @@ class SettingsDialog(QDialog):
         reset = QPushButton("Reset To Default")
         reset.setAutoDefault(False)
         reset.setDefault(False)
+        reset.setToolTip("Reset only the currently selected tab to defaults")
         reset.clicked.connect(self._reset)
         btn_row.addWidget(save)
         btn_row.addWidget(reset)
@@ -420,7 +422,19 @@ class SettingsDialog(QDialog):
         self.accept()
 
     def _reset(self):
-        defaults = {"initial_command": "2", "follow_up": "0.4", "abort_key": "escape", "api_url": "https://ashen.api.famkoets.nl"}
+        tab = self._tabs.tabText(self._tabs.currentIndex())
+        if tab == "Experimental":
+            self._reset_experimental_tab()
+        else:
+            self._reset_general_tab()
+
+    def _reset_general_tab(self):
+        defaults = {
+            "initial_command": "2",
+            "follow_up": "0.4",
+            "abort_key": "escape",
+            "api_url": "https://ashen.api.famkoets.nl",
+        }
         for key, (entry, section) in self.entries.items():
             entry.setText(defaults[key])
             set_custom_value(section, key, defaults[key])
@@ -430,6 +444,16 @@ class SettingsDialog(QDialog):
         set_custom_value("STAFFCHECK", "edit_check_message", "true")
         self.edit_nav_offset_entry.setText("4")
         set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", "4")
+        theme.set_flavor(theme.DEFAULT_FLAVOR)
+        for i in range(self.flavor_combo.count()):
+            if self.flavor_combo.itemData(i) == theme.DEFAULT_FLAVOR:
+                self.flavor_combo.setCurrentIndex(i)
+                break
+        from PySide6.QtWidgets import QApplication
+
+        theme.apply_theme(QApplication.instance())
+
+    def _reset_experimental_tab(self):
         self.vencord_bridge_check.setChecked(False)
         set_custom_value("EXPERIMENTAL", "vencord_bridge", "false")
         self.vencord_port_entry.setText("47832")
@@ -444,13 +468,6 @@ class SettingsDialog(QDialog):
         from core.discord_bridge import sync_bridge_lifecycle
 
         sync_bridge_lifecycle()
-        theme.set_flavor(theme.DEFAULT_FLAVOR)
-        for i in range(self.flavor_combo.count()):
-            if self.flavor_combo.itemData(i) == theme.DEFAULT_FLAVOR:
-                self.flavor_combo.setCurrentIndex(i)
-                break
-        from PySide6.QtWidgets import QApplication
-        theme.apply_theme(QApplication.instance())
         parent = self.parent()
         if parent is not None and hasattr(parent, "_update_menu_gating"):
             parent._update_menu_gating()

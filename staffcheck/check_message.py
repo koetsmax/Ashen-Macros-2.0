@@ -23,12 +23,6 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
             "Edit: Good to check",
             lambda: good_to_check(self),
         )
-        if hasattr(self, "ban_request_button"):
-            btn_config(
-                self.ban_request_button,
-                "Edit: Ban request",
-                lambda: ban_request(self),
-            )
     else:
         btn_config(self.kill_button, "Not Good to Check", lambda: not_good_to_check(self))
         btn_config(
@@ -36,16 +30,7 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
             "Post good to check",
             lambda: good_to_check(self),
         )
-        if hasattr(self, "ban_request_button"):
-            btn_config(
-                self.ban_request_button,
-                "Ban request",
-                lambda: ban_request(self),
-            )
     self.kill_button.setVisible(True)
-    if hasattr(self, "ban_request_button"):
-        self.ban_request_button.setVisible(True)
-        btn_enable(self.ban_request_button, True)
     btn_enable(self.start_button, True)
     btn_enable(self.kill_button, True)
     _maybe_show_shadow(self)
@@ -139,8 +124,6 @@ def good_to_check(self):
     btn_enable(self.function_button, False)
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
-    if hasattr(self, "ban_request_button"):
-        btn_enable(self.ban_request_button, False)
     try:
         from staffcheck import analytics as sc_analytics
 
@@ -177,8 +160,6 @@ def not_good_to_check(self):
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
     btn_enable(self.function_button, False)
-    if hasattr(self, "ban_request_button"):
-        btn_enable(self.ban_request_button, False)
     pipeline.disable_function_button_2(self)
     editable = bool((getattr(self, "_edit_check", None) or {}).get("editable"))
     label = "Edit: Not Good to Check" if editable else "Not Good to Check"
@@ -203,63 +184,6 @@ def build_not_good_to_check(self):
         sc_analytics.report_outcome(
             self,
             outcome="not_good",
-            reason=self.reason.get(),
-            shadow_shown=bool(getattr(self, "_shadow_shown", False)),
-        )
-        info = resolve_edit_at_click(self)
-        self._edit_check = info
-        switch_channel(self, "#on-duty-chat")
-        if not info.get("editable"):
-            clear_typing_bar(in_on_duty_chat=True)
-        post_or_edit_check_message(self, message, info)
-    except abort.AbortError:
-        return
-    except Exception as exc:
-        from core.discord_bridge import DiscordBridgeError
-        from staffcheck.qt_ui import report_bridge_error
-
-        if isinstance(exc, DiscordBridgeError):
-            report_bridge_error(self, exc)
-            return
-        raise
-    after_check_message(self)
-
-
-def ban_request(self):
-    """Escalate path — same reason field as not_good, distinct OD template + outcome."""
-    self.currentstate = "Done"
-    btn_enable(self.kill_button, False)
-    btn_enable(self.start_button, False)
-    btn_enable(self.function_button, False)
-    if hasattr(self, "ban_request_button"):
-        btn_enable(self.ban_request_button, False)
-    pipeline.disable_function_button_2(self)
-    editable = bool((getattr(self, "_edit_check", None) or {}).get("editable"))
-    label = "Edit: Confirm Ban request" if editable else "Confirm Ban request"
-    btn_config(self.start_button, label, lambda: build_ban_request(self))
-    btn_enable(self.start_button, True)
-
-
-def build_ban_request(self):
-    btn_enable(self.start_button, False)
-    btn_enable(self.function_button, False)
-    config = read_config()
-    message = config.get(
-        "ban_request_message",
-        "userID Ban request -- GT: xboxGT -- Reason",
-    )
-    message = message.replace("userID", f"<@{self.user_id.get()}>")
-    message = message.replace(
-        "xboxGT",
-        f"{self.xbox_gt if self.xbox_gt else 'Unknown Gamertag'}",
-    )
-    message = message.replace("Reason", f"{self.reason.get()}")
-    try:
-        from staffcheck import analytics as sc_analytics
-
-        sc_analytics.report_outcome(
-            self,
-            outcome="ban_request",
             reason=self.reason.get(),
             shadow_shown=bool(getattr(self, "_shadow_shown", False)),
         )
