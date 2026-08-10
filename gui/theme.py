@@ -206,6 +206,11 @@ def _qss() -> str:
         color: {SUBTEXT0};
         background: transparent;
     }}
+    QLabel#hubBridgeOff {{
+        font-weight: 600;
+        color: {SUBTEXT0};
+        background: transparent;
+    }}
     QLabel#hubWelcome {{
         color: {SUBTEXT0};
         background: transparent;

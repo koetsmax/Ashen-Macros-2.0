@@ -54,6 +54,89 @@ def label_set(label, text: str, color: str = ""):
     on_main_thread(apply)
 
 
+_COMMAND_INDEX_MISS_MARKERS = (
+    "Application command not found in index",
+    "Open the Apps / slash menu once",
+)
+_last_command_index_warn_at = 0.0
+
+
+def is_command_index_miss(exc: BaseException | str) -> bool:
+    text = str(exc)
+    return any(marker in text for marker in _COMMAND_INDEX_MISS_MARKERS)
+
+
+def warn_command_index_miss(exc: BaseException | str | None = None) -> None:
+    """Visible warning when Discord's slash/Apps command index is cold.
+
+    Opening `/` or the Apps menu in that channel is still Discord's reliable
+    warm path; allowFetch is best-effort only.
+    """
+    import time
+
+    from PySide6.QtWidgets import QMessageBox, QWidget
+
+    global _last_command_index_warn_at
+    if exc is not None and not is_command_index_miss(exc):
+        return
+    now = time.monotonic()
+    if now - _last_command_index_warn_at < 8.0:
+        return
+    _last_command_index_warn_at = now
+
+    message = (
+        "Discord has not loaded slash commands for this channel yet.\n\n"
+        "In Discord, open that channel, type / (or open the Apps menu) once, "
+        "then retry the macro."
+    )
+
+    def _show() -> None:
+        app = QApplication.instance()
+        if app is None:
+            return
+        for widget in app.topLevelWidgets():
+            stack = getattr(widget, "toast_stack", None)
+            if stack is not None and hasattr(stack, "show_toast"):
+                stack.show_toast(
+                    "slash_command_index",
+                    "Slash commands not loaded — type / once in that Discord "
+                    "channel, then retry.",
+                    dismiss_ms=14000,
+                )
+                if hasattr(widget, "_position_toast_stack"):
+                    widget._position_toast_stack()
+                return
+        parent: QWidget | None = None
+        for widget in app.topLevelWidgets():
+            if isinstance(widget, QWidget) and widget.isVisible():
+                parent = widget
+                break
+        QMessageBox.warning(parent, "Slash commands not loaded", message)
+
+    on_main_thread(_show)
+
+
+def report_bridge_error(ctx, exc: BaseException) -> None:
+    """Show a bridge failure on the nearest status UI for this context."""
+    if is_command_index_miss(exc):
+        warn_command_index_miss(exc)
+    msg = f"Bridge error: {exc}"
+    status = getattr(ctx, "status_label", None)
+    if status is not None:
+        label_set(status, msg, "red")
+        return
+    emit = getattr(ctx, "_command_status", None)
+    if emit is not None:
+        try:
+            emit.emit(msg)
+            return
+        except Exception:
+            pass
+    setter = getattr(ctx, "_set_status", None)
+    if callable(setter):
+        on_main_thread(lambda: setter(msg))
+
+
 def btn_enable(btn, on: bool = True):
     on_main_thread(lambda: btn.setEnabled(on))
 

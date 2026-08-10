@@ -12,13 +12,18 @@ BACKUP_COUNT = 5
 _CONFIGURED = False
 
 
+def log_file_path() -> str:
+    """Absolute path to the rotating macros log file."""
+    return os.path.join(DATA_DIR, LOG_FILE_NAME)
+
+
 def setup_logging(level: int = logging.INFO) -> None:
     global _CONFIGURED
     if _CONFIGURED:
         return
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    log_path = os.path.join(DATA_DIR, LOG_FILE_NAME)
+    log_path = log_file_path()
 
     formatter = logging.Formatter(
         "%(asctime)s [%(levelname)s] %(name)s: %(message)s",

@@ -1,16 +1,19 @@
 import keyboard
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QTabWidget,
     QVBoxLayout,
+    QWidget,
 )
 
 from core.settings import config_bool, read_config, set_custom_value
@@ -28,6 +31,13 @@ class SettingsDialog(QDialog):
         config = read_config()
         layout = QVBoxLayout(self)
 
+        tabs = QTabWidget()
+        layout.addWidget(tabs)
+
+        general = QWidget()
+        general_layout = QVBoxLayout(general)
+        tabs.addTab(general, "General")
+
         theme_row = QHBoxLayout()
         theme_row.addWidget(QLabel("Theme:"))
         self.flavor_combo = QComboBox()
@@ -40,7 +50,7 @@ class SettingsDialog(QDialog):
                 break
         self.flavor_combo.currentIndexChanged.connect(self._on_flavor_changed)
         theme_row.addWidget(self.flavor_combo, stretch=1)
-        layout.addLayout(theme_row)
+        general_layout.addLayout(theme_row)
 
         self.compact_panels_check = QCheckBox("Compact panels")
         self.compact_panels_check.setChecked(config_bool("compact_panels", "true"))
@@ -48,7 +58,7 @@ class SettingsDialog(QDialog):
             "When enabled, result panels show a compact summary. "
             "When disabled, a classic 2×2 grid shows every field with color-coded values."
         )
-        layout.addWidget(self.compact_panels_check)
+        general_layout.addWidget(self.compact_panels_check)
 
         self.edit_check_message_check = QCheckBox("Edit previous check message")
         self.edit_check_message_check.setChecked(config_bool("edit_check_message", "true"))
@@ -56,7 +66,7 @@ class SettingsDialog(QDialog):
             "When enabled, if you posted a good/not-good check for this user in "
             "#on-duty-chat within the last 30 minutes, edit that message instead of posting a new one."
         )
-        layout.addWidget(self.edit_check_message_check)
+        general_layout.addWidget(self.edit_check_message_check)
 
         nav_row = QHBoxLayout()
         nav_row.addWidget(QLabel("Test navigate messages up:"))
@@ -69,14 +79,15 @@ class SettingsDialog(QDialog):
         self.edit_nav_test_btn.setAutoDefault(False)
         self.edit_nav_test_btn.setDefault(False)
         self.edit_nav_test_btn.setToolTip(
-            "Switch to #on-duty-chat and move focus up N messages. Does not open edit."
+            "Switch to #on-duty-chat and move focus up N messages. Does not open edit. "
+            "Disabled while the Vencord Discord bridge is enabled (keyboard-only debug tool)."
         )
         self.edit_nav_test_btn.clicked.connect(self._test_edit_navigate)
         nav_row.addWidget(self.edit_nav_test_btn)
         nav_row.addStretch(1)
-        layout.addLayout(nav_row)
+        general_layout.addLayout(nav_row)
 
-        layout.addWidget(QLabel(
+        general_layout.addWidget(QLabel(
             "Delay Initial Command: wait after the slash command.\n"
             "Delay follow up: wait after each variable.\n"
             "Abort key: stops an in-progress staffcheck.\n"
@@ -105,13 +116,91 @@ class SettingsDialog(QDialog):
                 grid.addWidget(test_btn, i, 2)
                 self._key_test_label = QLabel("")
                 grid.addWidget(self._key_test_label, i, 3)
-        layout.addLayout(grid)
+        general_layout.addLayout(grid)
 
         reset_apps_btn = QPushButton("Reset app window positions to 0, 0")
         reset_apps_btn.setAutoDefault(False)
         reset_apps_btn.setDefault(False)
         reset_apps_btn.clicked.connect(self._reset_app_positions)
-        layout.addWidget(reset_apps_btn)
+        general_layout.addWidget(reset_apps_btn)
+
+        open_log_btn = QPushButton("Open log")
+        open_log_btn.setAutoDefault(False)
+        open_log_btn.setDefault(False)
+        open_log_btn.setToolTip("Open the folder that contains ashen-macros.log")
+        open_log_btn.clicked.connect(self._open_log_location)
+        general_layout.addWidget(open_log_btn)
+        general_layout.addStretch(1)
+
+        experimental_page = QWidget()
+        experimental_layout = QVBoxLayout(experimental_page)
+        tabs.addTab(experimental_page, "Experimental")
+
+        experimental = QGroupBox("Vencord Discord bridge")
+        bridge_layout = QVBoxLayout(experimental)
+        self.vencord_bridge_check = QCheckBox("Enable Vencord Discord bridge")
+        self.vencord_bridge_check.setChecked(config_bool("vencord_bridge", "false"))
+        self.vencord_bridge_check.setToolTip(
+            "When enabled, Discord actions go through the localhost Vencord plugin. "
+            "There is no keyboard fallback — if the bridge errors, the action fails "
+            "and the status line shows the error. Default off."
+        )
+        self.vencord_bridge_check.toggled.connect(self._on_vencord_bridge_toggled)
+        bridge_layout.addWidget(self.vencord_bridge_check)
+
+        self._bridge_fields = QGridLayout()
+        self._bridge_fields.addWidget(QLabel("Bridge port:"), 0, 0)
+        self.vencord_port_entry = QLineEdit(
+            config.get("vencord_bridge_port", "47832")
+        )
+        self.vencord_port_entry.setMaximumWidth(100)
+        self._bridge_fields.addWidget(self.vencord_port_entry, 0, 1)
+        self._bridge_fields.addWidget(QLabel("Shared token:"), 1, 0)
+        self.vencord_token_entry = QLineEdit(config.get("vencord_bridge_token", "change-me"))
+        self.vencord_token_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        self.vencord_token_entry.setPlaceholderText("change-me")
+        self._bridge_fields.addWidget(self.vencord_token_entry, 1, 1)
+        show_token = QPushButton("Show")
+        show_token.setAutoDefault(False)
+        show_token.setDefault(False)
+        show_token.setCheckable(True)
+        show_token.toggled.connect(self._toggle_token_visibility)
+        self._bridge_fields.addWidget(show_token, 1, 2)
+        bridge_layout.addLayout(self._bridge_fields)
+        self._on_vencord_bridge_toggled(self.vencord_bridge_check.isChecked())
+        experimental_layout.addWidget(experimental)
+
+        shadow_box = QGroupBox("Staffcheck model")
+        shadow_layout = QVBoxLayout(shadow_box)
+        self.staffcheck_shadow_check = QCheckBox(
+            "Show model shadow suggestions in live staffcheck"
+        )
+        self.staffcheck_shadow_check.setChecked(
+            config_bool("staffcheck_model_shadow", "false")
+        )
+        self.staffcheck_shadow_check.setToolTip(
+            "When enabled, live staffcheck shows the model suggestion + cited reasons "
+            "before Good / Not Good / Ban request. Training and silent prediction logs "
+            "always run. Off by default. Never auto-applies."
+        )
+        shadow_layout.addWidget(self.staffcheck_shadow_check)
+        experimental_layout.addWidget(shadow_box)
+
+        leave_box = QGroupBox("Leave message marks")
+        leave_layout = QVBoxLayout(leave_box)
+        self.leave_animated_emojis_check = QCheckBox(
+            "Use animated tick / cross emojis"
+        )
+        self.leave_animated_emojis_check.setChecked(
+            config_bool("leave_animated_emojis", "false")
+        )
+        self.leave_animated_emojis_check.setToolTip(
+            "When enabled, Tick / Cross & Warn use the animated BetterTick / bettercross "
+            "emojis instead of the static ones. Requires the Vencord bridge."
+        )
+        leave_layout.addWidget(self.leave_animated_emojis_check)
+        experimental_layout.addWidget(leave_box)
+        experimental_layout.addStretch(1)
 
         btn_row = QHBoxLayout()
         save = QPushButton("Save Changes")
@@ -125,6 +214,24 @@ class SettingsDialog(QDialog):
         btn_row.addWidget(save)
         btn_row.addWidget(reset)
         layout.addLayout(btn_row)
+
+    def _on_vencord_bridge_toggled(self, checked: bool) -> None:
+        self.vencord_port_entry.setVisible(checked)
+        self.vencord_token_entry.setVisible(checked)
+        for i in range(self._bridge_fields.count()):
+            item = self._bridge_fields.itemAt(i)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.setVisible(checked)
+        # Keyboard-only debug navigate — unavailable with bridge enabled.
+        self.edit_nav_offset_entry.setEnabled(not checked)
+        self.edit_nav_test_btn.setEnabled(not checked)
+
+    def _toggle_token_visibility(self, show: bool) -> None:
+        mode = (
+            QLineEdit.EchoMode.Normal if show else QLineEdit.EchoMode.Password
+        )
+        self.vencord_token_entry.setEchoMode(mode)
 
     def _on_flavor_changed(self, index: int):
         identifier = self.flavor_combo.itemData(index)
@@ -172,7 +279,41 @@ class SettingsDialog(QDialog):
     def _reset_app_positions(self):
         reset_app_window_positions(self.parent())
 
+    def _open_log_location(self) -> None:
+        import logging
+        import os
+        import subprocess
+        import sys
+
+        from core.logging import log_file_path
+        from core.settings import DATA_DIR
+
+        os.makedirs(DATA_DIR, exist_ok=True)
+        path = log_file_path()
+        folder = DATA_DIR
+        try:
+            if sys.platform == "win32":
+                if os.path.isfile(path):
+                    subprocess.Popen(
+                        ["explorer", "/select,", os.path.normpath(path)]
+                    )
+                else:
+                    os.startfile(folder)  # noqa: S606
+            elif sys.platform == "darwin":
+                if os.path.isfile(path):
+                    subprocess.Popen(["open", "-R", path])
+                else:
+                    subprocess.Popen(["open", folder])
+            else:
+                subprocess.Popen(["xdg-open", folder])
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Failed to open log location %s", folder
+            )
+
     def _test_edit_navigate(self):
+        if self.vencord_bridge_check.isChecked():
+            return
         raw = self.edit_nav_offset_entry.text().strip() or "4"
         try:
             n = max(1, int(raw))
@@ -232,6 +373,44 @@ class SettingsDialog(QDialog):
         except ValueError:
             n = 4
         set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", str(n))
+
+        set_custom_value(
+            "EXPERIMENTAL",
+            "vencord_bridge",
+            "true" if self.vencord_bridge_check.isChecked() else "false",
+        )
+        port_raw = self.vencord_port_entry.text().strip() or "47832"
+        try:
+            port = int(port_raw)
+            if not (1 <= port <= 65535):
+                port = 47832
+        except ValueError:
+            port = 47832
+        set_custom_value("EXPERIMENTAL", "vencord_bridge_port", str(port))
+        set_custom_value(
+            "EXPERIMENTAL",
+            "vencord_bridge_token",
+            self.vencord_token_entry.text().strip(),
+        )
+        set_custom_value(
+            "EXPERIMENTAL",
+            "staffcheck_model_shadow",
+            "true" if self.staffcheck_shadow_check.isChecked() else "false",
+        )
+        set_custom_value(
+            "EXPERIMENTAL",
+            "leave_animated_emojis",
+            "true" if self.leave_animated_emojis_check.isChecked() else "false",
+        )
+
+        from core.discord_bridge import sync_bridge_lifecycle
+
+        sync_bridge_lifecycle()
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "_update_menu_gating"):
+            parent._update_menu_gating()
+        if parent is not None and hasattr(parent, "_update_bridge_status"):
+            parent._update_bridge_status()
         self.accept()
 
     def _reset(self):
@@ -245,6 +424,20 @@ class SettingsDialog(QDialog):
         set_custom_value("STAFFCHECK", "edit_check_message", "true")
         self.edit_nav_offset_entry.setText("4")
         set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", "4")
+        self.vencord_bridge_check.setChecked(False)
+        set_custom_value("EXPERIMENTAL", "vencord_bridge", "false")
+        self.vencord_port_entry.setText("47832")
+        set_custom_value("EXPERIMENTAL", "vencord_bridge_port", "47832")
+        self.vencord_token_entry.setText("change-me")
+        set_custom_value("EXPERIMENTAL", "vencord_bridge_token", "change-me")
+        self.staffcheck_shadow_check.setChecked(False)
+        set_custom_value("EXPERIMENTAL", "staffcheck_model_shadow", "false")
+        self.leave_animated_emojis_check.setChecked(False)
+        set_custom_value("EXPERIMENTAL", "leave_animated_emojis", "false")
+        self._on_vencord_bridge_toggled(False)
+        from core.discord_bridge import sync_bridge_lifecycle
+
+        sync_bridge_lifecycle()
         theme.set_flavor(theme.DEFAULT_FLAVOR)
         for i in range(self.flavor_combo.count()):
             if self.flavor_combo.itemData(i) == theme.DEFAULT_FLAVOR:
@@ -252,6 +445,11 @@ class SettingsDialog(QDialog):
                 break
         from PySide6.QtWidgets import QApplication
         theme.apply_theme(QApplication.instance())
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "_update_menu_gating"):
+            parent._update_menu_gating()
+        if parent is not None and hasattr(parent, "_update_bridge_status"):
+            parent._update_bridge_status()
 
     def closeEvent(self, event):
         if self._key_test_hotkey:

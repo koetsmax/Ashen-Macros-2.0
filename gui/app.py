@@ -4,6 +4,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from core import auth, updates
+from core.discord_bridge import is_enabled, sync_bridge_lifecycle
 from gui import theme
 from gui.hub_window import StaffcheckHub
 
@@ -20,6 +21,10 @@ class App:
             self.username or "none",
             self.permissions,
         )
+        # When Experimental Vencord bridge is on: pull channel/emoji ids from the
+        # bot and start the localhost client.
+        if is_enabled():
+            sync_bridge_lifecycle()
 
     def run(self):
         logger.info("Starting Ashen Macros v%s", self.local_version)

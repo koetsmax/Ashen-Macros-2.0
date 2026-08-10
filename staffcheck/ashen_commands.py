@@ -2,7 +2,14 @@ import time
 
 import requests
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.discord_bridge import resolve_channel_id
+from core.keyboard import (
+    clear_typing_bar,
+    execute_slash_command,
+    opt_str,
+    opt_user,
+    switch_channel,
+)
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.check_message import not_good_to_check
@@ -25,9 +32,14 @@ def ashen_commands(self):
             clear_typing_bar()
 
         search_gt = self.xbox_gt.replace(" ", "")
-        execute_command(
+        execute_slash_command(
             self,
-            f"/search member:{self.user_id.get()} gamertag:{search_gt}",
+            "search",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("gamertag", search_gt),
+            ],
+            channel_id=resolve_channel_id(self.channel.get()),
         )
     except abort.AbortError:
         return
@@ -64,9 +76,14 @@ def redo_search(self):
         switch_channel(self, self.channel.get())
         clear_typing_bar()
         search_gt = str(self.xbox_gt).replace(" ", "")
-        execute_command(
+        execute_slash_command(
             self,
-            f"/search member:{self.user_id.get()} gamertag:{search_gt}",
+            "search",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("gamertag", search_gt),
+            ],
+            channel_id=resolve_channel_id(self.channel.get()),
         )
     except abort.AbortError:
         return
@@ -143,6 +160,30 @@ def ashen_api_request(self):
                     or "rate limited" in err_l
                 ):
                     _enable_search_redo(self)
+                    try:
+                        from staffcheck import analytics as sc_analytics
+
+                        sc_analytics.report_outcome(
+                            self,
+                            outcome="incomplete",
+                            incomplete_kind="search_rate_limited",
+                        )
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        from staffcheck import analytics as sc_analytics
+
+                        kind = "search_error"
+                        if body.get("no_gamertag") or "gamertag" in err_l:
+                            kind = "search_no_gamertag"
+                        elif "privacy" in err_l or body.get("private_profile"):
+                            kind = "search_private_profile"
+                        sc_analytics.report_outcome(
+                            self, outcome="incomplete", incomplete_kind=kind
+                        )
+                    except Exception:
+                        pass
             else:
                 result_panel.search_apply(self, body)
                 btn_enable(self.jump_to_message_search_button, True)
@@ -156,3 +197,11 @@ def ashen_api_request(self):
 
     if request_error:
         result_panel.search_failed(self)
+        try:
+            from staffcheck import analytics as sc_analytics
+
+            sc_analytics.report_outcome(
+                self, outcome="incomplete", incomplete_kind="search_request_failed"
+            )
+        except Exception:
+            pass

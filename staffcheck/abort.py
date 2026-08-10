@@ -67,7 +67,27 @@ def check_abort(self) -> None:
         raise AbortError()
 
 
-def interruptible_sleep(self, duration: float, step: float = 0.05) -> None:
+def interruptible_sleep(
+    self,
+    duration: float,
+    step: float = 0.05,
+    *,
+    bridge_fast: bool = True,
+) -> None:
+    """Sleep that can be aborted.
+
+    When the Vencord bridge is connected, delays are divided by 3 (bridge
+    actions do not need keyboard settle time). Pass ``bridge_fast=False`` to
+    keep the full duration (e.g. the gap between /user_report and /search).
+    """
+    if bridge_fast and duration > 0:
+        try:
+            from core.discord_bridge import prefer_bridge
+
+            if prefer_bridge():
+                duration = duration / 3.0
+        except Exception:
+            pass
     if duration <= 0:
         check_abort(self)
         return

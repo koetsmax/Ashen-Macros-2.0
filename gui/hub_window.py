@@ -137,6 +137,13 @@ class StaffcheckHub(QMainWindow):
         self._set_welcome_text(username)
         self._update_welcome_header()
         bar_layout.addStretch()
+
+        self.bridge_status_label = QLabel("Bridge: off")
+        self.bridge_status_label.setObjectName("hubBridgeOff")
+        self.bridge_status_label.setToolTip(
+            "Vencord Discord bridge status (Settings → Experimental)"
+        )
+        bar_layout.addWidget(self.bridge_status_label)
         outer.addWidget(status_bar)
 
         self.staffcheck = StaffcheckView(self)
@@ -168,7 +175,12 @@ class StaffcheckHub(QMainWindow):
         self._poll_timer.timeout.connect(self._poll_status)
         self._poll_timer.start(60000)
 
+        self._bridge_timer = QTimer(self)
+        self._bridge_timer.timeout.connect(self._update_bridge_status)
+        self._bridge_timer.start(3000)
+
         self._poll_status()
+        self._update_bridge_status()
         self._check_updates()
         self._session_restored = False
         logger.info(
@@ -452,6 +464,7 @@ class StaffcheckHub(QMainWindow):
             self.status_label.setObjectName("statusDisconnected")
         self.status_label.style().unpolish(self.status_label)
         self.status_label.style().polish(self.status_label)
+        self._update_bridge_status()
         self._update_welcome_header()
         self._update_menu_gating()
 
@@ -483,6 +496,32 @@ class StaffcheckHub(QMainWindow):
                 self.toast_stack.dismiss("permissions")
 
         self._close_unauthorized_apps()
+
+    def _update_bridge_status(self) -> None:
+        from core.discord_bridge import (
+            bridge_plugin_version,
+            is_connected,
+            is_enabled,
+        )
+
+        if not is_enabled():
+            text = "Bridge: off"
+            object_name = "hubBridgeOff"
+        elif is_connected():
+            version = bridge_plugin_version()
+            text = (
+                f"Bridge: Connected · {version}"
+                if version
+                else "Bridge: Connected"
+            )
+            object_name = "statusConnected"
+        else:
+            text = "Bridge: disconnected"
+            object_name = "statusDisconnected"
+        self.bridge_status_label.setText(text)
+        self.bridge_status_label.setObjectName(object_name)
+        self.bridge_status_label.style().unpolish(self.bridge_status_label)
+        self.bridge_status_label.style().polish(self.bridge_status_label)
 
     def _close_unauthorized_apps(self):
         for key, win in list(self._open_apps.items()):

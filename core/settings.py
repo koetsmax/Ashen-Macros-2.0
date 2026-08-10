@@ -83,6 +83,7 @@ def _set_default_values(config) -> bool:
         "STAFFCHECK": {
             "good_to_check_message": "userID Good to check -- GT: xboxGT",
             "not_good_to_check_message": "userID **Not** Good to check -- GT: xboxGT -- Reason",
+            "ban_request_message": "userID Ban request -- GT: xboxGT -- Reason",
             "edit_check_message": "true",
             "edit_check_nav_test_offset": "4",
         },
@@ -104,6 +105,13 @@ def _set_default_values(config) -> bool:
             "compact_panels": "true",
             "queue_debug": "false",
             "queue_splitter_sizes": "",
+        },
+        "EXPERIMENTAL": {
+            "vencord_bridge": "false",
+            "vencord_bridge_port": "47832",
+            "vencord_bridge_token": "change-me",
+            "staffcheck_model_shadow": "false",
+            "leave_animated_emojis": "false",
         },
     }
 

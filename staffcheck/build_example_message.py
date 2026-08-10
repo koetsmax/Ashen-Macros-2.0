@@ -7,6 +7,10 @@ def build_example_message(self, id_: int, status_label):
 
     good_to_check_message = config["good_to_check_message"]
     not_good_to_check_message = config["not_good_to_check_message"]
+    ban_request_message = config.get(
+        "ban_request_message",
+        "userID Ban request -- GT: xboxGT -- Reason",
+    )
     final_string = ""
     btn_enable(self.start_button, True)
     label_set(status_label, "Waiting for ID")
@@ -23,12 +27,23 @@ def build_example_message(self, id_: int, status_label):
         btn_enable(self.start_button, False)
         label_set(status_label, "Error! Bad Not Good to Check message!", "red")
 
+    if (
+        "userID" not in ban_request_message
+        or "xboxGT" not in ban_request_message
+        or "Reason" not in ban_request_message
+    ):
+        btn_enable(self.start_button, False)
+        label_set(status_label, "Error! Bad Ban request message!", "red")
+
     if id_ == 0:
         s = good_to_check_message.replace("userID", "@Max").replace("xboxGT", "M A X10815")
         final_string = s
     elif id_ == 1:
         s = not_good_to_check_message.replace("userID", "@Max").replace("xboxGT", "Fleet Admin")
         final_string = s.replace("Reason", "Needs to remove banned friends")
+    elif id_ == 2:
+        s = ban_request_message.replace("userID", "@Max").replace("xboxGT", "Fleet Admin")
+        final_string = s.replace("Reason", "Self on ban list")
 
     if id_ != 99 and hasattr(self, "customize_window"):
         from PySide6.QtWidgets import QLabel

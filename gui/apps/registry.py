@@ -13,6 +13,7 @@ from core.window_positions import (
 )
 from gui.views.app_window import AppWindow
 from gui.views.ban_list_window import BanListWindow
+from gui.views.bridge_tests_window import BridgeTestsWindow
 from gui.views.command_executor_window import CommandExecutorWindow
 from gui.views.fill_new_fleet_window import FillNewFleetWindow
 from gui.views.gamertag_lookup_window import GamertagLookupWindow
@@ -22,6 +23,7 @@ from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
 from gui.views.ship_holder_window import ShipHolderWindow
 from gui.views.stats_window import StatsWindow
+from gui.views.staffcheck_training_window import StaffcheckTrainingWindow
 from gui.views.warning_window import WarningWindow
 
 logger = logging.getLogger(__name__)
@@ -34,11 +36,20 @@ class AppEntry:
     permission: str
     # Extra keys that also unlock this app (e.g. staffcheck for lookup tools).
     alt_permissions: tuple[str, ...] = ()
+    # Hide unless Settings → Experimental → Vencord Discord bridge is on.
+    requires_experimental: bool = False
 
 
 def app_allowed(entry: AppEntry, permissions: list[str] | None) -> bool:
     allowed = {entry.permission, *entry.alt_permissions}
-    return bool(allowed & set(permissions or []))
+    if not (allowed & set(permissions or [])):
+        return False
+    if entry.requires_experimental:
+        from core.discord_bridge import is_enabled
+
+        if not is_enabled():
+            return False
+    return True
 
 
 APP_REGISTRY = [
@@ -52,7 +63,19 @@ APP_REGISTRY = [
     AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
     AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
     AppEntry("Stats", StatsWindow, "stats"),
+    AppEntry(
+        "Staffcheck training",
+        StaffcheckTrainingWindow,
+        "staffcheck_labeler",
+        alt_permissions=("administrator",),
+    ),
     AppEntry("Permissions", PermissionsWindow, "administrator"),
+    AppEntry(
+        "Bridge tests",
+        BridgeTestsWindow,
+        "administrator",
+        requires_experimental=True,
+    ),
 ]
 
 APP_BY_KEY = {entry.window_cls.__name__: entry for entry in APP_REGISTRY}

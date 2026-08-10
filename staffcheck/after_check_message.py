@@ -3,10 +3,19 @@ import time
 
 import requests
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.discord_bridge import on_duty_channel_id, resolve_channel_id
+from core.keyboard import (
+    clear_typing_bar,
+    execute_slash_command,
+    opt_bool,
+    opt_str,
+    opt_sub,
+    opt_user,
+    switch_channel,
+)
 from core.settings import read_config
 from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
+from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread, report_bridge_error
 from staffcheck.tasks import run_background
 
 logger = logging.getLogger(__name__)
@@ -36,19 +45,32 @@ def _set_after_check_buttons_enabled(self, enabled: bool) -> None:
 
 
 def unprivate_xbox(self):
+    from core.discord_bridge import DiscordBridgeError
+
     _set_after_check_buttons_enabled(self, False)
     label_set(self.status_label, "Waiting for modmail channel…", "orange")
     try:
         switch_channel(self, "#on-duty-chat")
         clear_typing_bar()
-        execute_command(self, f"/create user:{self.user_id.get()}")
+        execute_slash_command(
+            self,
+            "create",
+            [opt_user("user", self.user_id.get())],
+            channel_id=on_duty_channel_id(),
+        )
     except abort.AbortError:
+        _set_after_check_buttons_enabled(self, True)
+        return
+    except DiscordBridgeError as exc:
+        report_bridge_error(self, exc)
         _set_after_check_buttons_enabled(self, True)
         return
     run_background(unprivate_api_request, self)
 
 
 def unprivate_api_request(self):
+    from core.discord_bridge import DiscordBridgeError
+
     if abort.is_abort_requested(self):
         on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
         return
@@ -79,8 +101,25 @@ def unprivate_api_request(self):
             try:
                 switch_channel(self, f"#{r['modmail_channel']}")
                 clear_typing_bar()
-                execute_command(self, "/message-store recall Unprivate Xbox copyable: True")
+                execute_slash_command(
+                    self,
+                    "message-store",
+                    [
+                        opt_sub(
+                            "recall",
+                            [
+                                opt_str("name", "Unprivate Xbox"),
+                                opt_bool("copyable", True),
+                            ],
+                        )
+                    ],
+                    channel_id=resolve_channel_id(f"#{r['modmail_channel']}"),
+                )
             except abort.AbortError:
+                on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
+                return
+            except DiscordBridgeError as exc:
+                report_bridge_error(self, exc)
                 on_main_thread(lambda: _set_after_check_buttons_enabled(self, True))
                 return
 
@@ -106,20 +145,44 @@ def unprivate_api_request(self):
 
 
 def join_awr(self):
+    from core.discord_bridge import DiscordBridgeError
+
     try:
         clear_typing_bar()
         switch_channel(self, "#on-duty-chat")
-        execute_command(self, f"/joinawr member:{self.user_id.get()}")
+        execute_slash_command(
+            self,
+            "joinawr",
+            [opt_user("member", self.user_id.get())],
+            channel_id=on_duty_channel_id(),
+        )
     except abort.AbortError:
+        return
+    except DiscordBridgeError as exc:
+        report_bridge_error(self, exc)
         return
     pipeline.continue_to_next(self)
 
 
 def verify_account(self):
+    from core.discord_bridge import DiscordBridgeError
+
     try:
         clear_typing_bar()
         switch_channel(self, "#on-duty-chat")
-        execute_command(self, f"/verify member:{self.user_id.get()} verify_type:verify")
+        execute_slash_command(
+            self,
+            "verify",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("verify_type", "verify"),
+            ],
+            channel_id=on_duty_channel_id(),
+        )
     except abort.AbortError:
         return
+    except DiscordBridgeError as exc:
+        report_bridge_error(self, exc)
+        return
     pipeline.continue_to_next(self)
+

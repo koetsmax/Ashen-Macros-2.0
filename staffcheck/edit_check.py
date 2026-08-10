@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import logging
+
 import requests
 
+from core.discord_bridge import (
+    DiscordBridgeError,
+    get_bridge,
+    is_enabled,
+    on_duty_channel_id,
+    prefer_bridge,
+)
 from core.keyboard import edit_on_duty_message, extra_ups_for_date_dividers, type_text
-from core.settings import config_bool
+from core.settings import config_bool, read_config
+
+logger = logging.getLogger(__name__)
 
 
 def edit_check_enabled() -> bool:
@@ -40,6 +51,7 @@ def empty_edit_check() -> dict:
         "content": None,
         "created_at": None,
         "message_id": None,
+        "channel_id": None,
     }
 
 
@@ -53,6 +65,8 @@ def store_edit_check_from_essential(self, data: dict | None) -> None:
         "content": None,
         "created_at": data.get("last_check_at"),
         "message_id": data.get("last_check_message_id"),
+        "channel_id": data.get("last_check_channel_id")
+        or data.get("channel_id"),
     }
 
 
@@ -91,6 +105,9 @@ def fetch_editable_check(self, user_id: str, *, message_id: str | None = None) -
             "content": data.get("content"),
             "created_at": data.get("created_at"),
             "message_id": data.get("message_id") or hint,
+            "channel_id": data.get("channel_id")
+            or data.get("channelId")
+            or (getattr(self, "_edit_check", None) or {}).get("channel_id"),
         }
     except Exception:
         return empty
@@ -116,17 +133,35 @@ def post_or_edit_check_message(self, new_line: str, editable_info: dict | None =
     info = editable_info if editable_info is not None else fetch_editable_check(
         self, self.user_id.get()
     )
-    if (
-        info.get("editable")
-        and info.get("offset")
-        and info.get("content") is not None
-    ):
+    if info.get("editable") and info.get("content") is not None:
         body = build_edited_content(str(info.get("content") or ""), new_line)
-        edit_on_duty_message(
-            self,
-            int(info["offset"]),
-            body,
-            extra_ups=extra_ups_for_date_dividers(info.get("created_at")),
-        )
-    else:
-        type_text(self, new_line)
+        mid = str(info.get("message_id") or "").strip()
+        channel_id = str(
+            info.get("channel_id") or on_duty_channel_id() or ""
+        ).strip()
+
+        # Bridge path when Experimental is enabled (no keyboard fallback).
+        if is_enabled():
+            if not prefer_bridge():
+                raise DiscordBridgeError("Vencord bridge is not connected")
+            if not mid or not channel_id:
+                raise DiscordBridgeError(
+                    "Editable check missing message/channel id for bridge edit"
+                )
+            get_bridge().edit(channel_id, mid, body, abort_ctx=self)
+            return
+
+        if info.get("offset"):
+            edit_on_duty_message(
+                self,
+                int(info["offset"]),
+                body,
+                extra_ups=extra_ups_for_date_dividers(info.get("created_at")),
+            )
+            return
+
+        # Editable but no offset/channel for either path — post new.
+        type_text(self, new_line, channel_id=on_duty_channel_id())
+        return
+
+    type_text(self, new_line, channel_id=on_duty_channel_id())

@@ -34,6 +34,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.discord_bridge import (
+    DiscordBridgeError,
+    is_enabled,
+    queue_channel_id,
+    queue_channel_jump_url,
+)
 from core.keyboard import (
     apply_update_bonus_on_queue_message,
     clear_typing_bar,
@@ -41,12 +47,18 @@ from core.keyboard import (
     confirm_staffcheck_after_process,
     execute_command,
     execute_slash_command,
+    opt_bool,
+    opt_str,
+    opt_sub,
     switch_channel,
 )
+from core.leave_notice_actions import cross_and_warn_leave_notice, tick_leave_notice
 from core.leave_pending import fetch_leave_message, react_pending_on_leave
 from core.queue_status_banner import (
     BANNER_BUTTON_LABELS,
     BANNER_RECALL_NAMES,
+    fetch_status_banner_offset,
+    wait_for_status_banner,
 )
 from core.queue_ws import QueueWsClient
 from core.settings import read_config, set_custom_value
@@ -62,16 +74,17 @@ from staffcheck.abort import (
 
 logger = logging.getLogger(__name__)
 
-# Ashen Alliance #queue — jump URL (Ctrl+K paste, normal settle wait).
-QUEUE_CHANNEL_JUMP_URL = (
-    "https://discord.com/channels/702865815111729183/712004382534664292"
-)
 # Leeway after click before Discord automation starts.
 QUEUE_COMMAND_START_DELAY_S = 1.2
 # Extra settle after jumping to #queue before typing the slash command.
 QUEUE_CHANNEL_SETTLE_S = 1.2
 # Soft flash for on-duty ping rows in Leaves workflow list.
 ONDUTY_PING_FLASH_MS = 750
+
+
+def _queue_jump_target() -> str:
+    """Prefer bot-provided jump URL; fall back to #queue name for Ctrl+K."""
+    return queue_channel_jump_url() or "#queue"
 
 # /process ship option: "FL 1 - Hunters Call Brig 5 -- 2/3" → "1 5"
 _PROCESS_SHIP_OPTION_RE = re.compile(
@@ -519,6 +532,7 @@ class QueueWindow(AppWindow):
             if index >= 0:
                 self.sim_scenario.setCurrentIndex(index)
         self._sim_updating = False
+        self._sync_leave_notice_action_buttons()
 
     def _request_refresh(self) -> None:
         if self._client:
@@ -801,6 +815,12 @@ class QueueWindow(AppWindow):
             ],
             "ship": dict(ship or {}),
             "action": action,
+            # Synthetic / right-click: no recommendation_id.
+            "id": None,
+            "recommendation_id": None,
+            "_override_top": True,
+            "_matched_recommendation": False,
+            "_raw_request": entry.get("current_queue_request"),
         }
         self._start_queue_command(rec, action)
 
@@ -1469,6 +1489,7 @@ class QueueWindow(AppWindow):
             self._set_status("No recommended queue banner to set")
             return
 
+        previous_id = str(banner.get("message_id") or "") or None
         self._command_busy = True
         self.abort_requested = False
         self._set_rec_buttons_enabled(False)
@@ -1477,30 +1498,73 @@ class QueueWindow(AppWindow):
 
         thread = threading.Thread(
             target=self._set_queue_banner_worker,
-            args=(recall_name,),
+            args=(target, recall_name, previous_id),
             daemon=True,
         )
         thread.start()
 
-    def _set_queue_banner_worker(self, recall_name: str) -> None:
+    def _set_queue_banner_worker(
+        self, expected_type: str, recall_name: str, previous_message_id: str | None
+    ) -> None:
         start_abort_session(self)
         try:
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit("Opening #queue…")
-            switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
-            interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
+            jump = _queue_jump_target()
+            switch_channel(self, jump, paste=bool(queue_channel_jump_url()))
+            # Bridge switch is instant — skip long settle when bridge is enabled.
+            if not is_enabled():
+                interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
             check_abort(self)
-            clear_typing_bar()
+            if not is_enabled():
+                clear_typing_bar()
             check_abort(self)
             self._command_status.emit(f"Recalling: {recall_name}…")
-            execute_command(
-                self, f"/message-store recall name:{recall_name}"
+            execute_slash_command(
+                self,
+                "message-store",
+                [opt_sub("recall", [opt_str("name", recall_name)])],
+                channel_id=queue_channel_id() or None,
             )
-            # Hook for future Apps → update bonus automation.
-            apply_update_bonus_on_queue_message(self, None)
+            self._command_status.emit("Waiting for new queue banner…")
+
+            def _snap():
+                return self._last_snapshot
+
+            def _abort():
+                return bool(getattr(self, "abort_requested", False))
+
+            new_banner = wait_for_status_banner(
+                _snap,
+                expected_type=expected_type,
+                previous_message_id=previous_message_id,
+                timeout_s=20.0,
+                abort_check=_abort,
+            )
+            check_abort(self)
+            offset = None
+            banner_message_id = None
+            if new_banner and new_banner.get("message_id"):
+                banner_message_id = str(new_banner["message_id"])
+                self._command_status.emit("Resolving banner position…")
+                info = fetch_status_banner_offset(
+                    self._client, banner_message_id
+                )
+                check_abort(self)
+                if info.get("found") and info.get("offset"):
+                    offset = int(info["offset"])
+            self._command_status.emit("Apps > update bonus...")
+            apply_update_bonus_on_queue_message(
+                self,
+                offset,
+                message_id=banner_message_id,
+                channel_id=queue_channel_id() or None,
+            )
             self._command_status.emit(f"Queue banner set: {recall_name}")
         except AbortError:
             self._command_status.emit("Queue banner set aborted")
+        except DiscordBridgeError as exc:
+            self._command_status.emit(f"Bridge error: {exc}")
         except Exception:
             logger.exception("Failed setting queue status banner")
             self._command_status.emit("Failed to set queue banner")
@@ -1700,18 +1764,74 @@ class QueueWindow(AppWindow):
             if ship:
                 bits.append(ship)
             bits.append(detail)
-            item = QListWidgetItem(self._join_workflow_bits(bits))
-            item.setForeground(color)
-            item.setData(
-                Qt.ItemDataRole.UserRole,
-                {
-                    "kind": "leave_notice",
-                    "message_id": str(notice.get("message_id") or ""),
-                    "user_id": user_id,
-                    "display_name": name,
-                },
+            payload = {
+                "kind": "leave_notice",
+                "message_id": str(notice.get("message_id") or ""),
+                "user_id": user_id,
+                "display_name": name,
+            }
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, payload)
+            item.setToolTip(self._join_workflow_bits(bits))
+
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(4, 0, 4, 0)
+            row_layout.setSpacing(6)
+            label = QLabel(self._join_workflow_bits(bits))
+            label.setWordWrap(True)
+            label.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
+            label.setStyleSheet(f"color: {color.name()}; background: transparent;")
+            row_layout.addWidget(label, stretch=1)
+
+            actions_enabled = not self._command_busy and not self._sim_enabled
+            tick_btn = QPushButton("Tick")
+            tick_btn.setFixedHeight(22)
+            tick_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
+            tick_btn.setToolTip(
+                "React with the tick emoji on this leave message"
+                if actions_enabled
+                else "Sim mode — Discord commands disabled"
+                if self._sim_enabled
+                else "Another command is running"
+            )
+            tick_btn.setEnabled(actions_enabled)
+            tick_btn.clicked.connect(
+                lambda _checked=False, n=payload: self._start_leave_notice_action(
+                    "tick",
+                    str(n.get("message_id") or ""),
+                    str(n.get("user_id") or ""),
+                    str(n.get("display_name") or ""),
+                )
+            )
+            row_layout.addWidget(tick_btn)
+
+            cross_btn = QPushButton("Cross & Warn")
+            cross_btn.setFixedHeight(22)
+            cross_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
+            cross_btn.setToolTip(
+                "Cross, then /warn Rule #3 and /user_report in #on-duty-commands"
+                if actions_enabled
+                else "Sim mode — Discord commands disabled"
+                if self._sim_enabled
+                else "Another command is running"
+            )
+            cross_btn.setEnabled(actions_enabled)
+            cross_btn.clicked.connect(
+                lambda _checked=False, n=payload: self._start_leave_notice_action(
+                    "cross_warn",
+                    str(n.get("message_id") or ""),
+                    str(n.get("user_id") or ""),
+                    str(n.get("display_name") or ""),
+                )
+            )
+            row_layout.addWidget(cross_btn)
+
             self.leaves_rejoins_list.addItem(item)
+            self.leaves_rejoins_list.setItemWidget(item, row)
+            item.setSizeHint(row.sizeHint())
 
     def _apply_preps_processes(self, data: dict) -> None:
         self.preps_processes_list.clear()
@@ -1941,6 +2061,15 @@ class QueueWindow(AppWindow):
             bits = [head, detail]
             item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setForeground(colors.get(status, colors["awaiting_process"]))
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "new_staffcheck",
+                    "user_id": user_id,
+                    "display_name": name,
+                    "status": status,
+                },
+            )
             self.onduty_staffchecks_list.addItem(item)
 
         uncheck_color = QColor(theme.PEACH or "#ff8533")
@@ -1978,6 +2107,34 @@ class QueueWindow(AppWindow):
 
         self._sync_onduty_ping_flash_timer()
 
+    def _sync_leave_notice_action_buttons(self) -> None:
+        enabled = not self._command_busy and not self._sim_enabled
+        tip = (
+            None
+            if enabled
+            else "Sim mode — Discord commands disabled"
+            if self._sim_enabled
+            else "Another command is running"
+        )
+        for i in range(self.leaves_rejoins_list.count()):
+            item = self.leaves_rejoins_list.item(i)
+            payload = item.data(Qt.ItemDataRole.UserRole) if item else None
+            if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
+                continue
+            row = self.leaves_rejoins_list.itemWidget(item)
+            if row is None:
+                continue
+            for btn in row.findChildren(QPushButton):
+                btn.setEnabled(enabled)
+                if tip is not None:
+                    btn.setToolTip(tip)
+                elif btn.text() == "Tick":
+                    btn.setToolTip("React with the tick emoji on this leave message")
+                else:
+                    btn.setToolTip(
+                        "Cross, then /warn Rule #3 and /user_report in #on-duty-commands"
+                    )
+
     def _on_leaves_rejoins_context_menu(self, pos) -> None:
         item = self.leaves_rejoins_list.itemAt(pos)
         if item is None:
@@ -1989,28 +2146,126 @@ class QueueWindow(AppWindow):
         if not message_id:
             return
         name = str(payload.get("display_name") or payload.get("user_id") or "?")
+        user_id = str(payload.get("user_id") or "").strip()
 
         menu = QMenu(self)
+        tick = menu.addAction("Tick")
+        tick.setToolTip("React with tick on this leave message")
+        cross = menu.addAction("Cross & Warn")
+        cross.setToolTip("Cross, then warn Rule #3 + user_report")
+        menu.addSeparator()
         dismiss = menu.addAction("Dismiss leave message")
         dismiss.setToolTip("Remove this leave message from the monitor list")
         chosen = menu.exec(self.leaves_rejoins_list.viewport().mapToGlobal(pos))
-        if chosen is dismiss:
+        if chosen is tick:
+            self._start_leave_notice_action("tick", message_id, user_id, name)
+        elif chosen is cross:
+            self._start_leave_notice_action("cross_warn", message_id, user_id, name)
+        elif chosen is dismiss:
             self._dismiss_leave_notice(message_id, name)
+
+    def _start_leave_notice_action(
+        self,
+        action: str,
+        message_id: str,
+        user_id: str,
+        display_name: str,
+    ) -> None:
+        if self._sim_enabled:
+            self._set_status("Sim mode — Discord commands disabled")
+            return
+        if self._command_busy:
+            self._set_status("Already running a queue command")
+            return
+        mid = str(message_id or "").strip()
+        if not mid:
+            self._set_status("Leave message id missing")
+            return
+        if action == "cross_warn" and not str(user_id or "").strip():
+            self._set_status("Leave message has no member id to warn")
+            return
+
+        self._command_busy = True
+        self.abort_requested = False
+        self._set_rec_buttons_enabled(False)
+        self._sync_leave_notice_action_buttons()
+        label = "Tick" if action == "tick" else "Cross & Warn"
+        self._command_status.emit(f"{label}: {display_name}…")
+
+        thread = threading.Thread(
+            target=self._leave_notice_action_worker,
+            args=(action, mid, str(user_id or "").strip(), display_name),
+            daemon=True,
+        )
+        thread.start()
+
+    def _leave_notice_action_worker(
+        self,
+        action: str,
+        message_id: str,
+        user_id: str,
+        display_name: str,
+    ) -> None:
+        start_abort_session(self)
+        try:
+            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            if action == "tick":
+                self._command_status.emit(f"Ticking leave message for {display_name}…")
+                tick_leave_notice(
+                    self, message_id=message_id, client=self._client
+                )
+                self._command_status.emit(f"Ticked leave message for {display_name}")
+            else:
+                self._command_status.emit(
+                    f"Cross & Warn for {display_name} (react → warn → user_report)…"
+                )
+                cross_and_warn_leave_notice(
+                    self,
+                    message_id=message_id,
+                    user_id=user_id,
+                    client=self._client,
+                )
+                self._command_status.emit(f"Cross & Warn done for {display_name}")
+        except AbortError:
+            self._command_status.emit("Aborted")
+        except DiscordBridgeError as exc:
+            self._command_status.emit(f"Bridge error: {exc}")
+        except Exception as exc:
+            logger.exception("Leave notice action %s failed", action)
+            self._command_status.emit(f"Failed: {exc}")
+        finally:
+            end_abort_session(self)
+            self._command_finished.emit()
 
     def _on_onduty_staffchecks_context_menu(self, pos) -> None:
         item = self.onduty_staffchecks_list.itemAt(pos)
         if item is None:
             return
         payload = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, dict) or payload.get("kind") != "uncheck_watch":
+        if not isinstance(payload, dict):
             return
+        kind = str(payload.get("kind") or "")
         user_id = str(payload.get("user_id") or "").strip()
         message_id = str(payload.get("message_id") or "").strip()
-        if not user_id and not message_id:
-            return
         name = str(payload.get("display_name") or user_id or "?")
 
         menu = QMenu(self)
+        if kind == "new_staffcheck":
+            if not user_id:
+                return
+            dismiss = menu.addAction("Dismiss new staffcheck")
+            dismiss.setToolTip("Remove this new staffcheck from the monitor list")
+            chosen = menu.exec(
+                self.onduty_staffchecks_list.viewport().mapToGlobal(pos)
+            )
+            if chosen is dismiss:
+                self._dismiss_new_staffcheck(user_id, name)
+            return
+
+        if kind != "uncheck_watch":
+            return
+        if not user_id and not message_id:
+            return
         dismiss = menu.addAction("Dismiss uncheck")
         dismiss.setToolTip("Remove this uncheck watch from the monitor list")
         chosen = menu.exec(
@@ -2044,6 +2299,17 @@ class QueueWindow(AppWindow):
             payload["user_id"] = user_id
         self._client.send(payload)
         self._set_status(f"Dismissing uncheck for {display_name}…")
+
+    def _dismiss_new_staffcheck(self, user_id: str, display_name: str) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss new staffcheck")
+            return
+        uid = str(user_id or "").strip()
+        if not uid:
+            self._set_status("New staffcheck missing user id")
+            return
+        self._client.send({"type": "dismiss_new_staffcheck", "user_id": uid})
+        self._set_status(f"Dismissing new staffcheck for {display_name}…")
 
     def _sync_onduty_ping_flash_timer(self) -> None:
         has_ping = False
@@ -2234,6 +2500,9 @@ class QueueWindow(AppWindow):
 
     def _effective_recommendation_action(self, rec: dict) -> str:
         """Force process when the member is already prepped (or just prepped locally)."""
+        # Friend → private ship is always immediate process.
+        if str(rec.get("reason") or "") == "friend_private":
+            return "process"
         action = str(rec.get("action") or "process").lower()
         if action != "prep":
             return action
@@ -2576,6 +2845,30 @@ class QueueWindow(AppWindow):
         needs_staffcheck_confirm = self._needs_staffcheck_confirm(member)
         ship_channel_id = str(ship.get("channel_id") or "").strip()
 
+        rec_id = rec.get("recommendation_id")
+        if rec_id is None:
+            rec_id = rec.get("id")
+        if rec_id is not None:
+            rec_id = str(rec_id).strip() or None
+        override_top = bool(rec.get("_override_top"))
+        matched = rec.get("_matched_recommendation")
+        if matched is None and not override_top:
+            # Following a recommendation list item → matched unless flagged otherwise.
+            matched = rec_id is not None
+            # Override if not the selected/top rec.
+            top = None
+            snap = self._last_snapshot or {}
+            recs = snap.get("recommendations") or []
+            if recs:
+                top = str((recs[0] or {}).get("id") or "") or None
+            if rec_id and top and rec_id != top:
+                override_top = True
+        raw_request = rec.get("_raw_request")
+        if raw_request is None:
+            entry = self._entry_by_user_id(user_id) or {}
+            raw_request = entry.get("current_queue_request")
+        snapshot_id = str((self._last_snapshot or {}).get("snapshot_id") or "") or None
+
         self._command_busy = True
         self.abort_requested = False
         self._set_rec_buttons_enabled(False)
@@ -2592,6 +2885,11 @@ class QueueWindow(AppWindow):
                 is_shipswap,
                 ship_channel_id,
                 needs_staffcheck_confirm,
+                rec_id,
+                override_top,
+                matched,
+                str(raw_request) if raw_request else None,
+                snapshot_id,
             ),
             daemon=True,
         )
@@ -2689,9 +2987,16 @@ class QueueWindow(AppWindow):
         is_shipswap: bool = False,
         ship_channel_id: str = "",
         needs_staffcheck_confirm: bool = False,
+        recommendation_id: str | None = None,
+        override_top: bool = False,
+        matched_recommendation: bool | None = None,
+        raw_request: str | None = None,
+        snapshot_id: str | None = None,
     ) -> None:
         start_abort_session(self)
         claimed = False
+        success = False
+        error_code = None
         try:
             self._command_status.emit(
                 f"Claiming /{action} for {display_name}…"
@@ -2701,62 +3006,185 @@ class QueueWindow(AppWindow):
                 if action == "prep" and user_id:
                     self._recently_prepped_user_ids.discard(user_id)
                 self._command_status.emit(err)
+                error_code = "lock_or_claim_failed"
+                self._report_staff_action(
+                    action=action,
+                    user_id=user_id,
+                    ship_channel_id=ship_channel_id,
+                    ship_name=ship_name,
+                    recommendation_id=recommendation_id,
+                    snapshot_id=snapshot_id,
+                    success=False,
+                    error_code=error_code,
+                    override_top=override_top,
+                    matched_recommendation=matched_recommendation,
+                    raw_request=raw_request,
+                )
                 return
             claimed = True
 
             interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit(f"Opening #queue for {display_name}…")
-            switch_channel(self, QUEUE_CHANNEL_JUMP_URL, paste=True)
-            interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
+            jump = _queue_jump_target()
+            switch_channel(self, jump, paste=bool(queue_channel_jump_url()))
+            if not is_enabled():
+                interruptible_sleep(self, QUEUE_CHANNEL_SETTLE_S)
             check_abort(self)
-            clear_typing_bar()
+            if not is_enabled():
+                clear_typing_bar()
             check_abort(self)
+
+            queue_ch = queue_channel_id() or None
 
             if action in ("prep", "process"):
                 self._react_pending_before_fill(
                     ship_channel_id, ship_name, display_name
                 )
                 check_abort(self)
-                clear_typing_bar()
+                if not is_enabled():
+                    clear_typing_bar()
                 check_abort(self)
 
             if action == "process":
                 self._command_status.emit(
                     f"Running /process for {display_name} -> {ship_option} ({ship_name})…"
                 )
-                execute_slash_command(self, "/process", [user_id, ship_option])
-                if is_shipswap:
-                    self._command_status.emit(
-                        f"Confirming shipswap button for {display_name}…"
-                    )
-                    confirm_shipswap_after_process(self)
+                wait_response = is_enabled() and (
+                    is_shipswap or needs_staffcheck_confirm
+                )
+                process_result = execute_slash_command(
+                    self,
+                    "process",
+                    [
+                        opt_str("member", user_id, autocomplete=True),
+                        opt_str("ship", ship_option, autocomplete=True),
+                    ],
+                    channel_id=queue_ch,
+                    tab_values=[user_id, ship_option],
+                    wait_for_response=wait_response,
+                )
+                process_message_id = None
+                if isinstance(process_result, dict):
+                    process_message_id = str(
+                        process_result.get("messageId") or ""
+                    ).strip() or None
                 if needs_staffcheck_confirm:
                     self._command_status.emit(
                         f"Confirming StaffChecked for {display_name}…"
                     )
-                    confirm_staffcheck_after_process(self)
+                    confirm_staffcheck_after_process(
+                        self,
+                        message_id=process_message_id,
+                        channel_id=queue_ch,
+                    )
+                if is_shipswap:
+                    self._command_status.emit(
+                        f"Confirming shipswap button for {display_name}…"
+                    )
+                    confirm_shipswap_after_process(
+                        self,
+                        message_id=process_message_id,
+                        channel_id=queue_ch,
+                    )
             elif action == "prep":
                 self._command_status.emit(f"Running /prep for {display_name}…")
-                execute_slash_command(self, "/prep", [user_id])
+                execute_slash_command(
+                    self,
+                    "prep",
+                    [opt_str("target", user_id, autocomplete=True)],
+                    channel_id=queue_ch,
+                    tab_values=[user_id],
+                )
             else:
                 self._command_status.emit(f"Running /prep unprep for {display_name}…")
-                execute_slash_command(self, "/prep", [user_id, "unprep:True"])
+                execute_slash_command(
+                    self,
+                    "prep",
+                    [
+                        opt_str("target", user_id, autocomplete=True),
+                        opt_bool("unprep", True),
+                    ],
+                    channel_id=queue_ch,
+                    tab_values=[user_id, "True"],
+                )
 
+            success = True
             self._command_status.emit(f"Done: /{action} for {display_name}")
         except AbortError:
             if action == "prep" and user_id:
                 self._recently_prepped_user_ids.discard(user_id)
             self._command_status.emit("Queue command aborted")
+            error_code = "aborted"
+        except DiscordBridgeError as exc:
+            if action == "prep" and user_id:
+                self._recently_prepped_user_ids.discard(user_id)
+            self._command_status.emit(f"Bridge error: {exc}")
+            error_code = "bridge_error"
         except Exception:
             if action == "prep" and user_id:
                 self._recently_prepped_user_ids.discard(user_id)
             logger.exception("Queue slash command failed (%s %s)", action, user_id)
             self._command_status.emit(f"Failed: /{action} for {display_name}")
+            error_code = "command_failed"
         finally:
+            self._report_staff_action(
+                action=action,
+                user_id=user_id,
+                ship_channel_id=ship_channel_id,
+                ship_name=ship_name,
+                recommendation_id=recommendation_id,
+                snapshot_id=snapshot_id,
+                success=success,
+                error_code=error_code,
+                override_top=override_top,
+                matched_recommendation=matched_recommendation,
+                raw_request=raw_request,
+            )
             if claimed:
                 self._release_queue_action(user_id)
             end_abort_session(self)
             self._command_finished.emit()
+
+    def _report_staff_action(
+        self,
+        *,
+        action: str,
+        user_id: str,
+        ship_channel_id: str = "",
+        ship_name: str = "",
+        recommendation_id: str | None = None,
+        snapshot_id: str | None = None,
+        success: bool = True,
+        error_code: str | None = None,
+        override_top: bool = False,
+        matched_recommendation: bool | None = None,
+        raw_request: str | None = None,
+    ) -> None:
+        client = self._client
+        if client is None:
+            return
+        try:
+            client.send(
+                {
+                    "type": "staff_action",
+                    "action": action,
+                    "target_user_id": user_id,
+                    "ship_channel_id": ship_channel_id or None,
+                    "ship_name": ship_name or None,
+                    "recommendation_id": recommendation_id,
+                    "snapshot_id": snapshot_id
+                    or str((self._last_snapshot or {}).get("snapshot_id") or "")
+                    or None,
+                    "success": bool(success),
+                    "error_code": error_code,
+                    "override_top": bool(override_top),
+                    "matched_recommendation": matched_recommendation,
+                    "sim": bool(self._sim_enabled),
+                    "raw_request": raw_request,
+                }
+            )
+        except Exception:
+            logger.exception("Failed to report queue staff_action")
 
     def _on_command_finished(self) -> None:
         self._command_busy = False
@@ -2766,6 +3194,7 @@ class QueueWindow(AppWindow):
             self._apply_queue_banner_header(self._last_snapshot)
         else:
             self._set_rec_buttons_enabled(not self._sim_enabled)
+        self._sync_leave_notice_action_buttons()
 
     def _set_rec_buttons_enabled(self, enabled: bool) -> None:
         for i in range(self.recommendations_list.count()):

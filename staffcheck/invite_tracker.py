@@ -1,6 +1,12 @@
 import requests
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.discord_bridge import resolve_channel_id
+from core.keyboard import (
+    clear_typing_bar,
+    execute_slash_command,
+    opt_user,
+    switch_channel,
+)
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.abort import interruptible_sleep
@@ -22,7 +28,12 @@ def check_loghistory(self):
         for _id in self.inviters_ids:
             if abort.is_abort_requested(self):
                 break
-            execute_command(self, f"/user_report member:{_id}")
+            execute_slash_command(
+                self,
+                "user_report",
+                [opt_user("member", _id)],
+                channel_id=resolve_channel_id(self.channel.get()),
+            )
             interruptible_sleep(self, 1.5)
     except abort.AbortError:
         return
@@ -36,7 +47,12 @@ def check_invited_users(self):
         for _id in self.invitees_ids:
             if abort.is_abort_requested(self):
                 break
-            execute_command(self, f"/user_report member:{_id}")
+            execute_slash_command(
+                self,
+                "user_report",
+                [opt_user("member", _id)],
+                channel_id=resolve_channel_id(self.channel.get()),
+            )
             interruptible_sleep(self, 1.5)
     except abort.AbortError:
         return

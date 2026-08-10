@@ -76,6 +76,9 @@ def apply_last_check_label(self, data: dict | None = None):
     if status == "not_good":
         label_set(self.last_check_label, f"Not good · {age}", "red")
         return
+    if status == "ban_request":
+        label_set(self.last_check_label, f"Ban request · {age}", "red")
+        return
     if status == "good":
         try:
             when = datetime.fromisoformat(str(at).replace("Z", "+00:00"))
@@ -227,6 +230,15 @@ def _handle_essential_data(self, request_error: bool):
     if abort.is_abort_requested(self):
         return
 
+    try:
+        from staffcheck import analytics as sc_analytics
+
+        sc_analytics.report_outcome(
+            self, outcome="incomplete", incomplete_kind="essential_data_failed"
+        )
+    except Exception:
+        pass
+
     label_set(
         self.status_label,
         "Could not load account data from the API. Fix the connection and try again.",
@@ -343,7 +355,9 @@ def perform_next_command(self):
     if self.method.get() != "All Commands":
         return
 
+    from core.discord_bridge import DiscordBridgeError
     from staffcheck import ashen_commands, check_message, invite_tracker, sot_official
+    from staffcheck.qt_ui import report_bridge_error
 
     next_step = {
         "ElementalCommands": ashen_commands.ashen_commands,
@@ -351,8 +365,12 @@ def perform_next_command(self):
         "InviteTracker": sot_official.sot_official,
         "SOTOfficial": check_message.check_message,
     }.get(self.currentstate)
-    if next_step is not None:
+    if next_step is None:
+        return
+    try:
         next_step(self)
+    except DiscordBridgeError as exc:
+        report_bridge_error(self, exc)
 
 
 def continue_to_next(self):
@@ -386,28 +404,34 @@ def determine_method(self):
     if abort.is_abort_requested(self):
         return
 
-    if self.method.get() == "All Commands":
-        run_background(make_api_requests, self)
-        from staffcheck import elemental_commands
+    from core.discord_bridge import DiscordBridgeError
+    from staffcheck.qt_ui import report_bridge_error
 
-        elemental_commands.elemental_commands(self)
-    elif self.method.get() == "Bettermoderation Commands":
-        from staffcheck import elemental_commands
+    try:
+        if self.method.get() == "All Commands":
+            run_background(make_api_requests, self)
+            from staffcheck import elemental_commands
 
-        elemental_commands.elemental_commands(self)
-    elif self.method.get() == "Ashen Commands":
-        from staffcheck import ashen_commands
+            elemental_commands.elemental_commands(self)
+        elif self.method.get() == "Bettermoderation Commands":
+            from staffcheck import elemental_commands
 
-        ashen_commands.ashen_commands(self)
-    elif self.method.get() == "Invite Tracker":
-        from staffcheck import invite_tracker
+            elemental_commands.elemental_commands(self)
+        elif self.method.get() == "Ashen Commands":
+            from staffcheck import ashen_commands
 
-        invite_tracker.invite_tracker(self)
-    elif self.method.get() == "SOT Official":
-        from staffcheck import sot_official
+            ashen_commands.ashen_commands(self)
+        elif self.method.get() == "Invite Tracker":
+            from staffcheck import invite_tracker
 
-        sot_official.sot_official(self)
-    elif self.method.get() == "Check Message":
-        from staffcheck import check_message
+            invite_tracker.invite_tracker(self)
+        elif self.method.get() == "SOT Official":
+            from staffcheck import sot_official
 
-        check_message.check_message(self)
+            sot_official.sot_official(self)
+        elif self.method.get() == "Check Message":
+            from staffcheck import check_message
+
+            check_message.check_message(self)
+    except DiscordBridgeError as exc:
+        report_bridge_error(self, exc)

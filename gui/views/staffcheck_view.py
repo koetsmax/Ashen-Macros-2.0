@@ -1,7 +1,7 @@
 from gui.components.mutual_servers_section import MutualServersSection
 from gui.components.classic_result_section import ClassicResultSection
 from gui.components.result_section import ResultSection
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
     QComboBox,
@@ -125,6 +125,83 @@ class StaffcheckView(QWidget):
         btn.clicked.connect(handler)
         return btn
 
+    def _sync_action_button_columns(self) -> None:
+        """Keep the two action rows on equal column widths without clipping labels."""
+        grid = getattr(self, "_action_btn_grid", None)
+        if grid is None:
+            return
+
+        kill_visible = self.kill_button.isVisibleTo(self)
+        # Top-left spans both columns when the paired kill button is hidden.
+        if kill_visible:
+            grid.addWidget(self.function_button, 0, 0)
+            grid.addWidget(self.kill_button, 0, 1)
+        else:
+            grid.addWidget(self.function_button, 0, 0, 1, 2)
+
+        buttons = [self.function_button, self.start_button, self.stop_button]
+        if kill_visible:
+            buttons.append(self.kill_button)
+        ban = getattr(self, "ban_request_button", None)
+        if ban is not None and ban.isVisibleTo(self):
+            buttons.append(ban)
+
+        # Clear prior mins so sizeHint reflects current labels.
+        for btn in (
+            self.function_button,
+            self.kill_button,
+            self.start_button,
+            self.stop_button,
+        ):
+            btn.setMinimumWidth(0)
+        if ban is not None:
+            ban.setMinimumWidth(0)
+
+        col_w = max((btn.sizeHint().width() for btn in buttons), default=0)
+        if kill_visible:
+            left_min = right_min = col_w
+        else:
+            pair_w = max(
+                col_w,
+                self.start_button.sizeHint().width()
+                + self.stop_button.sizeHint().width()
+                + grid.horizontalSpacing(),
+            )
+            half = max(1, (pair_w - grid.horizontalSpacing()) // 2)
+            left_min = right_min = half
+
+        if (
+            grid.columnMinimumWidth(0) == left_min
+            and grid.columnMinimumWidth(1) == right_min
+        ):
+            return
+        grid.setColumnMinimumWidth(0, left_min)
+        grid.setColumnMinimumWidth(1, right_min)
+
+    def eventFilter(self, watched, event):
+        if event.type() in (
+            QEvent.Type.Show,
+            QEvent.Type.Hide,
+            QEvent.Type.ShowToParent,
+            QEvent.Type.HideToParent,
+            QEvent.Type.FontChange,
+            QEvent.Type.StyleChange,
+            QEvent.Type.Polish,
+            QEvent.Type.PolishRequest,
+            QEvent.Type.LayoutRequest,
+        ) and watched in (
+            getattr(self, "function_button", None),
+            getattr(self, "kill_button", None),
+            getattr(self, "ban_request_button", None),
+            getattr(self, "start_button", None),
+            getattr(self, "stop_button", None),
+        ):
+            # Defer until after the text/visibility change is applied.
+            from PySide6.QtCore import QTimer
+
+            QTimer.singleShot(0, self._sync_action_button_columns)
+        return super().eventFilter(watched, event)
+
     def get_reason(self) -> str:
         return self.reason_entry.text().strip()
 
@@ -191,22 +268,38 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self.method_combo_box, row, 1)
         row += 1
 
-        btn_row = QHBoxLayout()
+        btn_grid = QGridLayout()
+        btn_grid.setHorizontalSpacing(10)
+        btn_grid.setVerticalSpacing(8)
+        btn_grid.setColumnStretch(0, 1)
+        btn_grid.setColumnStretch(1, 1)
+        self._action_btn_grid = btn_grid
+
         self.function_button = self._make_button("Cool Button", pipeline._button_noop)
         self.kill_button = self._make_button("Not Good to Check", lambda: None)
         self.kill_button.setVisible(False)
-        btn_row.addWidget(self.function_button)
-        btn_row.addWidget(self.kill_button)
-        self.input_layout.addLayout(btn_row, row, 0, 1, 2)
-        row += 1
-
-        btn_row2 = QHBoxLayout()
+        self.ban_request_button = self._make_button("Ban request", lambda: None)
+        self.ban_request_button.setVisible(False)
         self.start_button = self._make_button("Start check!", lambda: pipeline.start_check(self))
         self.start_button.setObjectName("primary")
         self.stop_button = self._make_button("Stop check!", lambda: abort.abort_staffcheck(self))
-        btn_row2.addWidget(self.start_button)
-        btn_row2.addWidget(self.stop_button)
-        self.input_layout.addLayout(btn_row2, row, 0, 1, 2)
+
+        for btn in (
+            self.function_button,
+            self.kill_button,
+            self.ban_request_button,
+            self.start_button,
+            self.stop_button,
+        ):
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.installEventFilter(self)
+
+        btn_grid.addWidget(self.function_button, 0, 0)
+        btn_grid.addWidget(self.kill_button, 0, 1)
+        btn_grid.addWidget(self.start_button, 1, 0)
+        btn_grid.addWidget(self.stop_button, 1, 1)
+        btn_grid.addWidget(self.ban_request_button, 2, 0, 1, 2)
+        self.input_layout.addLayout(btn_grid, row, 0, 1, 2)
         row += 1
 
         btn_row3 = QHBoxLayout()
@@ -217,11 +310,19 @@ class StaffcheckView(QWidget):
         btn_row3.addWidget(self.function_button_2)
         self.input_layout.addLayout(btn_row3, row, 0, 1, 2)
         row += 1
+        self._sync_action_button_columns()
 
         self.reason_entry = self._line_field()
         self.reason_entry.setPlaceholderText(REASON_PLACEHOLDER)
         self.reason = Var(self.get_reason, self.reason_entry.setText)
         self.input_layout.addWidget(self.reason_entry, row, 0, 1, 2)
+        row += 1
+
+        self.shadow_suggestion_label = QLabel("")
+        self.shadow_suggestion_label.setObjectName("resultValue")
+        self.shadow_suggestion_label.setWordWrap(True)
+        self.shadow_suggestion_label.setVisible(False)
+        self.input_layout.addWidget(self.shadow_suggestion_label, row, 0, 1, 2)
         row += 1
 
         self.status_label = QLabel("Waiting for ID")
@@ -412,6 +513,7 @@ class StaffcheckView(QWidget):
         for label, handler in [
             ("Good to check message", self.edit_good_to_check),
             ("Not good to check message", self.edit_not_good_to_check),
+            ("Ban request message", self.edit_ban_request),
         ]:
             action = menu.addAction(label)
             action.triggered.connect(handler)
@@ -434,10 +536,16 @@ class StaffcheckView(QWidget):
             build_example_message(self, 99, self.status_label)
             btn_enable(self.stop_button, False)
             self.kill_button.setVisible(False)
+            if hasattr(self, "ban_request_button"):
+                self.ban_request_button.setVisible(False)
+            if hasattr(self, "shadow_suggestion_label"):
+                self.shadow_suggestion_label.setVisible(False)
         else:
             btn_enable(self.start_button, False)
             btn_enable(self.stop_button, False)
             btn_enable(self.kill_button, False)
+            if hasattr(self, "ban_request_button"):
+                btn_enable(self.ban_request_button, False)
             pipeline.disable_function_button(self)
             pipeline.disable_function_button_2(self)
             for section in self.result_sections.values():
@@ -452,6 +560,15 @@ class StaffcheckView(QWidget):
         CustomizeDialog("not_good_to_check_message",
                         "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1,
                         "userID **Not** Good to check -- GT: xboxGT -- Reason", self).exec()
+
+    def edit_ban_request(self):
+        CustomizeDialog(
+            "ban_request_message",
+            "userID = Discord ID\nxboxGT = Gamertag\nReason = reason",
+            2,
+            "userID Ban request -- GT: xboxGT -- Reason",
+            self,
+        ).exec()
 
 
 class CustomizeDialog(QDialog):

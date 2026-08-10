@@ -34,6 +34,8 @@ def report_outcome(
     *,
     outcome: str,
     reason: str | None = None,
+    incomplete_kind: str | None = None,
+    shadow_shown: bool = False,
 ) -> None:
     """Fire-and-forget POST /staffcheck/complete."""
     check_id = getattr(self, "check_id", None)
@@ -46,7 +48,10 @@ def report_outcome(
         "reason": reason,
         "userID": self.user_id.get() if hasattr(self, "user_id") else None,
         "xboxGT": str(self.xbox_gt) if getattr(self, "xbox_gt", None) not in (None, [], "") else "",
+        "shadow_shown": bool(shadow_shown),
     }
+    if incomplete_kind:
+        payload["incomplete_kind"] = incomplete_kind
     headers = getattr(self, "headers", None) or {}
 
     def _post():

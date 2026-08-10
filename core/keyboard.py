@@ -1,10 +1,12 @@
 """Discord keyboard automation."""
 
+from __future__ import annotations
+
 import logging
 import threading
 import time
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Any, Iterator
 
 import keyboard
 import pyperclip
@@ -13,6 +15,7 @@ import win32gui
 
 from core.settings import read_config
 from staffcheck.abort import (
+    AbortError,
     check_abort,
     interruptible_sleep,
     keyboard_automation,
@@ -87,8 +90,14 @@ def clear_typing_bar(*, in_on_duty_chat: bool = False):
 
     When already in #on-duty-chat and edit-previous-check is enabled, starts with
     Up → Esc → Esc so focus leaves any stuck message/edit state first.
+
+    No-op when the Vencord bridge experiment is enabled (plugin does not need it).
     """
+    from core.discord_bridge import is_enabled
     from staffcheck.abort import suppress_abort_hotkey
+
+    if is_enabled():
+        return
 
     with keyboard_automation(), suppress_abort_hotkey():
         activate_window("discord")
@@ -131,6 +140,34 @@ def _clipboard_scope(text: str) -> Iterator[None]:
 
 
 def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        get_bridge,
+        is_enabled,
+        note_active_channel,
+        prefer_bridge,
+        queue_guild_id,
+        resolve_channel_id,
+    )
+
+    channel_id = resolve_channel_id(channel)
+    if is_enabled():
+        if not channel_id:
+            raise DiscordBridgeError(
+                f"Cannot resolve channel id for {channel!r} (bridge enabled)"
+            )
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        check_abort(self)
+        gid = queue_guild_id() or None
+        get_bridge().switch_channel(
+            channel_id,
+            guild_id=gid,
+            abort_ctx=self,
+        )
+        note_active_channel(channel_id, gid)
+        return
+
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         if not args:
@@ -149,9 +186,21 @@ def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
             interruptible_sleep(self, 0.8 if not kwargs else 5)
             keyboard.press_and_release("enter")
         interruptible_sleep(self, 2)
+        if channel_id:
+            from core.discord_bridge import note_active_channel, queue_guild_id
+
+            note_active_channel(channel_id, queue_guild_id() or None)
 
 
 def execute_command(self, command: str):
+    """Paste a free-form Discord command via the keyboard (no bridge parsing)."""
+    from core.discord_bridge import DiscordBridgeError, is_enabled
+
+    if is_enabled():
+        raise DiscordBridgeError(
+            "Free-form keyboard paste is disabled while the Vencord bridge is enabled"
+        )
+
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
 
@@ -165,47 +214,182 @@ def execute_command(self, command: str):
             keyboard.press_and_release("enter")
 
 
-def execute_slash_command(self, command: str, options: list[str] | None = None) -> None:
-    """Run a Discord slash command by tabbing through options.
+def execute_slash_command(
+    self,
+    name: str,
+    options: list[dict[str, Any]] | None = None,
+    *,
+    channel_id: str | None = None,
+    tab_values: list[str] | None = None,
+    wait_for_response: bool = False,
+    wait_ms: int = 8000,
+) -> dict[str, Any] | None:
+    """Run a Discord slash command with structured options.
 
-    Exact sequence (e.g. /process):
-      /process → Tab (select command) → type userID → wait → Tab
-      → type ship option → wait → Tab (autocomplete may expand to full name)
-      → wait → Enter
+    When the Vencord bridge experiment is enabled, requires an explicit
+    ``channel_id`` (no fallback to last switched channel). When disabled,
+    keyboard Tab/paste fallback uses whatever channel Discord is showing.
+
+    Returns the bridge response dict when the bridge path runs (including
+    ``messageId`` when ``wait_for_response`` is True). Keyboard path returns None.
     """
-    options = list(options or [])
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        active_guild_id,
+        get_bridge,
+        is_enabled,
+        prefer_bridge,
+    )
+
+    opts = list(options or [])
+    cmd = (name or "").lstrip("/").strip()
+    if not cmd:
+        return None
+
+    if is_enabled():
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        ch = str(channel_id or "").strip()
+        if not ch:
+            raise DiscordBridgeError(
+                f"No channel id for /{cmd} (pass channel_id explicitly)"
+            )
+        check_abort(self)
+        return get_bridge().slash_command(
+            cmd,
+            ch,
+            opts,
+            guild_id=active_guild_id() or None,
+            abort_ctx=self,
+            wait_for_response=wait_for_response,
+            wait_ms=wait_ms,
+        )
+
+    if tab_values is not None:
+        _slash_via_keyboard_tabs(self, cmd, list(tab_values))
+        return None
+
+    execute_command(self, _format_slash_paste(cmd, opts))
+    return None
+
+
+def _format_slash_paste(name: str, options: list[dict[str, Any]] | None) -> str:
+    """Build a Dyno/Carl-style paste string for keyboard fallback only."""
+    parts: list[str] = [f"/{name.lstrip('/')}"]
+    for opt in options or []:
+        if opt.get("type") == 1 or (
+            isinstance(opt.get("options"), list) and "value" not in opt
+        ):
+            parts.append(str(opt.get("name") or ""))
+            for child in opt.get("options") or []:
+                cname = str(child.get("name") or "")
+                cval = child.get("value")
+                if isinstance(cval, bool):
+                    parts.append(f"{cname}: {cval}")
+                else:
+                    parts.append(f"{cname}:{cval}")
+            continue
+        oname = str(opt.get("name") or "")
+        oval = opt.get("value")
+        if isinstance(oval, bool):
+            parts.append(f"{oname}: {oval}")
+        else:
+            parts.append(f"{oname}:{oval}")
+    return " ".join(p for p in parts if p)
+
+
+def _slash_via_keyboard_tabs(self, name: str, values: list[str]) -> None:
+    """Keyboard Tab path used by /prep and /process before the bridge existed."""
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         config = read_config()
         initial_command = float(config.get("initial_command") or 2)
         follow_up = float(config.get("follow_up") or 0.4)
-        # Settle after typing each option value before Tab advances the field.
         option_settle = max(follow_up * 2.5, 2.0)
 
-        keyboard.write(command)
+        keyboard.write(f"/{name.lstrip('/')}")
         interruptible_sleep(self, initial_command)
         check_abort(self)
         keyboard.press_and_release("tab")
-        # Let focus land on the first option before typing.
         interruptible_sleep(self, follow_up)
 
-        for option in options:
+        for value in values:
             check_abort(self)
-            keyboard.write(str(option))
+            keyboard.write(str(value))
             interruptible_sleep(self, option_settle)
             keyboard.press_and_release("tab")
 
-        # Brief pause after last Tab before Enter (autocomplete is already settled).
         interruptible_sleep(self, max(follow_up, 0.45))
         check_abort(self)
         keyboard.press_and_release("enter")
 
 
-def confirm_shipswap_after_process(self) -> None:
-    """After /process for a shipswap: focus the bot reply and confirm the button.
+def opt_str(name: str, value: Any, *, autocomplete: bool = False) -> dict[str, Any]:
+    """STRING slash option helper for call sites."""
+    out: dict[str, Any] = {"name": name, "type": 3, "value": value}
+    if autocomplete:
+        out["autocomplete"] = True
+    return out
 
-    Sequence: Shift+Tab → Up (one message) → Tab × 7 → Enter
+
+def opt_bool(name: str, value: bool) -> dict[str, Any]:
+    return {"name": name, "type": 5, "value": bool(value)}
+
+
+def opt_user(name: str, user_id: Any) -> dict[str, Any]:
+    return {"name": name, "type": 6, "value": str(user_id)}
+
+
+def opt_sub(name: str, children: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    return {"name": name, "type": 1, "options": list(children or [])}
+
+
+# Exact labels from alliancebot tools/baseInteractions.py (custom_ids are random).
+PROCESS_CONFIRM_LABEL_SHIPSWAP = "Confirm"
+PROCESS_CONFIRM_LABEL_STAFFCHECK = "StaffCheck and Continue"
+
+
+def confirm_shipswap_after_process(
+    self,
+    *,
+    message_id: str | None = None,
+    channel_id: str | None = None,
+) -> None:
+    """After /process for a shipswap: confirm the green Confirm button.
+
+    Bridge: clickButton by label on the ephemeral process reply (message_id required).
+    Keyboard: Shift+Tab → Up → Tab × 7 → Enter.
     """
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        get_bridge,
+        is_enabled,
+        prefer_bridge,
+        queue_channel_id,
+        queue_guild_id,
+    )
+
+    if is_enabled():
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        mid = str(message_id or "").strip()
+        if not mid:
+            raise DiscordBridgeError(
+                "No message_id for shipswap Confirm (slash waitForResponse required)"
+            )
+        ch = str(channel_id or queue_channel_id() or "").strip()
+        if not ch:
+            raise DiscordBridgeError("No channel id for shipswap Confirm")
+        check_abort(self)
+        get_bridge().click_button(
+            ch,
+            mid,
+            label=PROCESS_CONFIRM_LABEL_SHIPSWAP,
+            guild_id=queue_guild_id() or None,
+            abort_ctx=self,
+        )
+        return
+
     config = read_config()
     follow_up = float(config.get("follow_up") or 0.4)
     step = max(follow_up, 0.2)
@@ -225,12 +409,47 @@ def confirm_shipswap_after_process(self) -> None:
         keyboard.press_and_release("enter")
 
 
-def confirm_staffcheck_after_process(self) -> None:
+def confirm_staffcheck_after_process(
+    self,
+    *,
+    message_id: str | None = None,
+    channel_id: str | None = None,
+) -> None:
     """After /process when target lacks StaffChecked but is good to check.
 
-    Ashen asks to confirm granting the role. Same focus as shipswap, then
-    Tab × 6 → Enter.
+    Bridge: clickButton \"StaffCheck and Continue\" on the ephemeral process reply.
+    Keyboard: Same focus as shipswap, then Tab × 6 → Enter.
     """
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        get_bridge,
+        is_enabled,
+        prefer_bridge,
+        queue_channel_id,
+        queue_guild_id,
+    )
+
+    if is_enabled():
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        mid = str(message_id or "").strip()
+        if not mid:
+            raise DiscordBridgeError(
+                "No message_id for StaffCheck confirm (slash waitForResponse required)"
+            )
+        ch = str(channel_id or queue_channel_id() or "").strip()
+        if not ch:
+            raise DiscordBridgeError("No channel id for StaffCheck confirm")
+        check_abort(self)
+        get_bridge().click_button(
+            ch,
+            mid,
+            label=PROCESS_CONFIRM_LABEL_STAFFCHECK,
+            guild_id=queue_guild_id() or None,
+            abort_ctx=self,
+        )
+        return
+
     config = read_config()
     follow_up = float(config.get("follow_up") or 0.4)
     step = max(follow_up, 0.2)
@@ -250,13 +469,132 @@ def confirm_staffcheck_after_process(self) -> None:
         keyboard.press_and_release("enter")
 
 
-def apply_update_bonus_on_queue_message(self, offset: int | None = None) -> None:
-    """No-op placeholder for future Apps → update bonus automation."""
-    return
+def apply_update_bonus_on_queue_message(
+    self,
+    offset: int | None = None,
+    *,
+    message_id: str | None = None,
+    channel_id: str | None = None,
+    guild_id: str | None = None,
+) -> None:
+    """Open a #queue banner's ⋯ menu and run Apps → update bonus.
+
+    When the Vencord bridge experiment is enabled, requires message_id and a
+    successful bridge messageCommand (no keyboard fallback).
+    """
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        get_bridge,
+        is_enabled,
+        prefer_bridge,
+        queue_channel_id,
+        queue_guild_id,
+    )
+
+    mid = str(message_id or "").strip()
+    if is_enabled():
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        if not mid:
+            raise DiscordBridgeError("No banner message_id for update bonus")
+        ch = str(channel_id or queue_channel_id()).strip()
+        if not ch:
+            raise DiscordBridgeError("No channel id for update bonus")
+        gid = str(guild_id or queue_guild_id()).strip() or None
+        check_abort(self)
+        get_bridge().message_command(
+            "update bonus",
+            ch,
+            mid,
+            guild_id=gid,
+            abort_ctx=self,
+        )
+        return
+
+    config = read_config()
+    follow_up = float(config.get("follow_up") or 0.4)
+    step = max(follow_up, 0.2)
+    # Newest message in channel history (1-based). No message below it.
+    is_newest = offset is None or int(offset) <= 1
+
+    if is_newest:
+        with keyboard_automation(), self.keyboard_lock:
+            interruptible_sleep(self, 1.0)
+            check_abort(self)
+            clear_typing_bar()
+            interruptible_sleep(self, step)
+            for _ in range(3):
+                check_abort(self)
+                keyboard.press_and_release("shift+tab")
+                interruptible_sleep(self, step)
+    else:
+        # One message below the banner = one newer = offset - 1 from bottom.
+        navigate_to_channel_message(self, int(offset) - 1, in_on_duty_chat=False)
+        with keyboard_automation(), self.keyboard_lock:
+            check_abort(self)
+            keyboard.press_and_release("shift+tab")
+            interruptible_sleep(self, step)
+            check_abort(self)
+            keyboard.press_and_release("enter")
+            interruptible_sleep(self, max(step, 0.35))
+
+    with keyboard_automation(), self.keyboard_lock:
+        check_abort(self)
+        for _ in range(9):
+            check_abort(self)
+            keyboard.press_and_release("down")
+            interruptible_sleep(self, step)
+        # Extra settle after Apps row is highlighted before opening the submenu.
+        interruptible_sleep(self, max(step, 0.45))
+        check_abort(self)
+        keyboard.press_and_release("right")
+        interruptible_sleep(self, max(step, 0.45))
+        check_abort(self)
+        with _clipboard_scope("update bonus"):
+            keyboard.press_and_release("ctrl+v")
+            interruptible_sleep(self, max(step, 0.45))
+        check_abort(self)
+        keyboard.press_and_release("down")
+        interruptible_sleep(self, max(step, 0.45))
+        check_abort(self)
+        keyboard.press_and_release("enter")
+        interruptible_sleep(self, max(step, 0.45))
+    clear_typing_bar()
 
 
-def type_text(self, text: str, *, press_enter: bool = True) -> None:
-    """Type a free-text message (good-to-check, join AWR, etc.) with abort coverage."""
+def type_text(
+    self,
+    text: str,
+    *,
+    press_enter: bool = True,
+    channel_id: str | None = None,
+) -> None:
+    """Type a free-text message (good-to-check, join AWR, etc.) with abort coverage.
+
+    When the Vencord bridge experiment is enabled, requires a channel id and a
+    successful bridge send (no keyboard fallback).
+    """
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        get_bridge,
+        is_enabled,
+        prefer_bridge,
+    )
+
+    if is_enabled():
+        if not prefer_bridge():
+            raise DiscordBridgeError("Vencord bridge is not connected")
+        if not press_enter:
+            raise DiscordBridgeError(
+                "Bridge cannot type without sending (press_enter=False)"
+            )
+        ch = str(channel_id or "").strip()
+        if not ch:
+            raise DiscordBridgeError("No channel id for send (pass channel_id explicitly)")
+        check_abort(self)
+        get_bridge().send(ch, text, abort_ctx=self)
+        return
+
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         keyboard.write(text)

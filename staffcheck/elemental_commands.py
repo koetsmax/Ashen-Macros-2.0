@@ -2,7 +2,14 @@ import time
 
 import requests
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.discord_bridge import resolve_channel_id
+from core.keyboard import (
+    clear_typing_bar,
+    execute_slash_command,
+    opt_str,
+    opt_user,
+    switch_channel,
+)
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.abort import interruptible_sleep
@@ -20,7 +27,12 @@ def elemental_commands(self, *args):
     try:
         switch_channel(self, self.channel.get())
         clear_typing_bar()
-        execute_command(self, f"/user_report member:{self.user_id.get()}")
+        execute_slash_command(
+            self,
+            "user_report",
+            [opt_user("member", self.user_id.get())],
+            channel_id=resolve_channel_id(self.channel.get()),
+        )
     except abort.AbortError:
         return
     if abort.is_abort_requested(self):
@@ -33,7 +45,8 @@ def elemental_commands(self, *args):
         if not abort.is_abort_requested(self):
             try:
                 # Give Discord a beat before /search so both slash commands land cleanly.
-                interruptible_sleep(self, 1.5)
+                # Keep full duration even with the bridge — Discord still needs this gap.
+                interruptible_sleep(self, 1.5, bridge_fast=False)
             except abort.AbortError:
                 return
             pipeline.continue_to_next(self)
@@ -54,7 +67,15 @@ def add_note(self):
         btn_enable(self.function_button, False)
         btn_enable(self.kill_button, False)
         btn_enable(self.start_button, False)
-        execute_command(self, f"/add_note member:{self.user_id.get()} content:GT: {self.xbox_gt}")
+        execute_slash_command(
+            self,
+            "add_note",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("content", f"GT: {self.xbox_gt}"),
+            ],
+            channel_id=resolve_channel_id(self.channel.get()),
+        )
     except abort.AbortError:
         return
     btn_enable(self.kill_button, True)
@@ -67,7 +88,15 @@ def tell_to_link_xbox(self):
     btn_enable(self.start_button, False)
     try:
         clear_typing_bar()
-        execute_command(self, f"/verify member:{self.user_id.get()} verify_type:link_xbox")
+        execute_slash_command(
+            self,
+            "verify",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("verify_type", "link_xbox"),
+            ],
+            channel_id=resolve_channel_id(self.channel.get()),
+        )
     except abort.AbortError:
         return
     btn_enable(self.kill_button, True)
@@ -82,7 +111,15 @@ def tell_to_verify(self):
     btn_enable(self.start_button, False)
     try:
         clear_typing_bar()
-        execute_command(self, f"/verify member:{self.user_id.get()} verify_type:verify")
+        execute_slash_command(
+            self,
+            "verify",
+            [
+                opt_user("member", self.user_id.get()),
+                opt_str("verify_type", "verify"),
+            ],
+            channel_id=resolve_channel_id(self.channel.get()),
+        )
     except abort.AbortError:
         return
     btn_enable(self.kill_button, True)

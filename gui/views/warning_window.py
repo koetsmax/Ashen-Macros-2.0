@@ -2,7 +2,15 @@ import threading
 
 from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton
 
-from core.keyboard import clear_typing_bar, execute_command, switch_channel
+from core.discord_bridge import resolve_channel_id
+from core.keyboard import (
+    clear_typing_bar,
+    execute_slash_command,
+    opt_bool,
+    opt_str,
+    opt_user,
+    switch_channel,
+)
 from gui.views.app_window import AppWindow
 from staffcheck.abort import (
     AbortError,
@@ -14,11 +22,7 @@ from staffcheck.qt_ui import on_main_thread
 
 
 PRESET_REASONS = {
-    "leave warning (rule 3)": (
-        "Rule #3: You must give a warning before leaving a ship by using !leave 10 minutes "
-        "before you plan to leave the ship. Leaving significantly before or after the 10 minutes "
-        "is not acceptable, however, you are allowed to leave earlier if a replacement is already on your ship."
-    ),
+    "leave warning (rule 3)": "",  # filled from bot scrape when available
     "Alt+F4 warning": (
         "Rule #4: When leaving the game, ensure to exit gracefully by using the LEAVE GAME option. "
         "It is strictly prohibited to use ALT+F4 or force kill your game. Failure to comply will "
@@ -79,7 +83,12 @@ class WarningWindow(AppWindow):
         custom = self.custom_reason_entry.text().strip()
         if custom:
             return custom
-        return PRESET_REASONS[self.reason_combo.currentText()]
+        key = self.reason_combo.currentText()
+        if key == "leave warning (rule 3)":
+            from core.discord_bridge import leave_warning_rule
+
+            return leave_warning_rule(3)
+        return PRESET_REASONS[key]
 
     def _set_status(self, text: str) -> None:
         on_main_thread(lambda: self.status_label.setText(text))
@@ -127,7 +136,12 @@ class WarningWindow(AppWindow):
             check_abort(self)
             clear_typing_bar()
             check_abort(self)
-            execute_command(self, f"/user_report member:{self.user_id_entry.text()}")
+            execute_slash_command(
+                self,
+                "user_report",
+                [opt_user("member", self.user_id_entry.text())],
+                channel_id=resolve_channel_id(self.channel_combo.currentText()),
+            )
             self._set_status("Review loghistory, then Add warning (abort key works)")
 
             def _arm_add():
@@ -168,16 +182,18 @@ class WarningWindow(AppWindow):
             clear_typing_bar()
             check_abort(self)
             reason = self._reason_text()
+            warn_opts = [
+                opt_user("member", self.user_id_entry.text()),
+                opt_str("reason", reason),
+            ]
             if self.nodm_check.isChecked():
-                execute_command(
-                    self,
-                    f"/warn member:{self.user_id_entry.text()} reason:{reason} no_dm: True",
-                )
-            else:
-                execute_command(
-                    self,
-                    f"/warn member:{self.user_id_entry.text()} reason:{reason}",
-                )
+                warn_opts.append(opt_bool("no_dm", True))
+            execute_slash_command(
+                self,
+                "warn",
+                warn_opts,
+                channel_id=resolve_channel_id(self.channel_combo.currentText()),
+            )
             self._set_status("Done")
         except AbortError:
             self._set_status("Aborted")
