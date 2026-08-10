@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterator, Optional
 
 import keyboard
 import requests
+from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication
 
 from core.settings import read_config
@@ -93,9 +94,13 @@ def interruptible_sleep(
         return
     end = time.time() + duration
     app = QApplication.instance()
+    # processEvents is only safe on the GUI thread. Workers (queue / leave /
+    # bridge) call this sleep often; touching Qt off-thread can AV-kill the
+    # process with no Python traceback — including unfrozen runs.
+    on_gui = app is not None and QThread.currentThread() == app.thread()
     while time.time() < end:
         check_abort(self)
-        if app is not None:
+        if on_gui:
             app.processEvents()
         time.sleep(min(step, max(0, end - time.time())))
 

@@ -108,7 +108,7 @@ def unprivate_api_request(self):
                         opt_sub(
                             "recall",
                             [
-                                opt_str("name", "Unprivate Xbox"),
+                                opt_str("name", "Unprivate Xbox", autocomplete=True),
                                 opt_bool("copyable", True),
                             ],
                         )

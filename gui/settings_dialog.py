@@ -261,14 +261,20 @@ class SettingsDialog(QDialog):
             self._key_test_label.setStyleSheet(f"color: {theme.RED};")
 
     def _on_key_detected(self):
-        self._key_test_label.setText("Key recognized!")
-        self._key_test_label.setStyleSheet(f"color: {theme.GREEN};")
-        if self._key_test_hotkey:
-            try:
-                keyboard.remove_hotkey(self._key_test_hotkey)
-            except (KeyError, ValueError):
-                pass
-            self._key_test_hotkey = None
+        # keyboard.add_hotkey runs this on its hook thread — marshal UI to Qt.
+        from staffcheck.qt_ui import on_main_thread
+
+        def _apply():
+            self._key_test_label.setText("Key recognized!")
+            self._key_test_label.setStyleSheet(f"color: {theme.GREEN};")
+            if self._key_test_hotkey:
+                try:
+                    keyboard.remove_hotkey(self._key_test_hotkey)
+                except (KeyError, ValueError):
+                    pass
+                self._key_test_hotkey = None
+
+        on_main_thread(_apply)
 
     def keyPressEvent(self, event: QKeyEvent):
         if self._key_test_hotkey is not None and event.key() == Qt.Key.Key_Escape:

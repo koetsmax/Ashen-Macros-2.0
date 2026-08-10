@@ -409,6 +409,20 @@ class DiscordBridge:
     def plugin_version(self) -> str:
         return str(self._plugin_version or "").strip()
 
+    def _capture_plugin_version(self, data: dict) -> None:
+        """Store bridge plugin version from hello/auth/pong — not Discord payloads.
+
+        Slash/messageCommand results include ``version`` as the application
+        command snowflake; treating those as the plugin version makes the hub
+        status show a long id after the first command.
+        """
+        ver = str(data.get("version") or "").strip()
+        if not ver:
+            return
+        msg_type = str(data.get("type") or "")
+        if data.get("plugin") or msg_type in ("hello", "needsAuth") or data.get("pong") is True:
+            self._plugin_version = ver
+
     def last_error(self) -> str:
         return self._last_error
 
@@ -860,9 +874,7 @@ class DiscordBridge:
                 response.get("ok") is True
                 or response.get("type") in ("auth_ok", "authenticated", "result")
             ):
-                ver = str(response.get("version") or "").strip()
-                if ver:
-                    self._plugin_version = ver
+                self._capture_plugin_version(response)
                 self._authed.set()
                 self._auth_failed = False
                 self._last_error = ""
@@ -890,9 +902,7 @@ class DiscordBridge:
 
         msg_type = str(data.get("type") or "")
         if msg_type in ("hello", "needsAuth"):
-            ver = str(data.get("version") or "").strip()
-            if ver:
-                self._plugin_version = ver
+            self._capture_plugin_version(data)
             return
 
         request_id = data.get("id")
@@ -909,10 +919,8 @@ class DiscordBridge:
                 data = {**data, "ok": True}
             entry["response"] = data
             entry["event"].set()
-            ver = str(data.get("version") or "").strip()
-            if ver and data.get("ok") is not False:
-                self._plugin_version = ver
-
+            if data.get("ok") is not False:
+                self._capture_plugin_version(data)
     def _on_error(self, _ws, error) -> None:
         self._last_error = str(error)
         # Avoid noisy logs while the plugin is simply not running.

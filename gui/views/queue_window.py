@@ -1523,7 +1523,7 @@ class QueueWindow(AppWindow):
             execute_slash_command(
                 self,
                 "message-store",
-                [opt_sub("recall", [opt_str("name", recall_name)])],
+                [opt_sub("recall", [opt_str("name", recall_name, autocomplete=True)])],
                 channel_id=queue_channel_id() or None,
             )
             self._command_status.emit("Waiting for new queue banner…")
