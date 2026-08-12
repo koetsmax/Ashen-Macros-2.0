@@ -23,7 +23,6 @@ from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
 from gui.views.ship_holder_window import ShipHolderWindow
 from gui.views.stats_window import StatsWindow
-from gui.views.staffcheck_training_window import StaffcheckTrainingWindow
 from gui.views.warning_window import WarningWindow
 
 logger = logging.getLogger(__name__)
@@ -63,12 +62,6 @@ APP_REGISTRY = [
     AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
     AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
     AppEntry("Stats", StatsWindow, "stats"),
-    AppEntry(
-        "Staffcheck training",
-        StaffcheckTrainingWindow,
-        "staffcheck_labeler",
-        alt_permissions=("administrator",),
-    ),
     AppEntry("Permissions", PermissionsWindow, "administrator"),
     AppEntry(
         "Bridge tests",

@@ -308,13 +308,6 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self.reason_entry, row, 0, 1, 2)
         row += 1
 
-        self.shadow_suggestion_label = QLabel("")
-        self.shadow_suggestion_label.setObjectName("resultValue")
-        self.shadow_suggestion_label.setWordWrap(True)
-        self.shadow_suggestion_label.setVisible(False)
-        self.input_layout.addWidget(self.shadow_suggestion_label, row, 0, 1, 2)
-        row += 1
-
         self.status_label = QLabel("Waiting for ID")
         self.status_label.setObjectName("resultValue")
         self.input_layout.addWidget(self.status_label, row, 0, 1, 2)
@@ -526,8 +519,6 @@ class StaffcheckView(QWidget):
             build_example_message(self, 99, self.status_label)
             btn_enable(self.stop_button, False)
             self.kill_button.setVisible(False)
-            if hasattr(self, "shadow_suggestion_label"):
-                self.shadow_suggestion_label.setVisible(False)
         else:
             btn_enable(self.start_button, False)
             btn_enable(self.stop_button, False)

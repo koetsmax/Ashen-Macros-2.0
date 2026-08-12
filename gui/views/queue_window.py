@@ -78,8 +78,6 @@ logger = logging.getLogger(__name__)
 QUEUE_COMMAND_START_DELAY_S = 1.2
 # Extra settle after jumping to #queue before typing the slash command.
 QUEUE_CHANNEL_SETTLE_S = 1.2
-# Soft flash for on-duty ping rows in Leaves workflow list.
-ONDUTY_PING_FLASH_MS = 750
 
 
 def _queue_jump_target() -> str:
@@ -141,7 +139,6 @@ class QueueWindow(AppWindow):
         self._skipped_leave_message_ids: set[str] = set()
         # Optimistic tick/cross before the next leave_notices snapshot lands.
         self._leave_notice_local_marks: dict[str, str] = {}
-        self._onduty_ping_flash_on = False
         super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
@@ -156,9 +153,6 @@ class QueueWindow(AppWindow):
         self._countdown_timer.setInterval(1000)
         self._countdown_timer.timeout.connect(self._tick_countdowns)
         self._countdown_timer.start()
-        self._onduty_flash_timer = QTimer(self)
-        self._onduty_flash_timer.setInterval(ONDUTY_PING_FLASH_MS)
-        self._onduty_flash_timer.timeout.connect(self._tick_onduty_ping_flash)
 
     def _build_ui(self) -> None:
         status_row = QHBoxLayout()
@@ -575,7 +569,19 @@ class QueueWindow(AppWindow):
         text = feedback.toPlainText().strip()
         self._pending_report = True
         self._set_status("Sending state report…")
-        self._client.send({"type": "submit_state_report", "feedback": text})
+        from core.discord_bridge import bridge_plugin_version, is_enabled
+        from core.updates import display_version
+
+        payload: dict = {
+            "type": "submit_state_report",
+            "feedback": text,
+            "macro_version": display_version(),
+        }
+        if is_enabled():
+            bridge_ver = bridge_plugin_version()
+            if bridge_ver:
+                payload["bridge_version"] = bridge_ver
+        self._client.send(payload)
 
     def _handle_report_ack(self, data: dict) -> None:
         if not getattr(self, "_pending_report", False):
@@ -1117,12 +1123,12 @@ class QueueWindow(AppWindow):
         members = top.get("members") or []
         return bool(self._process_blocked_reason(members[0] if members else {}))
 
-    def _top_recommendation_row_color(self, *, blocked: bool = False) -> QColor:
-        """Muted tint so the top process target stands out at a glance."""
+    def _top_recommendation_row_color(self, *, blocked: bool = False) -> QColor | None:
+        """Muted green tint for the top process target; no fill when blocked."""
+        if blocked:
+            return None
         base = QColor(theme.MANTLE or theme.BASE or "#181825")
-        accent = QColor(
-            (theme.RED or "#f38ba8") if blocked else (theme.GREEN or "#a6e3a1")
-        )
+        accent = QColor(theme.GREEN or "#a6e3a1")
         mix = 0.28
         return QColor(
             int(base.red() * (1 - mix) + accent.red() * mix),
@@ -1142,7 +1148,11 @@ class QueueWindow(AppWindow):
             uid = ""
             if name_item is not None:
                 uid = str(name_item.data(Qt.ItemDataRole.UserRole) or "")
-            bg = highlight if uid and uid in target_ids else clear
+            bg = (
+                highlight
+                if highlight is not None and uid and uid in target_ids
+                else clear
+            )
             for col in range(cols):
                 item = self.queue_table.item(row, col)
                 if item is not None:
@@ -1998,7 +2008,6 @@ class QueueWindow(AppWindow):
         watches = data.get("uncheck_watches") or []
         if not pings and not rows and not watches:
             self.onduty_staffchecks_list.addItem("None")
-            self._sync_onduty_ping_flash_timer()
             return
 
         now = datetime.now(timezone.utc)
@@ -2026,6 +2035,8 @@ class QueueWindow(AppWindow):
                     pass
             item = QListWidgetItem(self._join_workflow_bits(bits))
             item.setData(Qt.ItemDataRole.UserRole, "onduty_ping")
+            peach = QColor(theme.PEACH or "#ff8533")
+            item.setForeground(peach)
             self.onduty_staffchecks_list.addItem(item)
 
         colors = {
@@ -2138,8 +2149,6 @@ class QueueWindow(AppWindow):
                 },
             )
             self.onduty_staffchecks_list.addItem(item)
-
-        self._sync_onduty_ping_flash_timer()
 
     def _sync_leave_notice_action_buttons(self) -> None:
         enabled = not self._command_busy and not self._sim_enabled
@@ -2426,39 +2435,6 @@ class QueueWindow(AppWindow):
         self._client.send({"type": "dismiss_new_staffcheck", "user_id": uid})
         self._set_status(f"Dismissing new staffcheck for {display_name}…")
 
-    def _sync_onduty_ping_flash_timer(self) -> None:
-        has_ping = False
-        for i in range(self.onduty_staffchecks_list.count()):
-            item = self.onduty_staffchecks_list.item(i)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == "onduty_ping":
-                has_ping = True
-                break
-        if has_ping:
-            if not self._onduty_flash_timer.isActive():
-                self._onduty_ping_flash_on = False
-                self._onduty_flash_timer.start()
-                self._tick_onduty_ping_flash()
-        else:
-            self._onduty_flash_timer.stop()
-            self._onduty_ping_flash_on = False
-
-    def _tick_onduty_ping_flash(self) -> None:
-        self._onduty_ping_flash_on = not self._onduty_ping_flash_on
-        flash = QColor(theme.PEACH or "#ff8533")
-        if self._onduty_ping_flash_on:
-            flash.setAlpha(90)
-        else:
-            flash.setAlpha(28)
-        clear = QColor(0, 0, 0, 0)
-        for i in range(self.onduty_staffchecks_list.count()):
-            item = self.onduty_staffchecks_list.item(i)
-            if item is None:
-                continue
-            if item.data(Qt.ItemDataRole.UserRole) == "onduty_ping":
-                item.setBackground(flash)
-            else:
-                item.setBackground(clear)
-
     def _apply_recommendations(self, data: dict) -> None:
         previous = self._selected_recommendation_id
         self.recommendations_list.blockSignals(True)
@@ -2535,17 +2511,9 @@ class QueueWindow(AppWindow):
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
             if process_block:
-                tint = self._top_recommendation_row_color(blocked=True)
                 red = theme.RED or "#f38ba8"
-                row.setAutoFillBackground(True)
-                row_palette = row.palette()
-                row_palette.setColor(row.backgroundRole(), tint)
-                row.setPalette(row_palette)
-                row.setStyleSheet(f"background-color: {tint.name()};")
-                label.setStyleSheet(
-                    f"color: {red}; background-color: transparent;"
-                )
-                item.setBackground(tint)
+                label.setStyleSheet(f"color: {red};")
+                item.setForeground(QColor(red))
                 item.setToolTip(process_block)
                 label.setToolTip(process_block)
                 row.setToolTip(process_block)
@@ -2982,7 +2950,6 @@ class QueueWindow(AppWindow):
         if raw_request is None:
             entry = self._entry_by_user_id(user_id) or {}
             raw_request = entry.get("current_queue_request")
-        snapshot_id = str((self._last_snapshot or {}).get("snapshot_id") or "") or None
 
         self._command_busy = True
         self.abort_requested = False
@@ -3004,7 +2971,6 @@ class QueueWindow(AppWindow):
                 override_top,
                 matched,
                 str(raw_request) if raw_request else None,
-                snapshot_id,
             ),
             daemon=True,
         )
@@ -3106,7 +3072,6 @@ class QueueWindow(AppWindow):
         override_top: bool = False,
         matched_recommendation: bool | None = None,
         raw_request: str | None = None,
-        snapshot_id: str | None = None,
     ) -> None:
         start_abort_session(self)
         claimed = False
@@ -3122,19 +3087,6 @@ class QueueWindow(AppWindow):
                     self._recently_prepped_user_ids.discard(user_id)
                 self._command_status.emit(err)
                 error_code = "lock_or_claim_failed"
-                self._report_staff_action(
-                    action=action,
-                    user_id=user_id,
-                    ship_channel_id=ship_channel_id,
-                    ship_name=ship_name,
-                    recommendation_id=recommendation_id,
-                    snapshot_id=snapshot_id,
-                    success=False,
-                    error_code=error_code,
-                    override_top=override_top,
-                    matched_recommendation=matched_recommendation,
-                    raw_request=raw_request,
-                )
                 return
             claimed = True
 
@@ -3243,64 +3195,10 @@ class QueueWindow(AppWindow):
             self._command_status.emit(f"Failed: /{action} for {display_name}")
             error_code = "command_failed"
         finally:
-            self._report_staff_action(
-                action=action,
-                user_id=user_id,
-                ship_channel_id=ship_channel_id,
-                ship_name=ship_name,
-                recommendation_id=recommendation_id,
-                snapshot_id=snapshot_id,
-                success=success,
-                error_code=error_code,
-                override_top=override_top,
-                matched_recommendation=matched_recommendation,
-                raw_request=raw_request,
-            )
             if claimed:
                 self._release_queue_action(user_id)
             end_abort_session(self)
             self._command_finished.emit()
-
-    def _report_staff_action(
-        self,
-        *,
-        action: str,
-        user_id: str,
-        ship_channel_id: str = "",
-        ship_name: str = "",
-        recommendation_id: str | None = None,
-        snapshot_id: str | None = None,
-        success: bool = True,
-        error_code: str | None = None,
-        override_top: bool = False,
-        matched_recommendation: bool | None = None,
-        raw_request: str | None = None,
-    ) -> None:
-        client = self._client
-        if client is None:
-            return
-        try:
-            client.send(
-                {
-                    "type": "staff_action",
-                    "action": action,
-                    "target_user_id": user_id,
-                    "ship_channel_id": ship_channel_id or None,
-                    "ship_name": ship_name or None,
-                    "recommendation_id": recommendation_id,
-                    "snapshot_id": snapshot_id
-                    or str((self._last_snapshot or {}).get("snapshot_id") or "")
-                    or None,
-                    "success": bool(success),
-                    "error_code": error_code,
-                    "override_top": bool(override_top),
-                    "matched_recommendation": matched_recommendation,
-                    "sim": bool(self._sim_enabled),
-                    "raw_request": raw_request,
-                }
-            )
-        except Exception:
-            logger.exception("Failed to report queue staff_action")
 
     def _on_command_finished(self) -> None:
         self._command_busy = False

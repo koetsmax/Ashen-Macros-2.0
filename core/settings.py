@@ -110,7 +110,6 @@ def _set_default_values(config) -> bool:
             "vencord_bridge": "false",
             "vencord_bridge_port": "47832",
             "vencord_bridge_token": "change-me",
-            "staffcheck_model_shadow": "false",
             "leave_animated_emojis": "false",
         },
     }

@@ -123,8 +123,7 @@ class StatsWindow(AppWindow):
         self.clear_btn = QPushButton("Clear stats data")
         self.clear_btn.setObjectName("statsDangerBtn")
         self.clear_btn.setToolTip(
-            "Wipe queue analytics events + fleet/queue snapshots so collection starts fresh. "
-            "Does not wipe ML decision history (queue_decision_snapshots / queue_staff_actions)."
+            "Wipe queue analytics events + fleet/queue snapshots so collection starts fresh."
         )
         self.clear_btn.clicked.connect(self._confirm_clear_stats)
         rail_layout.addWidget(self.clear_btn)

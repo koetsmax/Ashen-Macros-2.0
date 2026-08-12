@@ -171,22 +171,6 @@ class SettingsDialog(QDialog):
         self._on_vencord_bridge_toggled(self.vencord_bridge_check.isChecked())
         experimental_layout.addWidget(experimental)
 
-        shadow_box = QGroupBox("Staffcheck model")
-        shadow_layout = QVBoxLayout(shadow_box)
-        self.staffcheck_shadow_check = QCheckBox(
-            "Show model shadow suggestions in live staffcheck"
-        )
-        self.staffcheck_shadow_check.setChecked(
-            config_bool("staffcheck_model_shadow", "false")
-        )
-        self.staffcheck_shadow_check.setToolTip(
-            "When enabled, live staffcheck shows the model suggestion + cited reasons "
-            "before Good / Not Good. Training and silent prediction logs "
-            "always run. Off by default. Never auto-applies."
-        )
-        shadow_layout.addWidget(self.staffcheck_shadow_check)
-        experimental_layout.addWidget(shadow_box)
-
         leave_box = QGroupBox("Leave message marks")
         leave_layout = QVBoxLayout(leave_box)
         self.leave_animated_emojis_check = QCheckBox(
@@ -402,11 +386,6 @@ class SettingsDialog(QDialog):
         )
         set_custom_value(
             "EXPERIMENTAL",
-            "staffcheck_model_shadow",
-            "true" if self.staffcheck_shadow_check.isChecked() else "false",
-        )
-        set_custom_value(
-            "EXPERIMENTAL",
             "leave_animated_emojis",
             "true" if self.leave_animated_emojis_check.isChecked() else "false",
         )
@@ -460,8 +439,6 @@ class SettingsDialog(QDialog):
         set_custom_value("EXPERIMENTAL", "vencord_bridge_port", "47832")
         self.vencord_token_entry.setText("change-me")
         set_custom_value("EXPERIMENTAL", "vencord_bridge_token", "change-me")
-        self.staffcheck_shadow_check.setChecked(False)
-        set_custom_value("EXPERIMENTAL", "staffcheck_model_shadow", "false")
         self.leave_animated_emojis_check.setChecked(False)
         set_custom_value("EXPERIMENTAL", "leave_animated_emojis", "false")
         self._on_vencord_bridge_toggled(False)
