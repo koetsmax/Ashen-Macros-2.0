@@ -146,7 +146,7 @@ class BridgeTestsWindow(AppWindow):
         # --- MESSAGE command ---
         msg_cmd_box = QGroupBox("MESSAGE command")
         msg_cmd_form = QFormLayout(msg_cmd_box)
-        self.msg_cmd_name = QLineEdit("update bonus")
+        self.msg_cmd_name = QLineEdit("Update Bonus")
         msg_cmd_form.addRow("Name:", self.msg_cmd_name)
         self.msg_cmd_channel = QLineEdit()
         msg_cmd_form.addRow("Channel ID:", self.msg_cmd_channel)
@@ -513,7 +513,7 @@ class BridgeTestsWindow(AppWindow):
         self._run_test("send", run)
 
     def _test_message_command(self) -> None:
-        name = self.msg_cmd_name.text().strip() or "update bonus"
+        name = self.msg_cmd_name.text().strip() or "Update Bonus"
         channel_id = self.msg_cmd_channel.text().strip()
         message_id = self.msg_cmd_message.text().strip()
         guild_id = self.msg_cmd_guild.text().strip() or None

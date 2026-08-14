@@ -1578,7 +1578,7 @@ class QueueWindow(AppWindow):
             check_abort(self)
             if info.get("found") and info.get("offset"):
                 offset = int(info["offset"])
-            self._command_status.emit("Apps > update bonus...")
+            self._command_status.emit("Apps > Update Bonus")
             apply_update_bonus_on_queue_message(
                 self,
                 offset,

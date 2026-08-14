@@ -483,7 +483,7 @@ def apply_update_bonus_on_queue_message(
     channel_id: str | None = None,
     guild_id: str | None = None,
 ) -> None:
-    """Open a #queue banner's ⋯ menu and run Apps → update bonus.
+    """Open a #queue banner's ⋯ menu and run Apps → Update Bonus.
 
     When the Vencord bridge experiment is enabled, requires message_id and a
     successful bridge messageCommand (no keyboard fallback).
@@ -502,14 +502,14 @@ def apply_update_bonus_on_queue_message(
         if not prefer_bridge():
             raise DiscordBridgeError("Vencord bridge is not connected")
         if not mid:
-            raise DiscordBridgeError("No banner message_id for update bonus")
+            raise DiscordBridgeError("No banner message_id for Update Bonus")
         ch = str(channel_id or queue_channel_id()).strip()
         if not ch:
-            raise DiscordBridgeError("No channel id for update bonus")
+            raise DiscordBridgeError("No channel id for Update Bonus")
         gid = str(guild_id or queue_guild_id()).strip() or None
         check_abort(self)
         get_bridge().message_command(
-            "update bonus",
+            "Update Bonus",
             ch,
             mid,
             guild_id=gid,
@@ -556,7 +556,7 @@ def apply_update_bonus_on_queue_message(
         keyboard.press_and_release("right")
         interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
-        with _clipboard_scope("update bonus"):
+        with _clipboard_scope("Update Bonus"):
             keyboard.press_and_release("ctrl+v")
             interruptible_sleep(self, max(step, 0.45))
         check_abort(self)
