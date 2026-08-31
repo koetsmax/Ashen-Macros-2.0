@@ -83,7 +83,8 @@ def good_to_check(self):
             report_bridge_error(self, exc)
             return
         raise
-    _show_after_check_actions(self)
+    # Good outcome: no Join AWR / verify / unprivate follow-ups.
+    pipeline.continue_to_next(self)
 
 
 def not_good_to_check(self):
@@ -135,10 +136,10 @@ def build_not_good_to_check(self):
 
 
 def _show_after_check_actions(self) -> None:
-    """Join AWR / verify / unprivate after the check message is posted.
+    """Join AWR / verify / unprivate after a *not* good check message.
 
-    ``continue_to_next`` would reset the UI because ``currentstate`` is already
-    Done — after-check buttons have to be shown here instead.
+    Only used from ``build_not_good_to_check``. Good checks call
+    ``continue_to_next`` instead (resets UI while ``currentstate`` is Done).
     """
     after_check_message(self)
     reason = (self.reason.get() or "").lower()
