@@ -452,7 +452,7 @@ class DiscordBridge:
         self._connected.clear()
         self._authed.clear()
         self._plugin_version = ""
-        self._fail_pending("Bridge stopped")
+        self._fail_pending("Vencord plugin stopped")
         with self._pending_lock:
             self._pending.clear()
 
@@ -701,13 +701,13 @@ class DiscordBridge:
         **payload: Any,
     ) -> dict:
         if not is_enabled():
-            raise DiscordBridgeError("Vencord bridge is disabled")
+            raise DiscordBridgeError("Vencord plugin is disabled")
         if abort_ctx is not None:
             check_abort(abort_ctx)
 
         self.ensure_started()
         if not self._wait_until_ready(timeout=min(timeout, 8.0), abort_ctx=abort_ctx):
-            err = self._last_error or "Bridge not connected"
+            err = self._last_error or "Vencord plugin not connected"
             raise DiscordBridgeError(err)
 
         if abort_ctx is not None:
@@ -728,7 +728,7 @@ class DiscordBridge:
                     raise AbortError()
                 if time.time() >= deadline:
                     self.cancel(request_id)
-                    raise DiscordBridgeError(f"Bridge request timed out ({type})")
+                    raise DiscordBridgeError(f"Vencord plugin request timed out ({type})")
             with self._pending_lock:
                 entry = self._pending.get(request_id) or {}
                 response = entry.get("response")
@@ -737,9 +737,9 @@ class DiscordBridge:
             if response.get("cancelled"):
                 if abort_ctx is not None and is_abort_requested(abort_ctx):
                     raise AbortError()
-                raise DiscordBridgeError("Bridge request cancelled")
+                raise DiscordBridgeError("Vencord plugin request cancelled")
             if response.get("ok") is False:
-                err = str(response.get("error") or f"Bridge {type} failed")
+                err = str(response.get("error") or f"Vencord plugin {type} failed")
                 # Always land Vencord-side failures in ashen-macros.log.
                 logger.warning("Discord bridge %s failed: %s", type, err)
                 if (
@@ -773,7 +773,7 @@ class DiscordBridge:
     def _send_raw(self, payload: dict) -> None:
         ws = self._ws
         if ws is None:
-            raise DiscordBridgeError("Bridge socket not connected")
+            raise DiscordBridgeError("Vencord plugin socket not connected")
         data = json.dumps(payload)
         with self._send_lock:
             ws.send(data)
@@ -821,7 +821,7 @@ class DiscordBridge:
             self._ws = None
             self._connected.clear()
             self._authed.clear()
-            self._fail_pending(self._last_error or "Bridge disconnected")
+            self._fail_pending(self._last_error or "Vencord plugin disconnected")
             if self._stop.wait(3):
                 break
 
@@ -849,7 +849,7 @@ class DiscordBridge:
         def _await_auth() -> None:
             if not event.wait(8):
                 self._auth_failed = True
-                self._last_error = "Bridge auth timed out"
+                self._last_error = "Vencord plugin auth timed out"
                 with self._pending_lock:
                     self._pending.pop(auth_id, None)
                 try:
@@ -863,7 +863,7 @@ class DiscordBridge:
             if response.get("ok") is False or response.get("type") == "auth_failed":
                 self._auth_failed = True
                 self._last_error = str(
-                    response.get("error") or "Bridge auth failed"
+                    response.get("error") or "Vencord plugin auth failed"
                 )
                 try:
                     _ws.close()

@@ -280,11 +280,12 @@ class QueueWindow(AppWindow):
             ["Name", "Activity", "Minutes", "Flags", "Request"]
         )
         header = self.queue_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        # All columns manually resizable; Request absorbs leftover width.
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setStretchLastSection(True)
+        self.queue_table.setColumnWidth(0, 140)
+        self.queue_table.setColumnWidth(1, 150)
+        self.queue_table.setColumnWidth(2, 70)
         self.queue_table.setColumnWidth(3, 220)
         self.queue_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -1520,7 +1521,11 @@ class QueueWindow(AppWindow):
     ) -> None:
         start_abort_session(self)
         try:
-            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            from core.discord_bridge import prefer_bridge
+
+            # Bridge switch/slash is immediate — no keyboard settle warmup.
+            if not prefer_bridge():
+                interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit("Opening #queue…")
             jump = _queue_jump_target()
             switch_channel(self, jump, paste=bool(queue_channel_jump_url()))
@@ -1589,7 +1594,7 @@ class QueueWindow(AppWindow):
         except AbortError:
             self._command_status.emit("Queue banner set aborted")
         except DiscordBridgeError as exc:
-            self._command_status.emit(f"Bridge error: {exc}")
+            self._command_status.emit(f"Vencord plugin error: {exc}")
         except Exception:
             logger.exception("Failed setting queue status banner")
             self._command_status.emit("Failed to set queue banner")
@@ -2034,7 +2039,16 @@ class QueueWindow(AppWindow):
                 except Exception:
                     pass
             item = QListWidgetItem(self._join_workflow_bits(bits))
-            item.setData(Qt.ItemDataRole.UserRole, "onduty_ping")
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "onduty_ping",
+                    "message_id": str(ping.get("message_id") or ""),
+                    "user_id": user_id,
+                    "display_name": name,
+                    "channel_id": str(ping.get("channel_id") or ""),
+                },
+            )
             peach = QColor(theme.PEACH or "#ff8533")
             item.setForeground(peach)
             self.onduty_staffchecks_list.addItem(item)
@@ -2323,7 +2337,10 @@ class QueueWindow(AppWindow):
         start_abort_session(self)
         mark_done: str | None = None
         try:
-            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            from core.discord_bridge import prefer_bridge
+
+            if not prefer_bridge():
+                interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             if action == "tick":
                 self._command_status.emit(f"Ticking leave message for {display_name}…")
                 tick_leave_notice(
@@ -2346,7 +2363,7 @@ class QueueWindow(AppWindow):
         except AbortError:
             self._command_status.emit("Aborted")
         except DiscordBridgeError as exc:
-            self._command_status.emit(f"Bridge error: {exc}")
+            self._command_status.emit(f"Vencord plugin error: {exc}")
         except Exception as exc:
             logger.exception("Leave notice action %s failed", action)
             self._command_status.emit(f"Failed: {exc}")
@@ -2374,6 +2391,18 @@ class QueueWindow(AppWindow):
         name = str(payload.get("display_name") or user_id or "?")
 
         menu = QMenu(self)
+        if kind == "onduty_ping":
+            if not message_id:
+                return
+            dismiss = menu.addAction("Dismiss on-duty ping")
+            dismiss.setToolTip("Remove this on-duty ping from the monitor list")
+            chosen = menu.exec(
+                self.onduty_staffchecks_list.viewport().mapToGlobal(pos)
+            )
+            if chosen is dismiss:
+                self._dismiss_onduty_ping(message_id, name)
+            return
+
         if kind == "new_staffcheck":
             if not user_id:
                 return
@@ -2397,6 +2426,17 @@ class QueueWindow(AppWindow):
         )
         if chosen is dismiss:
             self._dismiss_uncheck_watch(user_id, message_id, name)
+
+    def _dismiss_onduty_ping(self, message_id: str, display_name: str) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss on-duty ping")
+            return
+        mid = str(message_id or "").strip()
+        if not mid:
+            self._set_status("On-duty ping missing message id")
+            return
+        self._client.send({"type": "dismiss_onduty_ping", "message_id": mid})
+        self._set_status(f"Dismissing on-duty ping for {display_name}…")
 
     def _dismiss_leave_notice(self, message_id: str, display_name: str) -> None:
         if not self._client:
@@ -3090,7 +3130,11 @@ class QueueWindow(AppWindow):
                 return
             claimed = True
 
-            interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
+            from core.discord_bridge import prefer_bridge
+
+            # Bridge path needs no keyboard warmup before switch/slash.
+            if not prefer_bridge():
+                interruptible_sleep(self, QUEUE_COMMAND_START_DELAY_S)
             self._command_status.emit(f"Opening #queue for {display_name}…")
             jump = _queue_jump_target()
             switch_channel(self, jump, paste=bool(queue_channel_jump_url()))
@@ -3186,7 +3230,7 @@ class QueueWindow(AppWindow):
         except DiscordBridgeError as exc:
             if action == "prep" and user_id:
                 self._recently_prepped_user_ids.discard(user_id)
-            self._command_status.emit(f"Bridge error: {exc}")
+            self._command_status.emit(f"Vencord plugin error: {exc}")
             error_code = "bridge_error"
         except Exception:
             if action == "prep" and user_id:

@@ -45,18 +45,25 @@ def _set_after_check_buttons_enabled(self, enabled: bool) -> None:
 
 
 def unprivate_xbox(self):
-    """Macro/bridge: /create → API returns modmail id/name → recall Unprivate Xbox."""
+    """Wait for modmail, run /create, then recall Unprivate Xbox."""
     from core.discord_bridge import DiscordBridgeError
 
     _set_after_check_buttons_enabled(self, False)
-    label_set(self.status_label, "Waiting for modmail channel…", "orange")
+    label_set(self.status_label, "Opening modmail…", "orange")
+    # Register the bot waiter before /create so the channel-create event is not missed.
+    run_background(unprivate_api_request, self)
     try:
+        from core.discord_bridge import prefer_bridge
+
+        # Tiny pause so the API waiter thread starts before /create hits Discord.
+        if not prefer_bridge():
+            abort.interruptible_sleep(self, 0.4)
         switch_channel(self, "#on-duty-chat")
         clear_typing_bar()
         execute_slash_command(
             self,
             "create",
-            [opt_user("user", self.user_id.get())],
+            [opt_str("user", self.user_id.get(), autocomplete=True)],
             channel_id=on_duty_channel_id(),
         )
     except abort.AbortError:
@@ -66,7 +73,6 @@ def unprivate_xbox(self):
         report_bridge_error(self, exc)
         _set_after_check_buttons_enabled(self, True)
         return
-    run_background(unprivate_api_request, self)
 
 
 def unprivate_api_request(self):

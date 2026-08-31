@@ -143,7 +143,7 @@ def post_or_edit_check_message(self, new_line: str, editable_info: dict | None =
         # Bridge path when Experimental is enabled (no keyboard fallback).
         if is_enabled():
             if not prefer_bridge():
-                raise DiscordBridgeError("Vencord bridge is not connected")
+                raise DiscordBridgeError("Vencord plugin is not connected")
             if not mid or not channel_id:
                 raise DiscordBridgeError(
                     "Editable check missing message/channel id for bridge edit"

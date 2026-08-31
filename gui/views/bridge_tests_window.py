@@ -1,4 +1,4 @@
-"""Apps → Bridge tests — manual Vencord Discord bridge harness."""
+"""Apps → Vencord plugin tests — manual localhost harness."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class BridgeTestsWindow(AppWindow):
-    """Manual tests for the localhost Vencord Discord bridge."""
+    """Manual tests for the localhost Vencord plugin."""
 
     DEFAULT_SIZE = (640, 720)
 
@@ -54,7 +54,7 @@ class BridgeTestsWindow(AppWindow):
         self.abort_requested = False
         self._busy = False
         self._option_rows: list[tuple[QLineEdit, QSpinBox, QLineEdit, QCheckBox]] = []
-        super().__init__("Bridge tests", keyboard_lock=True)
+        super().__init__("Vencord plugin tests", keyboard_lock=True)
         self._status.connect(self.status_label.setText)
 
     def _build_ui(self) -> None:
@@ -66,8 +66,8 @@ class BridgeTestsWindow(AppWindow):
         body_layout.setSpacing(10)
 
         header = QLabel(
-            "Requires Settings → Experimental → Vencord Discord bridge. "
-            "Escape / Stop aborts in-flight bridge waits."
+            "Requires Settings → Experimental → Vencord plugin. "
+            "Escape / Stop aborts in-flight plugin waits."
         )
         header.setWordWrap(True)
         body_layout.addWidget(header)
@@ -253,7 +253,7 @@ class BridgeTestsWindow(AppWindow):
         body_layout.addWidget(click_box)
 
         # --- Ping / cancel ---
-        misc_box = QGroupBox("Bridge ping / cancel")
+        misc_box = QGroupBox("Plugin ping / cancel")
         misc_row = QHBoxLayout(misc_box)
         ping_btn = QPushButton("Ping / status")
         ping_btn.clicked.connect(self._test_ping)
@@ -290,7 +290,7 @@ class BridgeTestsWindow(AppWindow):
 
         if not is_enabled():
             self.status_label.setText(
-                "Experimental bridge is off — enable it in Settings to run tests."
+                "Vencord plugin is off — enable it in Settings to run tests."
             )
 
     def _add_option_row(
@@ -413,12 +413,12 @@ class BridgeTestsWindow(AppWindow):
     def _cancel_in_flight(self) -> None:
         get_bridge().cancel()
         self.abort_requested = True
-        self._set_status("Cancel sent for in-flight bridge ops")
+        self._set_status("Cancel sent for in-flight plugin ops")
 
     def _guard_enabled(self) -> bool:
         if not is_enabled():
             self._set_status(
-                "Enable Settings → Experimental → Vencord Discord bridge first"
+                "Enable Settings → Experimental → Vencord plugin first"
             )
             return False
         return True

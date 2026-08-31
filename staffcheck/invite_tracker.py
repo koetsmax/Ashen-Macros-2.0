@@ -1,6 +1,6 @@
 import requests
 
-from core.discord_bridge import resolve_channel_id
+from core.discord_bridge import prefer_bridge, resolve_channel_id
 from core.keyboard import (
     clear_typing_bar,
     execute_slash_command,
@@ -11,6 +11,11 @@ from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.abort import interruptible_sleep
 from staffcheck.qt_ui import btn_config, btn_enable
+
+
+def _report_gap_s() -> float:
+    """Pause between chained /user_report calls — tiny when bridge is live."""
+    return 0.35 if prefer_bridge() else 1.5
 
 
 def invite_tracker(self):
@@ -34,7 +39,7 @@ def check_loghistory(self):
                 [opt_user("member", _id)],
                 channel_id=resolve_channel_id(self.channel.get()),
             )
-            interruptible_sleep(self, 1.5)
+            interruptible_sleep(self, _report_gap_s(), bridge_fast=False)
     except abort.AbortError:
         return
     btn_enable(self.invited_by_loghistory_button, False)
@@ -53,7 +58,7 @@ def check_invited_users(self):
                 [opt_user("member", _id)],
                 channel_id=resolve_channel_id(self.channel.get()),
             )
-            interruptible_sleep(self, 1.5)
+            interruptible_sleep(self, _report_gap_s(), bridge_fast=False)
     except abort.AbortError:
         return
     btn_enable(self.invited_users_loghistory_button, False)

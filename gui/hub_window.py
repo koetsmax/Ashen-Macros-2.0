@@ -138,11 +138,12 @@ class StaffcheckHub(QMainWindow):
         self._update_welcome_header()
         bar_layout.addStretch()
 
-        self.bridge_status_label = QLabel("Bridge: off")
+        self.bridge_status_label = QLabel("")
         self.bridge_status_label.setObjectName("hubBridgeOff")
         self.bridge_status_label.setToolTip(
-            "Vencord Discord bridge status (Settings → Experimental)"
+            "Vencord plugin status (Settings → Experimental)"
         )
+        self.bridge_status_label.hide()
         bar_layout.addWidget(self.bridge_status_label)
         outer.addWidget(status_bar)
 
@@ -505,18 +506,22 @@ class StaffcheckHub(QMainWindow):
         )
 
         if not is_enabled():
-            text = "Bridge: off"
-            object_name = "hubBridgeOff"
-        elif is_connected():
+            # Only show connected/disconnected when the experiment is on.
+            self.bridge_status_label.hide()
+            self.bridge_status_label.clear()
+            return
+
+        self.bridge_status_label.show()
+        if is_connected():
             version = bridge_plugin_version()
             text = (
-                f"Bridge: Connected · {version}"
+                f"Vencord plugin: Connected · {version}"
                 if version
-                else "Bridge: Connected"
+                else "Vencord plugin: Connected"
             )
             object_name = "statusConnected"
         else:
-            text = "Bridge: disconnected"
+            text = "Vencord plugin: disconnected"
             object_name = "statusDisconnected"
         self.bridge_status_label.setText(text)
         self.bridge_status_label.setObjectName(object_name)

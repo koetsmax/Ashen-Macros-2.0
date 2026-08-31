@@ -194,6 +194,11 @@ def ashen_api_request(self):
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True
+    except Exception:
+        # Never leave the Search panel stuck on "Checking…".
+        logger = __import__("logging").getLogger(__name__)
+        logger.exception("Search API request failed unexpectedly")
+        request_error = True
 
     if request_error:
         result_panel.search_failed(self)
@@ -205,3 +210,4 @@ def ashen_api_request(self):
             )
         except Exception:
             pass
+        _enable_search_redo(self)

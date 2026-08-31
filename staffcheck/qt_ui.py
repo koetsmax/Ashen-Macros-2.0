@@ -120,7 +120,7 @@ def report_bridge_error(ctx, exc: BaseException) -> None:
     """Show a bridge failure on the nearest status UI for this context."""
     if is_command_index_miss(exc):
         warn_command_index_miss(exc)
-    msg = f"Bridge error: {exc}"
+    msg = f"Vencord plugin error: {exc}"
     status = getattr(ctx, "status_label", None)
     if status is not None:
         label_set(status, msg, "red")

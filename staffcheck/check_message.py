@@ -83,7 +83,7 @@ def good_to_check(self):
             report_bridge_error(self, exc)
             return
         raise
-    pipeline.continue_to_next(self)
+    _show_after_check_actions(self)
 
 
 def not_good_to_check(self):
@@ -131,4 +131,18 @@ def build_not_good_to_check(self):
             report_bridge_error(self, exc)
             return
         raise
-    pipeline.continue_to_next(self)
+    _show_after_check_actions(self)
+
+
+def _show_after_check_actions(self) -> None:
+    """Join AWR / verify / unprivate after the check message is posted.
+
+    ``continue_to_next`` would reset the UI because ``currentstate`` is already
+    Done — after-check buttons have to be shown here instead.
+    """
+    after_check_message(self)
+    reason = (self.reason.get() or "").lower()
+    if "unprivate" in reason:
+        from staffcheck.after_check_message import unprivate_xbox
+
+        unprivate_xbox(self)

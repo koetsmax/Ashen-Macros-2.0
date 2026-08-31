@@ -216,30 +216,58 @@ def search_apply(view, response: dict) -> None:
     sec.clear_fields()
     r = response
 
-    total_matches = int(r["total_matches"])
-    partial_matches = int(r["partial_matches"])
-    exact_matches = int(r["exact_matches"])
+    def _as_int(value, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    total_matches = _as_int(r.get("total_matches"))
+    partial_matches = _as_int(r.get("partial_matches"))
+    exact_matches = _as_int(r.get("exact_matches"))
     match_total = str(total_matches)
+
+    gamertag_exists = bool(r.get("gamertag_exists"))
+    completion_achieved = r.get("completion_achieved")
+    if isinstance(completion_achieved, str):
+        completion_achieved = completion_achieved.strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+    else:
+        completion_achieved = bool(completion_achieved)
+
+    has_verified = r.get("has_verified")
+    if isinstance(has_verified, str):
+        has_verified = has_verified.strip().lower() not in ("0", "false", "no")
+    else:
+        has_verified = bool(has_verified)
+
+    alts_found = r.get("alts_found", "0")
+    if alts_found is False or alts_found is None:
+        alts_found = "0"
+    alts_found = str(alts_found)
 
     sec.set_field(
         "gamertag_exists",
         "Gamertag exists",
-        str(r["gamertag_exists"]),
-        is_issue=not r["gamertag_exists"],
-        detail=f"Gamertag exists: {r['gamertag_exists']}",
+        str(gamertag_exists),
+        is_issue=not gamertag_exists,
+        detail=f"Gamertag exists: {gamertag_exists}",
     )
     sec.set_field(
         "total_friends",
         "Total friends",
-        str(r["total_friends"]),
+        str(r.get("total_friends", "0")),
         is_issue=False,
-        detail=f"Total friends: {r['total_friends']}",
+        detail=f"Total friends: {r.get('total_friends', '0')}",
     )
     sec.set_field(
         "completion",
         "Completion",
-        str(r["completion_achieved"]),
-        is_issue=not r["completion_achieved"],
+        str(completion_achieved),
+        is_issue=not completion_achieved,
         detail=_completion_detail(r),
     )
     sec.set_field(
@@ -259,16 +287,16 @@ def search_apply(view, response: dict) -> None:
     sec.set_field(
         "alts_found",
         "Alts found",
-        str(r["alts_found"]),
-        is_issue=r["alts_found"] != "0",
-        detail=f"Alts found: {r['alts_found']}",
+        alts_found,
+        is_issue=alts_found not in ("0", "false", "False"),
+        detail=f"Alts found: {alts_found}",
     )
     sec.set_field(
         "has_verified",
         "Has verified",
-        str(r["has_verified"]),
-        is_issue=not r["has_verified"],
-        detail=f"Has verified: {r['has_verified']}",
+        str(has_verified),
+        is_issue=not has_verified,
+        detail=f"Has verified: {has_verified}",
     )
     sec.set_success_or_issues()
 

@@ -81,7 +81,7 @@ class SettingsDialog(QDialog):
         self.edit_nav_test_btn.setDefault(False)
         self.edit_nav_test_btn.setToolTip(
             "Switch to #on-duty-chat and move focus up N messages. Does not open edit. "
-            "Disabled while the Vencord Discord bridge is enabled (keyboard-only debug tool)."
+            "Disabled while the Vencord plugin is enabled (keyboard-only debug tool)."
         )
         self.edit_nav_test_btn.clicked.connect(self._test_edit_navigate)
         nav_row.addWidget(self.edit_nav_test_btn)
@@ -137,20 +137,20 @@ class SettingsDialog(QDialog):
         experimental_layout = QVBoxLayout(experimental_page)
         tabs.addTab(experimental_page, "Experimental")
 
-        experimental = QGroupBox("Vencord Discord bridge")
+        experimental = QGroupBox("Vencord plugin")
         bridge_layout = QVBoxLayout(experimental)
-        self.vencord_bridge_check = QCheckBox("Enable Vencord Discord bridge")
+        self.vencord_bridge_check = QCheckBox("Enable Vencord plugin")
         self.vencord_bridge_check.setChecked(config_bool("vencord_bridge", "false"))
         self.vencord_bridge_check.setToolTip(
             "When enabled, Discord actions go through the localhost Vencord plugin. "
-            "There is no keyboard fallback — if the bridge errors, the action fails "
+            "There is no keyboard fallback — if the plugin errors, the action fails "
             "and the status line shows the error. Default off."
         )
         self.vencord_bridge_check.toggled.connect(self._on_vencord_bridge_toggled)
         bridge_layout.addWidget(self.vencord_bridge_check)
 
         self._bridge_fields = QGridLayout()
-        self._bridge_fields.addWidget(QLabel("Bridge port:"), 0, 0)
+        self._bridge_fields.addWidget(QLabel("Plugin port:"), 0, 0)
         self.vencord_port_entry = QLineEdit(
             config.get("vencord_bridge_port", "47832")
         )
@@ -181,7 +181,7 @@ class SettingsDialog(QDialog):
         )
         self.leave_animated_emojis_check.setToolTip(
             "When enabled, Tick / Cross & Warn use the animated BetterTick / bettercross "
-            "emojis instead of the static ones. Requires the Vencord bridge."
+            "emojis instead of the static ones. Requires the Vencord plugin."
         )
         leave_layout.addWidget(self.leave_animated_emojis_check)
         experimental_layout.addWidget(leave_box)

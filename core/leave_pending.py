@@ -80,7 +80,7 @@ def react_pending_on_leave(
     # Bridge path: message id (+ queue channel) — no offset required.
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         if not mid or not data.get("found"):
             return "failed"
         channel_id = str(

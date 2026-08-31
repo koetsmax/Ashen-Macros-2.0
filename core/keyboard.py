@@ -157,7 +157,7 @@ def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
                 f"Cannot resolve channel id for {channel!r} (bridge enabled)"
             )
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         check_abort(self)
         gid = queue_guild_id() or None
         get_bridge().switch_channel(
@@ -198,7 +198,7 @@ def execute_command(self, command: str):
 
     if is_enabled():
         raise DiscordBridgeError(
-            "Free-form keyboard paste is disabled while the Vencord bridge is enabled"
+            "Free-form keyboard paste is disabled while the Vencord plugin is enabled"
         )
 
     with keyboard_automation(), self.keyboard_lock:
@@ -248,7 +248,7 @@ def execute_slash_command(
 
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         ch = str(channel_id or "").strip()
         if not ch:
             raise DiscordBridgeError(
@@ -377,7 +377,7 @@ def confirm_shipswap_after_process(
 
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         mid = str(message_id or "").strip()
         if not mid:
             raise DiscordBridgeError(
@@ -437,7 +437,7 @@ def confirm_staffcheck_after_process(
 
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         mid = str(message_id or "").strip()
         if not mid:
             raise DiscordBridgeError(
@@ -500,7 +500,7 @@ def apply_update_bonus_on_queue_message(
     mid = str(message_id or "").strip()
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         if not mid:
             raise DiscordBridgeError("No banner message_id for Update Bonus")
         ch = str(channel_id or queue_channel_id()).strip()
@@ -589,10 +589,10 @@ def type_text(
 
     if is_enabled():
         if not prefer_bridge():
-            raise DiscordBridgeError("Vencord bridge is not connected")
+            raise DiscordBridgeError("Vencord plugin is not connected")
         if not press_enter:
             raise DiscordBridgeError(
-                "Bridge cannot type without sending (press_enter=False)"
+                "Vencord plugin cannot type without sending (press_enter=False)"
             )
         ch = str(channel_id or "").strip()
         if not ch:

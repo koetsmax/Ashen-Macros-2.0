@@ -35,7 +35,7 @@ class AppEntry:
     permission: str
     # Extra keys that also unlock this app (e.g. staffcheck for lookup tools).
     alt_permissions: tuple[str, ...] = ()
-    # Hide unless Settings → Experimental → Vencord Discord bridge is on.
+    # Hide unless Settings → Experimental → Vencord plugin is on.
     requires_experimental: bool = False
 
 
@@ -64,7 +64,7 @@ APP_REGISTRY = [
     AppEntry("Stats", StatsWindow, "stats"),
     AppEntry("Permissions", PermissionsWindow, "administrator"),
     AppEntry(
-        "Bridge tests",
+        "Vencord plugin tests",
         BridgeTestsWindow,
         "administrator",
         requires_experimental=True,
