@@ -111,6 +111,8 @@ def _set_default_values(config) -> bool:
             "vencord_bridge_port": "47832",
             "vencord_bridge_token": "change-me",
             "leave_animated_emojis": "false",
+            "vencord_install_path": "",
+            "vencord_auto_update_check": "true",
         },
     }
 

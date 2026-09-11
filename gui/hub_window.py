@@ -45,6 +45,15 @@ class UpdateWorker(QThread):
         self.finished.emit(updates.check_for_updates(silent=self.silent))
 
 
+class VencordUpdateWorker(QThread):
+    finished = Signal(object)
+
+    def run(self):
+        from core.vencord_setup import check_updates
+
+        self.finished.emit(check_updates())
+
+
 class StaffcheckHub(QMainWindow):
     _update_download_ready = Signal(str)
     _update_download_failed = Signal()
@@ -70,6 +79,8 @@ class StaffcheckHub(QMainWindow):
         self._online_tag_name = None
         self._update_worker = None
         self._poll_worker = None
+        self._vencord_update_worker = None
+        self._vencord_update_hint = ""
         self._update_request_id = 0
         self._update_download_in_progress = False
         self._update_apply_scheduled = False
@@ -183,6 +194,7 @@ class StaffcheckHub(QMainWindow):
         self._poll_status()
         self._update_bridge_status()
         self._check_updates()
+        self._check_vencord_updates(silent=True)
         self._session_restored = False
         logger.info(
             "Hub initialized (version=%s, verified=%s, username=%s, permissions=%s)",
@@ -519,14 +531,70 @@ class StaffcheckHub(QMainWindow):
                 if version
                 else "Vencord plugin: Connected"
             )
+            if self._vencord_update_hint:
+                text = f"{text} | update available"
             object_name = "statusConnected"
         else:
             text = "Vencord plugin: disconnected"
+            if self._vencord_update_hint:
+                text = f"{text} | update available"
             object_name = "statusDisconnected"
+        tip = "Vencord plugin status (Settings -> Experimental)"
+        if self._vencord_update_hint:
+            tip = f"{self._vencord_update_hint}\nOpen Settings -> Experimental to update."
+        self.bridge_status_label.setToolTip(tip)
         self.bridge_status_label.setText(text)
         self.bridge_status_label.setObjectName(object_name)
         self.bridge_status_label.style().unpolish(self.bridge_status_label)
         self.bridge_status_label.style().polish(self.bridge_status_label)
+
+    def _check_vencord_updates(self, silent: bool = True) -> None:
+        from core.discord_bridge import is_enabled
+        from core.vencord_setup import auto_update_check_enabled
+
+        if not is_enabled():
+            return
+        if silent and not auto_update_check_enabled():
+            return
+        if self._worker_running(self._vencord_update_worker):
+            return
+
+        worker = VencordUpdateWorker(parent=self)
+        worker.finished.connect(
+            lambda result, sil=silent, w=worker: self._on_vencord_update_finished(
+                w, result, sil
+            )
+        )
+        worker.start()
+        self._vencord_update_worker = worker
+
+    def _on_vencord_update_finished(self, worker, result, silent: bool) -> None:
+        if self._vencord_update_worker is worker:
+            self._vencord_update_worker = None
+        worker.deleteLater()
+        try:
+            any_update = bool(getattr(result, "any_update", False))
+            message = str(getattr(result, "message", "") or "")
+        except Exception:
+            any_update = False
+            message = ""
+        if any_update:
+            self._vencord_update_hint = message or "Vencord bridge updates available"
+            self._update_bridge_status()
+            self.toast_stack.show_toast(
+                "vencord_update",
+                "Vencord bridge updates available - open Settings -> Experimental.",
+                dismiss_ms=10000 if not silent else 12000,
+            )
+        else:
+            self._vencord_update_hint = ""
+            self._update_bridge_status()
+            if not silent:
+                self.toast_stack.show_toast(
+                    "vencord_update",
+                    message or "Vencord / plugin are up to date.",
+                    dismiss_ms=6000,
+                )
 
     def _close_unauthorized_apps(self):
         for key, win in list(self._open_apps.items()):

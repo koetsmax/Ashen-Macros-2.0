@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -168,7 +169,84 @@ class SettingsDialog(QDialog):
         show_token.toggled.connect(self._toggle_token_visibility)
         self._bridge_fields.addWidget(show_token, 1, 2)
         bridge_layout.addLayout(self._bridge_fields)
+
+        path_row = QHBoxLayout()
+        path_row.addWidget(QLabel("Vencord folder:"))
+        default_path = (config.get("vencord_install_path") or "").strip()
+        if not default_path:
+            from core.vencord_setup import default_vencord_path
+
+            default_path = default_vencord_path()
+        self.vencord_path_entry = QLineEdit(default_path)
+        self.vencord_path_entry.setPlaceholderText(r"%USERPROFILE%\Documents\Vencord")
+        path_row.addWidget(self.vencord_path_entry, stretch=1)
+        self.vencord_browse_btn = QPushButton("Browse…")
+        self.vencord_browse_btn.setAutoDefault(False)
+        self.vencord_browse_btn.setDefault(False)
+        self.vencord_browse_btn.clicked.connect(self._browse_vencord_path)
+        path_row.addWidget(self.vencord_browse_btn)
+        bridge_layout.addLayout(path_row)
+
+        setup_row = QHBoxLayout()
+        self.vencord_setup_btn = QPushButton("Setup / Repair")
+        self.vencord_setup_btn.setAutoDefault(False)
+        self.vencord_setup_btn.setDefault(False)
+        self.vencord_setup_btn.setToolTip(
+            "Install git/Node/pnpm if needed, clone Vencord + AshenMacrosBridge, "
+            "build, and open the Vencord Installer (pnpm inject). "
+            "Requires GitHub access to koetsmax/ashen-macros-vencord."
+        )
+        self.vencord_setup_btn.clicked.connect(lambda: self._run_vencord_action("install"))
+        setup_row.addWidget(self.vencord_setup_btn)
+
+        self.vencord_update_btn = QPushButton("Update plugin && Vencord")
+        self.vencord_update_btn.setAutoDefault(False)
+        self.vencord_update_btn.setDefault(False)
+        self.vencord_update_btn.setToolTip(
+            "Pull latest Vencord and AshenMacrosBridge, rebuild, and re-run inject when needed."
+        )
+        self.vencord_update_btn.clicked.connect(lambda: self._run_vencord_action("update"))
+        setup_row.addWidget(self.vencord_update_btn)
+
+        self.vesktop_guide_btn = QPushButton("Vesktop setup guide")
+        self.vesktop_guide_btn.setAutoDefault(False)
+        self.vesktop_guide_btn.setDefault(False)
+        self.vesktop_guide_btn.setToolTip(
+            "Show steps to point Vesktop at your Vencord dist folder."
+        )
+        self.vesktop_guide_btn.clicked.connect(self._open_vesktop_guide)
+        setup_row.addWidget(self.vesktop_guide_btn)
+        setup_row.addStretch(1)
+        bridge_layout.addLayout(setup_row)
+
+        self.vencord_auto_check = QCheckBox("Auto-check for Vencord / plugin updates")
+        self.vencord_auto_check.setChecked(
+            config_bool("vencord_auto_update_check", "true")
+            if "vencord_auto_update_check" in config
+            else True
+        )
+        self.vencord_auto_check.setToolTip(
+            "When enabled, the hub quietly checks for Vencord and bridge plugin updates "
+            "after startup (does not auto-install)."
+        )
+        bridge_layout.addWidget(self.vencord_auto_check)
+
+        check_row = QHBoxLayout()
+        self.vencord_check_btn = QPushButton("Check now")
+        self.vencord_check_btn.setAutoDefault(False)
+        self.vencord_check_btn.setDefault(False)
+        self.vencord_check_btn.clicked.connect(self._check_vencord_updates)
+        check_row.addWidget(self.vencord_check_btn)
+        check_row.addStretch(1)
+        bridge_layout.addLayout(check_row)
+
+        self.vencord_status_label = QLabel("")
+        self.vencord_status_label.setWordWrap(True)
+        self.vencord_status_label.setObjectName("vencordSetupStatus")
+        bridge_layout.addWidget(self.vencord_status_label)
+
         self._on_vencord_bridge_toggled(self.vencord_bridge_check.isChecked())
+        self._apply_vencord_setup_permission()
         experimental_layout.addWidget(experimental)
 
         leave_box = QGroupBox("Leave message marks")
@@ -218,6 +296,185 @@ class SettingsDialog(QDialog):
             QLineEdit.EchoMode.Normal if show else QLineEdit.EchoMode.Password
         )
         self.vencord_token_entry.setEchoMode(mode)
+
+    def _parent_permissions(self) -> list[str]:
+        parent = self.parent()
+        if parent is None:
+            return []
+        return list(getattr(parent, "permissions", None) or [])
+
+    def _can_vencord_setup(self) -> bool:
+        from core.vencord_setup import can_manage_vencord_setup
+
+        return can_manage_vencord_setup(self._parent_permissions())
+
+    def _apply_vencord_setup_permission(self) -> None:
+        allowed = self._can_vencord_setup()
+        for widget in (
+            self.vencord_path_entry,
+            self.vencord_browse_btn,
+            self.vencord_setup_btn,
+            self.vencord_update_btn,
+        ):
+            widget.setEnabled(allowed)
+        tip = (
+            "Install git/Node/pnpm if needed, clone Vencord + AshenMacrosBridge, "
+            "build, and open the Vencord Installer (pnpm inject). "
+            "Requires GitHub access to koetsmax/ashen-macros-vencord."
+            if allowed
+            else "Requires the vencord_setup permission (ask Max to grant it)."
+        )
+        self.vencord_setup_btn.setToolTip(tip)
+        self.vencord_update_btn.setToolTip(
+            "Pull latest Vencord and AshenMacrosBridge, rebuild, and re-run inject when needed."
+            if allowed
+            else "Requires the vencord_setup permission (ask Max to grant it)."
+        )
+        if not allowed and not (self.vencord_status_label.text() or "").strip():
+            self.vencord_status_label.setText(
+                "Setup / Update locked - needs vencord_setup permission."
+            )
+            self.vencord_status_label.setStyleSheet(f"color: {theme.PEACH};")
+
+    def _browse_vencord_path(self) -> None:
+        if not self._can_vencord_setup():
+            return
+        start = self.vencord_path_entry.text().strip() or ""
+        chosen = QFileDialog.getExistingDirectory(
+            self,
+            "Select Vencord folder",
+            start,
+        )
+        if chosen:
+            self.vencord_path_entry.setText(chosen)
+
+    def _open_vesktop_guide(self) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        from gui.components.vencord_setup_dialog import vesktop_steps_text
+
+        path = self._vencord_path_for_actions()
+        QMessageBox.information(
+            self,
+            "Vesktop setup",
+            vesktop_steps_text(path),
+        )
+
+    def _vencord_path_for_actions(self) -> str:
+        from core.vencord_setup import default_vencord_path
+
+        path = self.vencord_path_entry.text().strip() or default_vencord_path()
+        self.vencord_path_entry.setText(path)
+        return path
+
+    def _set_vencord_busy(self, busy: bool) -> None:
+        allowed = self._can_vencord_setup()
+        self.vencord_setup_btn.setEnabled(not busy and allowed)
+        self.vencord_update_btn.setEnabled(not busy and allowed)
+        self.vencord_browse_btn.setEnabled(not busy and allowed)
+        self.vencord_path_entry.setEnabled(not busy and allowed)
+        self.vencord_check_btn.setEnabled(not busy)
+
+    def _run_vencord_action(self, action: str) -> None:
+        from core.vencord_setup import run_action_async, set_vencord_install_path
+        from gui.components.vencord_setup_dialog import VencordSetupDialog
+        from shiboken6 import isValid
+        from staffcheck.qt_ui import on_main_thread
+
+        if not self._can_vencord_setup():
+            self.vencord_status_label.setText(
+                "Requires the vencord_setup permission (ask Max to grant it)."
+            )
+            self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
+            return
+
+        path = self._vencord_path_for_actions()
+        set_vencord_install_path(path)
+        title = (
+            "Vencord Setup / Repair"
+            if action == "install"
+            else "Update Vencord & plugin"
+        )
+        dlg = VencordSetupDialog(self, title=title, vencord_path=path)
+        self._set_vencord_busy(True)
+
+        def on_event(event: dict) -> None:
+            payload = dict(event)
+
+            def _append():
+                if isValid(dlg):
+                    dlg.append_event(payload)
+
+            on_main_thread(_append)
+
+        def on_done(result) -> None:
+            def _finish():
+                self._set_vencord_busy(False)
+                if not isValid(dlg):
+                    return
+                if result.ok:
+                    dlg.mark_finished(True)
+                    self.vencord_status_label.setText(
+                        "Last run OK"
+                        + (
+                            f" | plugin {result.plugin_version}"
+                            if result.plugin_version
+                            else ""
+                        )
+                    )
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.GREEN};")
+                else:
+                    err = result.error or "Installer failed"
+                    dlg.mark_finished(False, err)
+                    self.vencord_status_label.setText(err)
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
+
+            on_main_thread(_finish)
+
+        run_action_async(
+            action,
+            vencord_path=path,
+            on_event=on_event,
+            on_done=on_done,
+        )
+        dlg.exec()
+
+    def _check_vencord_updates(self) -> None:
+        from core.vencord_setup import check_updates, set_vencord_install_path
+        from staffcheck.qt_ui import on_main_thread
+        from staffcheck.tasks import run_background
+
+        path = self._vencord_path_for_actions()
+        set_vencord_install_path(path)
+        self._set_vencord_busy(True)
+        self.vencord_status_label.setText("Checking...")
+        self.vencord_status_label.setStyleSheet(f"color: {theme.PEACH};")
+
+        def work():
+            result = None
+            err = None
+            try:
+                result = check_updates(vencord_path=path)
+            except Exception as exc:
+                err = str(exc)
+
+            def apply():
+                self._set_vencord_busy(False)
+                if err:
+                    self.vencord_status_label.setText(err)
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
+                    return
+                self.vencord_status_label.setText(result.message)
+                if result.error:
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
+                elif result.any_update:
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.PEACH};")
+                else:
+                    self.vencord_status_label.setStyleSheet(f"color: {theme.GREEN};")
+
+            on_main_thread(apply)
+
+        run_background(work)
 
     def _on_flavor_changed(self, index: int):
         identifier = self.flavor_combo.itemData(index)
@@ -389,6 +646,13 @@ class SettingsDialog(QDialog):
             "leave_animated_emojis",
             "true" if self.leave_animated_emojis_check.isChecked() else "false",
         )
+        path = self.vencord_path_entry.text().strip()
+        set_custom_value("EXPERIMENTAL", "vencord_install_path", path)
+        set_custom_value(
+            "EXPERIMENTAL",
+            "vencord_auto_update_check",
+            "true" if self.vencord_auto_check.isChecked() else "false",
+        )
 
         from core.discord_bridge import sync_bridge_lifecycle
 
@@ -398,6 +662,12 @@ class SettingsDialog(QDialog):
             parent._update_menu_gating()
         if parent is not None and hasattr(parent, "_update_bridge_status"):
             parent._update_bridge_status()
+        if (
+            parent is not None
+            and hasattr(parent, "_check_vencord_updates")
+            and self.vencord_bridge_check.isChecked()
+        ):
+            parent._check_vencord_updates(silent=True)
         self.accept()
 
     def _reset(self):
@@ -441,6 +711,14 @@ class SettingsDialog(QDialog):
         set_custom_value("EXPERIMENTAL", "vencord_bridge_token", "change-me")
         self.leave_animated_emojis_check.setChecked(False)
         set_custom_value("EXPERIMENTAL", "leave_animated_emojis", "false")
+        from core.vencord_setup import default_vencord_path
+
+        self.vencord_path_entry.setText(default_vencord_path())
+        set_custom_value("EXPERIMENTAL", "vencord_install_path", "")
+        self.vencord_auto_check.setChecked(True)
+        set_custom_value("EXPERIMENTAL", "vencord_auto_update_check", "true")
+        self.vencord_status_label.setText("")
+        self.vencord_status_label.setStyleSheet("")
         self._on_vencord_bridge_toggled(False)
         from core.discord_bridge import sync_bridge_lifecycle
 

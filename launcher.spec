@@ -8,7 +8,11 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[("version", "."), ("images", "images")],
+    datas=[
+        ("version", "."),
+        ("images", "images"),
+        ("scripts/vencord_setup", "scripts/vencord_setup"),
+    ],
     hiddenimports=["pyperclip", "websocket", "websocket.websocket"],
     hookspath=[],
     hooksconfig={},
