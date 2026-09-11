@@ -230,7 +230,7 @@ class QueueWindow(AppWindow):
         ships_layout.addWidget(self.ships_list)
         workflow_col.addWidget(ships_box)
 
-        leaves_rejoins_box = QGroupBox("Leaves + rejoins")
+        leaves_rejoins_box = QGroupBox("Leaves && rejoins")
         leaves_rejoins_layout = QVBoxLayout(leaves_rejoins_box)
         self.leaves_rejoins_list = QListWidget()
         self.leaves_rejoins_list.setWordWrap(True)
@@ -243,14 +243,14 @@ class QueueWindow(AppWindow):
         leaves_rejoins_layout.addWidget(self.leaves_rejoins_list)
         workflow_col.addWidget(leaves_rejoins_box)
 
-        preps_processes_box = QGroupBox("Preps + processes")
+        preps_processes_box = QGroupBox("Preps && processes")
         preps_processes_layout = QVBoxLayout(preps_processes_box)
         self.preps_processes_list = QListWidget()
         self.preps_processes_list.setWordWrap(True)
         preps_processes_layout.addWidget(self.preps_processes_list)
         workflow_col.addWidget(preps_processes_box)
 
-        onduty_sc_box = QGroupBox("On-duty + new staffchecks")
+        onduty_sc_box = QGroupBox("On-duty && new staffchecks")
         onduty_sc_layout = QVBoxLayout(onduty_sc_box)
         self.onduty_staffchecks_list = QListWidget()
         self.onduty_staffchecks_list.setWordWrap(True)
@@ -1848,7 +1848,7 @@ class QueueWindow(AppWindow):
                 )
                 row_layout.addWidget(tick_btn)
 
-                cross_btn = QPushButton("Cross & Warn")
+                cross_btn = QPushButton("Cross && Warn")
                 cross_btn.setFixedHeight(22)
                 cross_btn.setStyleSheet("QPushButton { padding: 0px 8px; }")
                 cross_btn.setToolTip(
@@ -2265,7 +2265,7 @@ class QueueWindow(AppWindow):
             else "React with tick on this leave message"
         )
         tick.setEnabled(not already_marked and not self._command_busy and not self._sim_enabled)
-        cross = menu.addAction("Cross & Warn")
+        cross = menu.addAction("Cross && Warn")
         cross.setToolTip(
             "Already marked"
             if already_marked

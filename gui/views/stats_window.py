@@ -85,7 +85,7 @@ class StatsWindow(AppWindow):
         brand.setObjectName("statsBrand")
         rail_layout.addWidget(brand)
 
-        hint = QLabel("Queue & staffcheck")
+        hint = QLabel("Queue && staffcheck")
         hint.setObjectName("statsHint")
         rail_layout.addWidget(hint)
 
