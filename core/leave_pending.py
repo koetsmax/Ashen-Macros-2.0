@@ -13,8 +13,6 @@ from core.discord_bridge import (
     prefer_bridge,
     queue_channel_id,
 )
-from core.keyboard import extra_ups_for_date_dividers, react_to_channel_message
-from staffcheck.abort import AbortError
 
 if TYPE_CHECKING:
     from core.queue_ws import QueueWsClient
@@ -65,7 +63,7 @@ def react_pending_on_leave(
     info: dict | None = None,
     client: "QueueWsClient | None" = None,
 ) -> str:
-    """React :pending: to a leave message. Returns status: reacted|skipped|already|failed."""
+    """React :pending: via Vencord bridge. Returns reacted|skipped|already|failed."""
     data = (
         info
         if info is not None
@@ -77,37 +75,22 @@ def react_pending_on_leave(
     if data.get("self_reacted"):
         return "already"
 
-    # Bridge path: message id (+ queue channel) — no offset required.
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
-        if not mid or not data.get("found"):
-            return "failed"
-        channel_id = str(
-            data.get("channel_id") or queue_channel_id() or ""
-        ).strip()
-        if not channel_id:
-            raise DiscordBridgeError("No channel id for pending react")
-        get_bridge().react(
-            channel_id,
-            mid,
-            pending_emoji(),
-            abort_ctx=self,
-        )
-        return "reacted"
-
-    if not data.get("found") or not data.get("offset"):
+    # Bridge only — no keyboard Up navigation fallback.
+    if not is_enabled():
+        raise DiscordBridgeError("Vencord plugin required for pending leave react")
+    if not prefer_bridge():
+        raise DiscordBridgeError("Vencord plugin is not connected")
+    if not mid or not data.get("found"):
         return "failed"
-    try:
-        react_to_channel_message(
-            self,
-            int(data["offset"]),
-            "pending",
-            extra_ups=extra_ups_for_date_dividers(data.get("created_at")),
-        )
-        return "reacted"
-    except AbortError:
-        raise
-    except Exception:
-        logger.exception("react_pending_on_leave failed for %s", message_id)
-        return "failed"
+    channel_id = str(
+        data.get("channel_id") or queue_channel_id() or ""
+    ).strip()
+    if not channel_id:
+        raise DiscordBridgeError("No channel id for pending react")
+    get_bridge().react(
+        channel_id,
+        mid,
+        pending_emoji(),
+        abort_ctx=self,
+    )
+    return "reacted"
