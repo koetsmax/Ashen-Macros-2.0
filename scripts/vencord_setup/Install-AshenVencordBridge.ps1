@@ -85,35 +85,93 @@ function Install-WingetPackage {
         [string]$Label
     )
     Ensure-Winget
-    Write-ProgressJson -Stage "toolchain" -Message "Installing $Label via winget ($Id)..."
-    $wingetArgs = @(
-        "install", "--id", $Id,
-        "-e", "--accept-package-agreements", "--accept-source-agreements"
-    )
-    & winget @wingetArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "winget failed to install $Label ($Id). Exit code $LASTEXITCODE. You may need to approve a UAC prompt."
+    Write-ProgressJson -Stage "toolchain" -Message ("Installing {0}. Approve any Windows security prompt if asked..." -f $Label)
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $wingetArgs = @(
+            "install", "--id", $Id,
+            "-e",
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+            "--disable-interactivity"
+        )
+        $output = & winget @wingetArgs 2>&1
+        $code = $LASTEXITCODE
+        foreach ($line in @($output)) {
+            if ($null -eq $line) { continue }
+            $text = if ($line -is [System.Management.Automation.ErrorRecord]) {
+                [string]$line.Exception.Message
+            } else {
+                [string]$line
+            }
+            $text = $text.Trim()
+            if (-not $text) { continue }
+            # Skip noisy winget progress spam; keep useful status lines.
+            if ($text -match '^\s*\d+%\s*$') { continue }
+            if ($text -match '^-+$') { continue }
+            Write-ProgressJson -Stage "toolchain" -Message $text
+        }
+        # winget exit  -1978335189 = already installed
+        if ($code -ne 0 -and $code -ne -1978335189) {
+            throw ("Could not install {0} via winget (exit {1}). Install it manually, then retry Setup." -f $Label, $code)
+        }
+    } finally {
+        $ErrorActionPreference = $prevEap
     }
+    Start-Sleep -Milliseconds 400
     Refresh-PathEnv
 }
 
 function Ensure-Toolchain {
     Refresh-PathEnv
 
-    if (-not (Test-CommandExists "git")) {
+    $needGit = -not (Test-CommandExists "git")
+    $needNode = -not (Test-CommandExists "node")
+    $needPnpm = -not (Test-CommandExists "pnpm")
+
+    Write-ProgressJson -Stage "toolchain" -Message "Vencord needs three apps on this PC: Git, Node.js (18+), and pnpm."
+
+    if (-not $needGit) {
+        Write-ProgressJson -Stage "toolchain" -Message ("Git: already installed ({0})" -f ((& git --version) -replace '^git version ', ''))
+    } else {
+        Write-ProgressJson -Stage "toolchain" -Message "Git: not found - required to download Vencord and the plugin."
+    }
+    if (-not $needNode) {
+        Write-ProgressJson -Stage "toolchain" -Message ("Node.js: already installed ({0})" -f (& node --version))
+    } else {
+        Write-ProgressJson -Stage "toolchain" -Message "Node.js: not found - required to build Vencord."
+    }
+    if (-not $needPnpm) {
+        Write-ProgressJson -Stage "toolchain" -Message ("pnpm: already installed ({0})" -f (& pnpm --version))
+    } else {
+        Write-ProgressJson -Stage "toolchain" -Message "pnpm: not found - required to install Vencord dependencies and build."
+    }
+
+    if ($needGit -or $needNode -or $needPnpm) {
+        $toInstall = @()
+        if ($needGit) { $toInstall += "Git" }
+        if ($needNode) { $toInstall += "Node.js" }
+        if ($needPnpm) { $toInstall += "pnpm" }
+        Write-ProgressJson -Stage "toolchain" -Message ("Installing missing apps with winget: {0}. This can take a few minutes..." -f ($toInstall -join ", "))
+    }
+
+    if ($needGit) {
         Install-WingetPackage -Id "Git.Git" -Label "Git"
         Refresh-PathEnv
         if (-not (Test-CommandExists "git")) {
-            throw "Git was installed but is not on PATH yet. Close this window, open a new terminal, and retry."
+            throw "Git was installed but is not on PATH yet. Fully quit Ashen Macros, reopen it, and run Setup again."
         }
+        Write-ProgressJson -Stage "toolchain" -Message ("Git: ready ({0})" -f ((& git --version) -replace '^git version ', ''))
     }
 
-    if (-not (Test-CommandExists "node")) {
+    if ($needNode) {
         Install-WingetPackage -Id "OpenJS.NodeJS.LTS" -Label "Node.js LTS"
         Refresh-PathEnv
         if (-not (Test-CommandExists "node")) {
-            throw "Node.js was installed but is not on PATH yet. Restart the app / open a new terminal and retry."
+            throw "Node.js was installed but is not on PATH yet. Fully quit Ashen Macros, reopen it, and run Setup again."
         }
+        Write-ProgressJson -Stage "toolchain" -Message ("Node.js: ready ({0})" -f (& node --version))
     }
 
     $nodeVer = (& node --version 2>$null)
@@ -124,26 +182,31 @@ function Ensure-Toolchain {
         }
     }
 
-    if (-not (Test-CommandExists "pnpm")) {
+    if ($needPnpm) {
+        $enabledViaCorepack = $false
         if (Test-CommandExists "corepack") {
-            Write-ProgressJson -Stage "toolchain" -Message "Enabling pnpm via corepack..."
+            Write-ProgressJson -Stage "toolchain" -Message "pnpm: enabling via Node's corepack (no separate download)..."
             & corepack enable 2>$null
             & corepack prepare pnpm@latest --activate 2>$null
             Refresh-PathEnv
+            if (Test-CommandExists "pnpm") {
+                $enabledViaCorepack = $true
+            }
         }
-        if (-not (Test-CommandExists "pnpm")) {
+        if (-not $enabledViaCorepack) {
             Install-WingetPackage -Id "pnpm.pnpm" -Label "pnpm"
             Refresh-PathEnv
         }
         if (-not (Test-CommandExists "pnpm")) {
-            throw "pnpm was installed but is not on PATH yet. Restart the app / open a new terminal and retry."
+            throw "pnpm was installed but is not on PATH yet. Fully quit Ashen Macros, reopen it, and run Setup again."
         }
+        Write-ProgressJson -Stage "toolchain" -Message ("pnpm: ready ({0})" -f (& pnpm --version))
     }
 
     $gitVer = ((& git --version) -replace '^git version ', '')
     $nodeV = & node --version
     $pnpmV = & pnpm --version
-    Write-ProgressJson -Stage "toolchain" -Message ("Toolchain OK - git {0}, node {1}, pnpm {2}" -f $gitVer, $nodeV, $pnpmV)
+    Write-ProgressJson -Stage "toolchain" -Message ("All set - Git {0}, Node {1}, pnpm {2}. Continuing with Vencord..." -f $gitVer, $nodeV, $pnpmV)
 }
 
 function Get-DefaultVencordPath {

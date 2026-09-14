@@ -192,7 +192,7 @@ class SettingsDialog(QDialog):
         self.vencord_setup_btn.setAutoDefault(False)
         self.vencord_setup_btn.setDefault(False)
         self.vencord_setup_btn.setToolTip(
-            "Install git/Node/pnpm if needed, clone Vencord + AshenMacrosBridge, "
+            "Install git/Node/pnpm if needed (explains first), clone Vencord + AshenMacrosBridge, "
             "build, and open the Vencord Installer (pnpm inject). "
             "Requires GitHub access to koetsmax/ashen-macros-vencord."
         )
@@ -318,7 +318,7 @@ class SettingsDialog(QDialog):
         ):
             widget.setEnabled(allowed)
         tip = (
-            "Install git/Node/pnpm if needed, clone Vencord + AshenMacrosBridge, "
+            "Install git/Node/pnpm if needed (explains first), clone Vencord + AshenMacrosBridge, "
             "build, and open the Vencord Installer (pnpm inject). "
             "Requires GitHub access to koetsmax/ashen-macros-vencord."
             if allowed
@@ -376,7 +376,13 @@ class SettingsDialog(QDialog):
         self.vencord_check_btn.setEnabled(not busy)
 
     def _run_vencord_action(self, action: str) -> None:
-        from core.vencord_setup import run_action_async, set_vencord_install_path
+        from PySide6.QtWidgets import QMessageBox
+
+        from core.vencord_setup import (
+            probe_toolchain,
+            run_action_async,
+            set_vencord_install_path,
+        )
         from gui.components.vencord_setup_dialog import VencordSetupDialog
         from shiboken6 import isValid
         from staffcheck.qt_ui import on_main_thread
@@ -387,6 +393,29 @@ class SettingsDialog(QDialog):
             )
             self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
             return
+
+        tools = probe_toolchain()
+        if tools.missing:
+            missing = ", ".join(tools.missing)
+            detail = (
+                "Vencord setup needs these apps on your PC:\n"
+                "  • Git — download Vencord and the plugin\n"
+                "  • Node.js (18+) — build Vencord\n"
+                "  • pnpm — install dependencies and build\n\n"
+                f"Missing now: {missing}\n\n"
+                "Ashen Macros can install the missing ones with winget "
+                "(you may see a Windows security prompt).\n\n"
+                "Continue?"
+            )
+            reply = QMessageBox.question(
+                self,
+                "Apps required for Vencord",
+                detail,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
 
         path = self._vencord_path_for_actions()
         set_vencord_install_path(path)

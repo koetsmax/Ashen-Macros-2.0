@@ -41,6 +41,43 @@ def can_manage_vencord_setup(permissions: list[str] | None) -> bool:
     return VENCORD_SETUP_PERMISSION in perms or "administrator" in perms
 
 
+@dataclass
+class ToolchainStatus:
+    git: bool = False
+    node: bool = False
+    pnpm: bool = False
+
+    @property
+    def missing(self) -> list[str]:
+        out: list[str] = []
+        if not self.git:
+            out.append("Git")
+        if not self.node:
+            out.append("Node.js")
+        if not self.pnpm:
+            out.append("pnpm")
+        return out
+
+    @property
+    def all_ok(self) -> bool:
+        return not self.missing
+
+
+def _command_on_path(name: str) -> bool:
+    from shutil import which
+
+    return which(name) is not None
+
+
+def probe_toolchain() -> ToolchainStatus:
+    """Quick check for Git / Node / pnpm on PATH (no installs)."""
+    return ToolchainStatus(
+        git=_command_on_path("git"),
+        node=_command_on_path("node"),
+        pnpm=_command_on_path("pnpm"),
+    )
+
+
 def default_vencord_path() -> str:
     return str(Path.home() / "Documents" / "Vencord")
 
