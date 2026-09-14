@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -20,6 +21,8 @@ _ALLOWED_MUTUAL_SERVER_NAMES = frozenset(
 
 # Beyond this count, spill into a second column instead of growing forever.
 _MAX_SINGLE_COLUMN = 5
+# Dual columns need enough width so names stay one line (no wrap → no height spike).
+_MIN_DUAL_COLUMN_WIDTH = 260
 
 
 def _guild_base_name(label: str) -> str:
@@ -45,6 +48,7 @@ class MutualServersSection(QWidget):
         super().__init__()
         self._state = "idle"
         self._guilds: list[str] = []
+        self._use_two_columns = False
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         outer = QVBoxLayout(self)
@@ -61,7 +65,10 @@ class MutualServersSection(QWidget):
 
         self._col1 = QLabel("—")
         self._col1.setObjectName("resultSectionSummary")
-        self._col1.setWordWrap(True)
+        # Never word-wrap: wrapping in a narrow dual column inflates height and
+        # pushes Invite Tracker / SOT Official off the bottom of short windows.
+        self._col1.setWordWrap(False)
+        self._col1.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._col1.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._col1.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -81,7 +88,8 @@ class MutualServersSection(QWidget):
 
         self._col2 = QLabel("")
         self._col2.setObjectName("resultSectionSummary")
-        self._col2.setWordWrap(True)
+        self._col2.setWordWrap(False)
+        self._col2.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._col2.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._col2.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -111,34 +119,67 @@ class MutualServersSection(QWidget):
     def reset(self) -> None:
         self._state = "idle"
         self._guilds = []
+        self._use_two_columns = False
         self._col1.setText("—")
+        self._col1.setToolTip("")
         self._col2.clear()
+        self._col2.setToolTip("")
         self._col2.hide()
         self._vdivider.hide()
         self._apply_header_style("idle")
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if not self._guilds:
+            return
+        if self._want_two_columns(self._guilds) != self._use_two_columns:
+            self._render_guilds()
+
+    def _want_two_columns(self, guilds: list[str]) -> bool:
+        if len(guilds) <= _MAX_SINGLE_COLUMN:
+            return False
+        # Prefer two columns whenever the list is long — dual layout is shorter.
+        # Only force a single column when the panel is extremely narrow (names
+        # would be unreadable in half-width columns anyway).
+        width = self.width()
+        if width > 0 and width < _MIN_DUAL_COLUMN_WIDTH:
+            return False
+        return True
 
     def _render_guilds(self) -> None:
         guilds = self._guilds
         if not guilds:
             self._col1.setText("None")
+            self._col1.setToolTip("")
             self._col2.clear()
+            self._col2.setToolTip("")
             self._col2.hide()
             self._vdivider.hide()
+            self._use_two_columns = False
             return
 
-        if len(guilds) <= _MAX_SINGLE_COLUMN:
-            self._col1.setText("\n".join(guilds))
+        use_two = self._want_two_columns(guilds)
+        if not use_two:
+            text = "\n".join(guilds)
+            self._col1.setText(text)
+            self._col1.setToolTip(text if len(guilds) > 1 else "")
             self._col2.clear()
+            self._col2.setToolTip("")
             self._col2.hide()
             self._vdivider.hide()
+            self._use_two_columns = False
             return
 
-        # Balanced split so both columns stay short instead of one tall list.
         mid = (len(guilds) + 1) // 2
-        self._col1.setText("\n".join(guilds[:mid]))
-        self._col2.setText("\n".join(guilds[mid:]))
+        left = "\n".join(guilds[:mid])
+        right = "\n".join(guilds[mid:])
+        self._col1.setText(left)
+        self._col1.setToolTip(left)
+        self._col2.setText(right)
+        self._col2.setToolTip(right)
         self._col2.show()
         self._vdivider.show()
+        self._use_two_columns = True
 
     def _apply_header_style(self, state: str) -> None:
         self._header.setProperty("state", state)

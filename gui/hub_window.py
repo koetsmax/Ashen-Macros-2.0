@@ -159,8 +159,7 @@ class StaffcheckHub(QMainWindow):
         outer.addWidget(status_bar)
 
         self.staffcheck = StaffcheckView(self)
-        outer.addWidget(self.staffcheck, stretch=0)
-        outer.addStretch()
+        outer.addWidget(self.staffcheck, stretch=1)
 
         footer = QHBoxLayout()
         footer.addStretch()

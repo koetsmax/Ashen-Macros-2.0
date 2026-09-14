@@ -6,12 +6,14 @@ from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMenu,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QStyle,
     QStyleOptionButton,
@@ -95,7 +97,7 @@ class StaffcheckView(QWidget):
         body = QHBoxLayout()
         body.setSpacing(16)
         body.setAlignment(Qt.AlignmentFlag.AlignTop)
-        root.addLayout(body)
+        root.addLayout(body, stretch=1)
         self._body_layout = body
 
         left = QWidget()
@@ -109,7 +111,22 @@ class StaffcheckView(QWidget):
 
         self.results_panel = self._build_results_panel()
         self.results_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        body.addWidget(self.results_panel, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
+        self._results_scroll = QScrollArea()
+        self._results_scroll.setObjectName("resultsScroll")
+        self._results_scroll.setWidgetResizable(True)
+        self._results_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._results_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._results_scroll.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        self._results_scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+        self._results_scroll.setWidget(self.results_panel)
+        body.addWidget(self._results_scroll, stretch=1)
 
         self._build_input_section()
         pipeline.disable_function_button(self)
@@ -117,8 +134,7 @@ class StaffcheckView(QWidget):
         btn_enable(self.stop_button, False)
         build_example_message(self, 99, self.status_label)
 
-        root.addStretch()
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
     def _make_button(self, text, handler) -> QPushButton:
         btn = QPushButton(text)
@@ -353,7 +369,6 @@ class StaffcheckView(QWidget):
         layout.setContentsMargins(0, 0, 8, 0)
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinAndMaxSize)
 
         self._build_mutual_servers_section()
 
@@ -396,7 +411,6 @@ class StaffcheckView(QWidget):
         outer = QHBoxLayout(panel)
         outer.setContentsMargins(0, 0, 8, 0)
         outer.setSpacing(8)
-        outer.setSizeConstraint(QHBoxLayout.SizeConstraint.SetMinAndMaxSize)
 
         left = QVBoxLayout()
         left.setSpacing(8)
@@ -483,11 +497,14 @@ class StaffcheckView(QWidget):
         if self.check_in_progress:
             return
         guilds = list(self.mutual_guilds)
-        old = self.results_panel
+        old = self._results_scroll.takeWidget()
         self.results_panel = self._build_results_panel()
-        self.results_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        self._body_layout.replaceWidget(old, self.results_panel)
-        old.deleteLater()
+        self.results_panel.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum
+        )
+        self._results_scroll.setWidget(self.results_panel)
+        if old is not None:
+            old.deleteLater()
         if guilds:
             from staffcheck import result_panel
             result_panel.mutual_servers_apply(self, guilds)
