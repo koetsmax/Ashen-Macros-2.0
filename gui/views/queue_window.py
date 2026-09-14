@@ -1028,6 +1028,11 @@ class QueueWindow(AppWindow):
                     flags.append("Process separately")
                 if entry.get("needs_prep"):
                     flags.append("Needs prep")
+                # No StaffChecked role. A live OD mark softens the flag to
+                # "Good/Not good to check"; with no mark → "Not staffchecked".
+                # Marks are cleared when the role is granted on purpose, so a
+                # later role removal (missed spot) requires a fresh check —
+                # notes may have been added in between. Keep that behavior.
                 if entry.get("staffchecked") is False:
                     mark = entry.get("od_check_mark")
                     if mark == "good":
