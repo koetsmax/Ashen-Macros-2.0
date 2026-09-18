@@ -116,13 +116,20 @@ def post_json(self, url: str, payload: dict, timeout: float = 120, headers=None)
 
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
     from staffcheck import pipeline
-    from staffcheck.qt_ui import btn_config, btn_enable
+    from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 
     if is_abort_requested(self):
         return
     if command is None:
-        command = lambda: pipeline.continue_to_next(self)
+        # Continue through remaining steps; at check_message auto Good/Not-good
+        # from the reason field (empty → Good).
+        def _continue_inferring() -> None:
+            self._infer_check_on_arrive = True
+            pipeline.continue_to_next(self)
+
+        command = _continue_inferring
     btn_config(self.start_button, "Continue", command)
+    btn_set_primary(self.start_button, True)
     btn_enable(self.start_button, True)
 
 

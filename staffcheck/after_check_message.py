@@ -15,7 +15,7 @@ from core.keyboard import (
 )
 from core.settings import read_config
 from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread, report_bridge_error
+from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary, label_set, on_main_thread, report_bridge_error
 from staffcheck.tasks import run_background
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,9 @@ def after_check_message(self):
         "Neither of these apply",
         lambda: pipeline.continue_to_next(self),
     )
+    # Discord primary / blurple — matches Join AWR emphasis on this step.
+    btn_set_primary(self.function_button, True)
+    btn_set_primary(self.start_button, False)
     btn_enable(self.function_button, True)
     btn_config(self.kill_button, "Unprivate Xbox (modmail)", lambda: unprivate_xbox(self))
     btn_config(self.start_button, "Join AWR", lambda: join_awr(self))

@@ -935,31 +935,59 @@ class QueueWindow(AppWindow):
             else:
                 fill = "orange"
 
+        # Private ships stay green unless someone is actively leaving that ship.
+        if re.search(r"\bprivate\b", name, re.I):
+            if ship.get("private_leaving"):
+                fill = "red"
+            else:
+                fill = "green"
+
         detail = f" — Needs {needs}" if needs is not None else ""
         return f"{label}{detail}", self._ship_fill_color(fill)
 
+    def _private_leaving_ship_ids(self, data: dict) -> set[str]:
+        """Channel ids of private ships that currently have an open leave."""
+        leaving: set[str] = set()
+        for leave in data.get("active_leaves") or []:
+            if (leave.get("fill_status") or "open") == "filled":
+                continue
+            ship_id = str(leave.get("ship_channel_id") or "").strip()
+            ship_name = str(leave.get("ship_name") or "")
+            if ship_id:
+                leaving.add(ship_id)
+            elif re.search(r"\bprivate\b", ship_name, re.I):
+                # Name-only leave — match in _format_ship_line via private_leaving flag.
+                leaving.add(f"name:{ship_name.strip().lower()}")
+        return leaving
+
     def _apply_ships(self, data: dict) -> None:
         self.ships_list.clear()
-        ships = data.get("ships") or []
+        ships = list(data.get("ships") or [])
         if not data.get("active", True):
             self.ships_list.addItem("Queue closed — no fleet info")
             return
 
-        needs_items: list[tuple[str, str]] = []
-        full_items: list[tuple[str, str]] = []
-        for ship in ships:
-            text, color = self._format_ship_line(ship)
-            status = ship.get("status") or ""
-            if ship.get("section") == "needs_crew" or status == "needs_crew":
-                needs_items.append((text, color))
-            else:
-                full_items.append((text, color))
+        # Pure FL/ship-number order. Needs / section must never float a ship
+        # above a lower number (old UI did needs_items + full_items → e.g. Brig 2
+        # Needs above Brig 1).
+        ships.sort(key=_process_ship_sort_key)
 
-        if not needs_items and not full_items:
+        leaving_ids = self._private_leaving_ship_ids(data)
+        if not ships:
             self.ships_list.addItem("None")
             return
 
-        for text, color in needs_items + full_items:
+        for ship in ships:
+            cid = str(ship.get("channel_id") or "")
+            name = (ship.get("channel_name") or "").strip()
+            ship = {
+                **ship,
+                "private_leaving": (
+                    cid in leaving_ids
+                    or f"name:{name.lower()}" in leaving_ids
+                ),
+            }
+            text, color = self._format_ship_line(ship)
             item = QListWidgetItem(text)
             item.setForeground(QColor(color))
             self.ships_list.addItem(item)
@@ -1703,6 +1731,20 @@ class QueueWindow(AppWindow):
         days = hours // 24
         return f"{days}d"
 
+    def _rejoin_away_label(self, rejoin: dict) -> str | None:
+        """Duration since the member left (pending-rejoin created_at)."""
+        raw = rejoin.get("created_at") or rejoin.get("left_at")
+        if not raw:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+        seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+        return f"away {self._format_age(seconds)}"
+
     def _clean_ship_label(self, ship: object) -> str | None:
         """Real ship label for list rows, or None for empty/-- placeholders."""
         text = str(ship or "").strip()
@@ -1771,7 +1813,11 @@ class QueueWindow(AppWindow):
                 or self._clean_ship_label(rejoin.get("ship_channel_id"))
                 or "unknown ship"
             )
-            item = QListWidgetItem(f"Rejoin: {name} -> {ship}")
+            away = self._rejoin_away_label(rejoin)
+            line = f"Rejoin: {name} -> {ship}"
+            if away:
+                line = f"{line} · {away}"
+            item = QListWidgetItem(line)
             item.setForeground(colors["rejoin"])
             self.leaves_rejoins_list.addItem(item)
 
