@@ -743,10 +743,17 @@ class StatsWindow(AppWindow):
                 "Take-rate",
                 f"{take.get('overall_take_rate_pct') if take.get('overall_take_rate_pct') is not None else '—'}%",
             )
+            mix = sc.get("macros_vs_manual") or {}
             self._add_summary_line(
                 f"Staffchecks completed: {sc.get('total_completed')}  ·  "
                 f"not-good {sc.get('not_good_pct')}%"
             )
+            if mix.get("attribution_ready"):
+                self._add_summary_line(
+                    f"Via Ashen Macros {mix.get('macros_pct')}%  ·  "
+                    f"manual {mix.get('manual_pct')}% "
+                    f"({mix.get('macros')}/{mix.get('total')})"
+                )
             self._add_summary_line(
                 f"Joins {take.get('total_joined')}/{take.get('total_started')} started"
             )
@@ -766,6 +773,13 @@ class StatsWindow(AppWindow):
                 self._add_summary_line(
                     f"{run.get('started_at')}: {run.get('outcome')} "
                     f"({run.get('staff_username')})",
+                    muted=True,
+                )
+            for od in (data.get("staffcheck_od_messages") or [])[:8]:
+                via = "macros" if od.get("via_macros") else "manual"
+                self._add_summary_line(
+                    f"OD {od.get('created_at')}: {od.get('outcome')} "
+                    f"({od.get('staff_username') or '?'}, {via})",
                     muted=True,
                 )
 
@@ -797,6 +811,23 @@ class StatsWindow(AppWindow):
             self._add_kpi("Good", f"{data.get('good_pct') if data.get('good_pct') is not None else '—'}%")
             self._add_kpi("Not good", f"{data.get('not_good_pct') if data.get('not_good_pct') is not None else '—'}%")
             self._add_kpi("Total", str(data.get("total_completed") or 0))
+            mix = data.get("macros_vs_manual") or {}
+            if mix.get("attribution_ready"):
+                self._add_kpi(
+                    "Via macros",
+                    f"{mix.get('macros_pct') if mix.get('macros_pct') is not None else '—'}%",
+                )
+                self._add_summary_line(
+                    f"Source: Discord OD messages  ·  "
+                    f"macros {mix.get('macros') or 0} / "
+                    f"manual {mix.get('manual') or 0}"
+                )
+            else:
+                src = data.get("source") or "macros_api"
+                self._add_summary_line(
+                    f"Source: {src}  ·  macros/manual split needs Discord OD feed",
+                    muted=True,
+                )
             for r in data.get("top_not_good_reasons") or []:
                 self._add_summary_line(f"{r.get('reason')}: {r.get('count')}", muted=True)
 

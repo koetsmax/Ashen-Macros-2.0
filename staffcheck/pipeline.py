@@ -76,9 +76,6 @@ def apply_last_check_label(self, data: dict | None = None):
     if status == "not_good":
         label_set(self.last_check_label, f"Not good · {age}", "red")
         return
-    if status == "ban_request":
-        label_set(self.last_check_label, f"Ban request · {age}", "red")
-        return
     if status == "good":
         try:
             when = datetime.fromisoformat(str(at).replace("Z", "+00:00"))
