@@ -967,7 +967,9 @@ class QueueWindow(AppWindow):
             self.ships_list.addItem("Queue closed — no fleet info")
             return
 
-        # Always FL1 ship1–6, FL2 … — never Discord channel_id / needs-first order.
+        # Pure FL/ship-number order. Needs / section must never float a ship
+        # above a lower number (old UI did needs_items + full_items → e.g. Brig 2
+        # Needs above Brig 1).
         ships.sort(key=_process_ship_sort_key)
 
         leaving_ids = self._private_leaving_ship_ids(data)
