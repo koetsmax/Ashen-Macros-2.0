@@ -513,7 +513,6 @@ class StaffcheckView(QWidget):
         for label, handler in [
             ("Good to check message", self.edit_good_to_check),
             ("Not good to check message", self.edit_not_good_to_check),
-            ("Ban request message", self.edit_ban_request),
         ]:
             action = menu.addAction(label)
             action.triggered.connect(handler)
@@ -554,15 +553,6 @@ class StaffcheckView(QWidget):
         CustomizeDialog("not_good_to_check_message",
                         "userID = Discord ID\nxboxGT = Gamertag\nReason = reason", 1,
                         "userID **Not** Good to check -- GT: xboxGT -- Reason", self).exec()
-
-    def edit_ban_request(self):
-        CustomizeDialog(
-            "ban_request_message",
-            "userID = Discord ID\nxboxGT = Gamertag\nReason = reason",
-            2,
-            "userID Ban request -- GT: xboxGT -- Reason",
-            self,
-        ).exec()
 
 
 class CustomizeDialog(QDialog):
