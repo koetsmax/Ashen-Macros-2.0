@@ -8,7 +8,7 @@ from staffcheck.edit_check import (
     post_or_edit_check_message,
     resolve_edit_at_click,
 )
-from staffcheck.qt_ui import btn_config, btn_enable
+from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 
 
 def _apply_check_buttons(self, *, editable: bool) -> None:
@@ -31,6 +31,8 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
             lambda: good_to_check(self),
         )
     self.kill_button.setVisible(True)
+    btn_set_primary(self.start_button, True)
+    btn_set_primary(self.function_button, False)
     btn_enable(self.start_button, True)
     btn_enable(self.kill_button, True)
 
@@ -39,6 +41,10 @@ def check_message(self):
     """
     Show Post/Edit buttons from pre-check (essential_data last_check_editable).
     Offset/content are resolved only when a button is clicked.
+
+    When Continue advanced here (``_infer_check_on_arrive``), auto-post:
+    Good if the reason field is empty, Not good when a reason was already set
+    (e.g. Needs to remove banned friends).
     """
     self.currentstate = "Done"
     info = getattr(self, "_edit_check", None) or empty_edit_check()
@@ -51,8 +57,23 @@ def check_message(self):
         "offset": None,
         "content": None,
     }
-    _apply_check_buttons(self, editable=editable)
     pipeline.disable_function_button(self)
+
+    if getattr(self, "_infer_check_on_arrive", False):
+        self._infer_check_on_arrive = False
+        infer_and_post_check(self)
+        return
+
+    _apply_check_buttons(self, editable=editable)
+
+
+def infer_and_post_check(self) -> None:
+    """Continue → Good to check, unless a not-good reason is already filled in."""
+    reason = (self.reason.get() or "").strip()
+    if reason:
+        build_not_good_to_check(self)
+        return
+    good_to_check(self)
 
 
 def good_to_check(self):
