@@ -962,14 +962,19 @@ class QueueWindow(AppWindow):
 
     def _apply_ships(self, data: dict) -> None:
         self.ships_list.clear()
-        ships = data.get("ships") or []
+        ships = list(data.get("ships") or [])
         if not data.get("active", True):
             self.ships_list.addItem("Queue closed — no fleet info")
             return
 
+        # Always FL1 ship1–6, FL2 … — never Discord channel_id / needs-first order.
+        ships.sort(key=_process_ship_sort_key)
+
         leaving_ids = self._private_leaving_ship_ids(data)
-        needs_items: list[tuple[str, str]] = []
-        full_items: list[tuple[str, str]] = []
+        if not ships:
+            self.ships_list.addItem("None")
+            return
+
         for ship in ships:
             cid = str(ship.get("channel_id") or "")
             name = (ship.get("channel_name") or "").strip()
@@ -981,17 +986,6 @@ class QueueWindow(AppWindow):
                 ),
             }
             text, color = self._format_ship_line(ship)
-            status = ship.get("status") or ""
-            if ship.get("section") == "needs_crew" or status == "needs_crew":
-                needs_items.append((text, color))
-            else:
-                full_items.append((text, color))
-
-        if not needs_items and not full_items:
-            self.ships_list.addItem("None")
-            return
-
-        for text, color in needs_items + full_items:
             item = QListWidgetItem(text)
             item.setForeground(QColor(color))
             self.ships_list.addItem(item)
