@@ -109,15 +109,13 @@ def good_to_check(self):
 
 
 def not_good_to_check(self):
+    """One click: post Not good (reason may already be in the reason field)."""
     self.currentstate = "Done"
     btn_enable(self.kill_button, False)
     btn_enable(self.start_button, False)
     btn_enable(self.function_button, False)
     pipeline.disable_function_button_2(self)
-    editable = bool((getattr(self, "_edit_check", None) or {}).get("editable"))
-    label = "Edit: Not Good to Check" if editable else "Not Good to Check"
-    btn_config(self.start_button, label, lambda: build_not_good_to_check(self))
-    btn_enable(self.start_button, True)
+    build_not_good_to_check(self)
 
 
 def build_not_good_to_check(self):
@@ -161,6 +159,10 @@ def _show_after_check_actions(self) -> None:
 
     Only used from ``build_not_good_to_check``. Good checks call
     ``continue_to_next`` instead (resets UI while ``currentstate`` is Done).
+
+    When the not-good reason already names a follow-up, run it immediately
+    (same idea as Continue→Good / reason→Not good): one clear prior choice
+    should not require a redundant second identical click.
     """
     after_check_message(self)
     reason = (self.reason.get() or "").lower()
@@ -168,3 +170,7 @@ def _show_after_check_actions(self) -> None:
         from staffcheck.after_check_message import unprivate_xbox
 
         unprivate_xbox(self)
+    elif "verify" in reason:
+        from staffcheck.after_check_message import verify_account
+
+        verify_account(self)

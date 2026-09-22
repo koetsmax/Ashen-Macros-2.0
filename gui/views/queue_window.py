@@ -1819,6 +1819,17 @@ class QueueWindow(AppWindow):
                 line = f"{line} · {away}"
             item = QListWidgetItem(line)
             item.setForeground(colors["rejoin"])
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "pending_rejoin",
+                    "user_id": user_id,
+                    "display_name": name,
+                    "ship_channel_id": str(rejoin.get("ship_channel_id") or ""),
+                    "message_id": str(rejoin.get("message_id") or ""),
+                },
+            )
+            item.setToolTip("Right-click to dismiss this pending rejoin")
             self.leaves_rejoins_list.addItem(item)
 
         for notice in notices:
@@ -2296,7 +2307,26 @@ class QueueWindow(AppWindow):
         if item is None:
             return
         payload = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
+        if not isinstance(payload, dict):
+            return
+        kind = str(payload.get("kind") or "")
+
+        if kind == "pending_rejoin":
+            user_id = str(payload.get("user_id") or "").strip()
+            if not user_id:
+                return
+            name = str(payload.get("display_name") or user_id or "?")
+            menu = QMenu(self)
+            dismiss = menu.addAction("Dismiss rejoin")
+            dismiss.setToolTip(
+                "Remove this pending rejoin from the monitor (does not change Discord)"
+            )
+            chosen = menu.exec(self.leaves_rejoins_list.viewport().mapToGlobal(pos))
+            if chosen is dismiss:
+                self._dismiss_pending_rejoin(user_id, name)
+            return
+
+        if kind != "leave_notice":
             return
         message_id = str(payload.get("message_id") or "").strip()
         if not message_id:
@@ -2500,6 +2530,17 @@ class QueueWindow(AppWindow):
             }
         )
         self._set_status(f"Dismissing leave message for {display_name}…")
+
+    def _dismiss_pending_rejoin(self, user_id: str, display_name: str) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss rejoin")
+            return
+        uid = str(user_id or "").strip()
+        if not uid:
+            self._set_status("Rejoin missing user id")
+            return
+        self._client.send({"type": "dismiss_pending_rejoin", "user_id": uid})
+        self._set_status(f"Dismissing pending rejoin for {display_name}…")
 
     def _dismiss_uncheck_watch(
         self, user_id: str, message_id: str, display_name: str
