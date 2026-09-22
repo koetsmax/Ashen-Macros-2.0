@@ -325,16 +325,26 @@ def _slash_via_keyboard_tabs(self, name: str, values: list[str]) -> None:
 
 
 def opt_str(
-    name: str, value: Any, *, autocomplete: bool | None = None
+    name: str,
+    value: Any,
+    *,
+    autocomplete: bool | None = None,
+    match_hint: str | None = None,
 ) -> dict[str, Any]:
     """STRING slash option helper for call sites.
 
     ``autocomplete``: True force resolve, False skip even if schema says so,
     None (default) follow the Discord command schema.
+
+    ``match_hint``: display name for Ashen queue member/target autocomplete so
+    mutual "with" pairs resolve to the line owner (not the partner).
     """
     out: dict[str, Any] = {"name": name, "type": 3, "value": value}
     if autocomplete is not None:
         out["autocomplete"] = bool(autocomplete)
+    hint = str(match_hint or "").strip()
+    if hint:
+        out["matchHint"] = hint
     return out
 
 

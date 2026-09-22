@@ -3260,7 +3260,12 @@ class QueueWindow(AppWindow):
                     self,
                     "process",
                     [
-                        opt_str("member", user_id, autocomplete=True),
+                        opt_str(
+                            "member",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        ),
                         opt_str("ship", ship_option, autocomplete=True),
                     ],
                     channel_id=queue_ch,
@@ -3295,7 +3300,14 @@ class QueueWindow(AppWindow):
                 execute_slash_command(
                     self,
                     "prep",
-                    [opt_str("target", user_id, autocomplete=True)],
+                    [
+                        opt_str(
+                            "target",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        )
+                    ],
                     channel_id=queue_ch,
                     tab_values=[user_id],
                 )
@@ -3305,7 +3317,12 @@ class QueueWindow(AppWindow):
                     self,
                     "prep",
                     [
-                        opt_str("target", user_id, autocomplete=True),
+                        opt_str(
+                            "target",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        ),
                         opt_bool("unprep", True),
                     ],
                     channel_id=queue_ch,
