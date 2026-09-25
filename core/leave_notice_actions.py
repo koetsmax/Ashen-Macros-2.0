@@ -88,7 +88,17 @@ def react_leave_notice_mark(
     if is_enabled() and prefer_bridge():
         channel_id = leave_channel_id() or resolve_channel_id("#leave-channel") or ""
         if not channel_id:
-            raise DiscordBridgeError("No leave-channel id from bridge config")
+            from core.discord_bridge import fetch_bridge_meta, missing_bridge_config
+
+            fetch_bridge_meta(force=True)
+            channel_id = leave_channel_id() or resolve_channel_id("#leave-channel") or ""
+        if not channel_id:
+            from core.discord_bridge import missing_bridge_config
+
+            gap = ", ".join(missing_bridge_config()) or "leave-channel"
+            raise DiscordBridgeError(
+                f"No leave-channel id from bridge config (missing: {gap})"
+            )
         switch_channel(self, "#leave-channel")
         check_abort(self)
         get_bridge().react(channel_id, mid, emoji, abort_ctx=self)
