@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from core.settings import read_config
 from staffcheck import abort, result_panel
-from staffcheck.qt_ui import btn_config, btn_enable, label_set, on_main_thread
+from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary, label_set, on_main_thread
 from staffcheck.tasks import run_background
 
 _TWELVE_HOURS = 12 * 3600
@@ -15,6 +15,7 @@ def _button_noop():
 
 def disable_function_button(self):
     btn_config(self.function_button, "Cool Button", _button_noop)
+    btn_set_primary(self.function_button, False)
     btn_enable(self.function_button, False)
 
 
@@ -120,6 +121,7 @@ def prepare_for_new_check(self):
     self.clear_reason()
     self.check_id = None
     self._edit_check = empty_edit_check()
+    self._infer_check_on_arrive = False
 
 
 def validate_user_id(self) -> bool:
@@ -295,6 +297,8 @@ def finish_single_method(self):
     label_set(self.status_label, "Check complete")
     btn_enable(self.stop_button, False)
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
+    btn_set_primary(self.start_button, True)
+    btn_set_primary(self.function_button, False)
     btn_enable(self.start_button, True)
     btn_enable(self.kill_button, False)
     self.kill_button.setVisible(False)
@@ -303,6 +307,8 @@ def finish_single_method(self):
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
     self.reason_entry.setEnabled(True)
+    self.clear_reason()
+    self._infer_check_on_arrive = False
 
     previous_user_id = self.user_id.get()
     self.user_id.set("")
@@ -328,6 +334,19 @@ def reset_ui(self, preserve_abort: bool = False):
 
     self.clear_reason()
     self.reason_entry.setEnabled(True)
+    self._infer_check_on_arrive = False
+    try:
+        from staffcheck.edit_check import empty_edit_check as _empty_edit
+
+        self._edit_check = _empty_edit()
+    except Exception:
+        self._edit_check = {
+            "editable": False,
+            "offset": None,
+            "content": None,
+            "message_id": None,
+            "channel_id": None,
+        }
 
     _reset_result_panels(self)
 
@@ -337,6 +356,8 @@ def reset_ui(self, preserve_abort: bool = False):
     _clear_mutual_guilds(self)
 
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
+    btn_set_primary(self.start_button, True)
+    btn_set_primary(self.function_button, False)
     btn_enable(self.start_button, True)
     btn_enable(self.kill_button, False)
     self.kill_button.setVisible(False)
@@ -377,6 +398,7 @@ def continue_to_next(self):
     disable_function_button(self)
     disable_function_button_2(self)
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
+    btn_set_primary(self.start_button, True)
 
     if self.currentstate == "Done":
         reset_ui(self)

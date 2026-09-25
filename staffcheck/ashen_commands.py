@@ -12,7 +12,7 @@ from core.keyboard import (
 )
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
-from staffcheck.check_message import not_good_to_check
+from staffcheck.check_message import build_not_good_to_check
 from staffcheck.qt_ui import btn_config, btn_enable
 from staffcheck.tasks import run_background
 
@@ -103,17 +103,20 @@ def _enable_search_redo(self) -> None:
 
 def needs_to_remove_friends(self):
     self.reason.set("Needs to remove banned friends:")
-    not_good_to_check(self)
+    self.currentstate = "Done"
+    build_not_good_to_check(self)
 
 
 def needs_to_unprivate_xbox(self):
     self.reason.set("Needs to unprivate xbox")
-    not_good_to_check(self)
+    self.currentstate = "Done"
+    build_not_good_to_check(self)
 
 
 def needs_to_verify(self):
     self.reason.set("Needs to verify account")
-    not_good_to_check(self)
+    self.currentstate = "Done"
+    build_not_good_to_check(self)
 
 
 def ashen_api_request(self):

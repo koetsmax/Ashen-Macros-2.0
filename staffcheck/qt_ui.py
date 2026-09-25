@@ -141,6 +141,20 @@ def btn_enable(btn, on: bool = True):
     on_main_thread(lambda: btn.setEnabled(on))
 
 
+def btn_set_primary(btn, primary: bool = True) -> None:
+    """Toggle Discord-style blurple primary styling (QPushButton#primary)."""
+
+    def apply():
+        btn.setObjectName("primary" if primary else "")
+        style = btn.style()
+        if style is not None:
+            style.unpolish(btn)
+            style.polish(btn)
+        btn.update()
+
+    on_main_thread(apply)
+
+
 def btn_config(btn, text: str | None = None, on_click=None):
     def apply():
         if text is not None:

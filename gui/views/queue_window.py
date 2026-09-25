@@ -935,31 +935,59 @@ class QueueWindow(AppWindow):
             else:
                 fill = "orange"
 
+        # Private ships stay green unless someone is actively leaving that ship.
+        if re.search(r"\bprivate\b", name, re.I):
+            if ship.get("private_leaving"):
+                fill = "red"
+            else:
+                fill = "green"
+
         detail = f" — Needs {needs}" if needs is not None else ""
         return f"{label}{detail}", self._ship_fill_color(fill)
 
+    def _private_leaving_ship_ids(self, data: dict) -> set[str]:
+        """Channel ids of private ships that currently have an open leave."""
+        leaving: set[str] = set()
+        for leave in data.get("active_leaves") or []:
+            if (leave.get("fill_status") or "open") == "filled":
+                continue
+            ship_id = str(leave.get("ship_channel_id") or "").strip()
+            ship_name = str(leave.get("ship_name") or "")
+            if ship_id:
+                leaving.add(ship_id)
+            elif re.search(r"\bprivate\b", ship_name, re.I):
+                # Name-only leave — match in _format_ship_line via private_leaving flag.
+                leaving.add(f"name:{ship_name.strip().lower()}")
+        return leaving
+
     def _apply_ships(self, data: dict) -> None:
         self.ships_list.clear()
-        ships = data.get("ships") or []
+        ships = list(data.get("ships") or [])
         if not data.get("active", True):
             self.ships_list.addItem("Queue closed — no fleet info")
             return
 
-        needs_items: list[tuple[str, str]] = []
-        full_items: list[tuple[str, str]] = []
-        for ship in ships:
-            text, color = self._format_ship_line(ship)
-            status = ship.get("status") or ""
-            if ship.get("section") == "needs_crew" or status == "needs_crew":
-                needs_items.append((text, color))
-            else:
-                full_items.append((text, color))
+        # Pure FL/ship-number order. Needs / section must never float a ship
+        # above a lower number (old UI did needs_items + full_items → e.g. Brig 2
+        # Needs above Brig 1).
+        ships.sort(key=_process_ship_sort_key)
 
-        if not needs_items and not full_items:
+        leaving_ids = self._private_leaving_ship_ids(data)
+        if not ships:
             self.ships_list.addItem("None")
             return
 
-        for text, color in needs_items + full_items:
+        for ship in ships:
+            cid = str(ship.get("channel_id") or "")
+            name = (ship.get("channel_name") or "").strip()
+            ship = {
+                **ship,
+                "private_leaving": (
+                    cid in leaving_ids
+                    or f"name:{name.lower()}" in leaving_ids
+                ),
+            }
+            text, color = self._format_ship_line(ship)
             item = QListWidgetItem(text)
             item.setForeground(QColor(color))
             self.ships_list.addItem(item)
@@ -1703,6 +1731,20 @@ class QueueWindow(AppWindow):
         days = hours // 24
         return f"{days}d"
 
+    def _rejoin_away_label(self, rejoin: dict) -> str | None:
+        """Duration since the member left (pending-rejoin created_at)."""
+        raw = rejoin.get("created_at") or rejoin.get("left_at")
+        if not raw:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+        seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+        return f"away {self._format_age(seconds)}"
+
     def _clean_ship_label(self, ship: object) -> str | None:
         """Real ship label for list rows, or None for empty/-- placeholders."""
         text = str(ship or "").strip()
@@ -1771,8 +1813,23 @@ class QueueWindow(AppWindow):
                 or self._clean_ship_label(rejoin.get("ship_channel_id"))
                 or "unknown ship"
             )
-            item = QListWidgetItem(f"Rejoin: {name} -> {ship}")
+            away = self._rejoin_away_label(rejoin)
+            line = f"Rejoin: {name} -> {ship}"
+            if away:
+                line = f"{line} · {away}"
+            item = QListWidgetItem(line)
             item.setForeground(colors["rejoin"])
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                {
+                    "kind": "pending_rejoin",
+                    "user_id": user_id,
+                    "display_name": name,
+                    "ship_channel_id": str(rejoin.get("ship_channel_id") or ""),
+                    "message_id": str(rejoin.get("message_id") or ""),
+                },
+            )
+            item.setToolTip("Right-click to dismiss this pending rejoin")
             self.leaves_rejoins_list.addItem(item)
 
         for notice in notices:
@@ -2250,7 +2307,26 @@ class QueueWindow(AppWindow):
         if item is None:
             return
         payload = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, dict) or payload.get("kind") != "leave_notice":
+        if not isinstance(payload, dict):
+            return
+        kind = str(payload.get("kind") or "")
+
+        if kind == "pending_rejoin":
+            user_id = str(payload.get("user_id") or "").strip()
+            if not user_id:
+                return
+            name = str(payload.get("display_name") or user_id or "?")
+            menu = QMenu(self)
+            dismiss = menu.addAction("Dismiss rejoin")
+            dismiss.setToolTip(
+                "Remove this pending rejoin from the monitor (does not change Discord)"
+            )
+            chosen = menu.exec(self.leaves_rejoins_list.viewport().mapToGlobal(pos))
+            if chosen is dismiss:
+                self._dismiss_pending_rejoin(user_id, name)
+            return
+
+        if kind != "leave_notice":
             return
         message_id = str(payload.get("message_id") or "").strip()
         if not message_id:
@@ -2454,6 +2530,17 @@ class QueueWindow(AppWindow):
             }
         )
         self._set_status(f"Dismissing leave message for {display_name}…")
+
+    def _dismiss_pending_rejoin(self, user_id: str, display_name: str) -> None:
+        if not self._client:
+            self._set_status("Not connected — cannot dismiss rejoin")
+            return
+        uid = str(user_id or "").strip()
+        if not uid:
+            self._set_status("Rejoin missing user id")
+            return
+        self._client.send({"type": "dismiss_pending_rejoin", "user_id": uid})
+        self._set_status(f"Dismissing pending rejoin for {display_name}…")
 
     def _dismiss_uncheck_watch(
         self, user_id: str, message_id: str, display_name: str
@@ -3173,7 +3260,12 @@ class QueueWindow(AppWindow):
                     self,
                     "process",
                     [
-                        opt_str("member", user_id, autocomplete=True),
+                        opt_str(
+                            "member",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        ),
                         opt_str("ship", ship_option, autocomplete=True),
                     ],
                     channel_id=queue_ch,
@@ -3208,7 +3300,14 @@ class QueueWindow(AppWindow):
                 execute_slash_command(
                     self,
                     "prep",
-                    [opt_str("target", user_id, autocomplete=True)],
+                    [
+                        opt_str(
+                            "target",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        )
+                    ],
                     channel_id=queue_ch,
                     tab_values=[user_id],
                 )
@@ -3218,7 +3317,12 @@ class QueueWindow(AppWindow):
                     self,
                     "prep",
                     [
-                        opt_str("target", user_id, autocomplete=True),
+                        opt_str(
+                            "target",
+                            user_id,
+                            autocomplete=True,
+                            match_hint=display_name,
+                        ),
                         opt_bool("unprep", True),
                     ],
                     channel_id=queue_ch,

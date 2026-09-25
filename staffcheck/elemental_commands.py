@@ -99,10 +99,11 @@ def tell_to_link_xbox(self):
         )
     except abort.AbortError:
         return
-    btn_enable(self.kill_button, True)
-    btn_enable(self.start_button, True)
+    # Skip ahead past Ashen/Invite (no GT yet) and advance immediately —
+    # do not wait for a manual Continue click.
     self.currentstate = "SOTOfficial"
-    abort.set_continue_button(self)
+    self._infer_check_on_arrive = True
+    pipeline.continue_to_next(self)
 
 
 def tell_to_verify(self):
@@ -122,10 +123,9 @@ def tell_to_verify(self):
         )
     except abort.AbortError:
         return
-    btn_enable(self.kill_button, True)
-    btn_enable(self.start_button, True)
     self.currentstate = "SOTOfficial"
-    abort.set_continue_button(self)
+    self._infer_check_on_arrive = True
+    pipeline.continue_to_next(self)
 
 
 def elemental_api_request(self):
