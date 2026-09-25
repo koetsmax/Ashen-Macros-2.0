@@ -91,6 +91,16 @@ def bridge_token() -> str:
     return str(read_config().get("vencord_bridge_token") or "").strip()
 
 
+# Channels required before bridge actions that need snowflakes (leave tick,
+# process/prep in #queue, staffcheck OD). Socket-up alone is not "ready".
+REQUIRED_BRIDGE_CHANNELS: tuple[str, ...] = (
+    "queue",
+    "leave-channel",
+    "on-duty-chat",
+    "on-duty-commands",
+)
+
+
 def get_bridge_meta() -> dict[str, Any]:
     """Cached guild / channels / emoji / leave rules from the bot."""
     with _meta_lock:
@@ -102,6 +112,32 @@ def get_bridge_meta() -> dict[str, Any]:
             "channels": dict(_meta.get("channels") or {}),
             "fetched_at": float(_meta.get("fetched_at") or 0),
         }
+
+
+def missing_bridge_config() -> list[str]:
+    """Human-readable gaps in bot bridge config (empty when ready)."""
+    meta = get_bridge_meta()
+    missing: list[str] = []
+    if not str(meta.get("guild_id") or "").strip():
+        missing.append("guild_id")
+    channels = meta.get("channels") or {}
+    for key in REQUIRED_BRIDGE_CHANNELS:
+        if not str(channels.get(key) or "").strip():
+            missing.append(key)
+    return missing
+
+
+def bridge_config_ready() -> bool:
+    """True when guild + required channel snowflakes are cached from the bot."""
+    return not missing_bridge_config()
+
+
+def bridge_readiness_summary() -> str:
+    """Short status fragment for hub / tooltips."""
+    missing = missing_bridge_config()
+    if not missing:
+        return ""
+    return "missing " + ", ".join(missing)
 
 
 def queue_guild_id() -> str:
@@ -278,10 +314,8 @@ def fetch_bridge_meta(*, force: bool = False) -> bool:
     """
     if not is_enabled():
         return False
-    if not force:
-        with _meta_lock:
-            if _meta.get("channels") and _meta.get("guild_id"):
-                return True
+    if not force and bridge_config_ready():
+        return True
     try:
         api_url = read_config().get("api_url") or ""
         if not api_url:
@@ -298,7 +332,13 @@ def fetch_bridge_meta(*, force: bool = False) -> bool:
             )
             return False
         data = response.json()
-        return apply_bridge_meta(data if isinstance(data, dict) else None)
+        applied = apply_bridge_meta(data if isinstance(data, dict) else None)
+        if applied and not bridge_config_ready():
+            logger.warning(
+                "discord_bridge_config incomplete after fetch: %s",
+                ", ".join(missing_bridge_config()) or "?",
+            )
+        return applied and bridge_config_ready()
     except Exception:
         logger.warning("Failed to fetch discord_bridge_config", exc_info=True)
         return False
@@ -364,12 +404,23 @@ def bridge_plugin_version() -> str:
 
 
 def prefer_bridge() -> bool:
-    """True when Experimental is on and the plugin is connected + authed."""
+    """True when Experimental is on, plugin is connected, and config is complete.
+
+    Incomplete bot config (e.g. no leave-channel id) must not look "ready" —
+    fall closed so callers do not start slash/leave actions that will fail mid-run.
+    """
     if not is_enabled():
         return False
     bridge = get_bridge()
     bridge.ensure_started()
-    return bridge.is_connected()
+    if not bridge.is_connected():
+        return False
+    if not bridge_config_ready():
+        # Opportunistic refresh; still fail closed this call if still incomplete.
+        fetch_bridge_meta(force=False)
+        if not bridge_config_ready():
+            return False
+    return True
 
 
 def sync_bridge_lifecycle() -> None:
