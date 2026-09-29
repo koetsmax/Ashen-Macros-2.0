@@ -11,6 +11,27 @@ from staffcheck.edit_check import (
 from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 
 
+def infer_check_button_label(self) -> str:
+    """
+    Label for the advance button that auto-posts Good/Not-good at check_message.
+
+    Matches Post/Edit wording used by ``_apply_check_buttons``: empty reason →
+    Good to check; any reason → Not Good to Check.
+    """
+    reason = ""
+    try:
+        reason = (self.reason.get() or "").strip()
+    except Exception:
+        entry = getattr(self, "reason_entry", None)
+        if entry is not None:
+            reason = (entry.text() or "").strip()
+    info = getattr(self, "_edit_check", None) or empty_edit_check()
+    editable = bool(info.get("editable")) and edit_check_enabled()
+    if reason:
+        return "Edit: Not Good to Check" if editable else "Not Good to Check"
+    return "Edit: Good to check" if editable else "Post good to check"
+
+
 def _apply_check_buttons(self, *, editable: bool) -> None:
     if editable:
         btn_config(

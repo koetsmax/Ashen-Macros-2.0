@@ -114,23 +114,62 @@ def post_json(self, url: str, payload: dict, timeout: float = 120, headers=None)
         return None
 
 
+def _refresh_infer_check_button_label(self) -> None:
+    """Live-update the advance button while it is waiting to auto-post a check."""
+    if not getattr(self, "_continue_infer_label_active", False):
+        return
+    from staffcheck.check_message import infer_check_button_label
+
+    btn = getattr(self, "start_button", None)
+    if btn is None:
+        return
+    btn.setText(infer_check_button_label(self))
+
+
+def _ensure_infer_check_label_hook(self) -> None:
+    """Connect reason_entry once so the advance label tracks the reason field."""
+    if getattr(self, "_continue_label_hooked", False):
+        return
+    entry = getattr(self, "reason_entry", None)
+    if entry is None:
+        return
+
+    def _on_reason_changed(_text: str = "") -> None:
+        _refresh_infer_check_button_label(self)
+
+    entry.textChanged.connect(_on_reason_changed)
+    self._continue_label_hooked = True
+
+
+def clear_continue_infer_label(self) -> None:
+    """Stop live Post/Edit check labeling (button was reset or advance clicked)."""
+    self._continue_infer_label_active = False
+
+
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
-    from staffcheck import pipeline
+    from staffcheck import check_message, pipeline
     from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 
     if is_abort_requested(self):
         return
     if command is None:
-        # Continue through remaining steps; at check_message auto Good/Not-good
-        # from the reason field (empty → Good).
+        # Advance remaining steps; at check_message auto Good/Not-good from the
+        # reason field (empty → Good). Label mirrors Post/Edit check wording.
         def _continue_inferring() -> None:
+            clear_continue_infer_label(self)
             self._infer_check_on_arrive = True
             pipeline.continue_to_next(self)
 
         command = _continue_inferring
-    btn_config(self.start_button, "Continue", command)
+        self._continue_infer_label_active = True
+        label = check_message.infer_check_button_label(self)
+    else:
+        clear_continue_infer_label(self)
+        label = "Continue"
+    btn_config(self.start_button, label, command)
     btn_set_primary(self.start_button, True)
     btn_enable(self.start_button, True)
+    _ensure_infer_check_label_hook(self)
 
 
 def install_abort_hotkey(self) -> None:
