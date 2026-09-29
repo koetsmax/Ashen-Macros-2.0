@@ -1157,6 +1157,17 @@ class QueueWindow(AppWindow):
         members = top.get("members") or []
         return bool(self._process_blocked_reason(members[0] if members else {}))
 
+    def _unknown_activity_row_color(self) -> QColor:
+        """Muted red tint for queue rows with unrecognized activity requests."""
+        base = QColor(theme.MANTLE or theme.BASE or "#181825")
+        accent = QColor(theme.RED or "#f38ba8")
+        mix = 0.30
+        return QColor(
+            int(base.red() * (1 - mix) + accent.red() * mix),
+            int(base.green() * (1 - mix) + accent.green() * mix),
+            int(base.blue() * (1 - mix) + accent.blue() * mix),
+        )
+
     def _top_recommendation_row_color(self, *, blocked: bool = False) -> QColor | None:
         """Muted green tint for the top process target; no fill when blocked."""
         if blocked:
@@ -1171,26 +1182,45 @@ class QueueWindow(AppWindow):
         )
 
     def _highlight_top_recommendation_queue_rows(self, data: dict) -> None:
-        """Color entire queue rows for members of the top recommendation."""
+        """Color queue rows: top recommendation green; unknown activity red."""
         target_ids = self._top_recommendation_user_ids(data)
         blocked = self._top_recommendation_is_process_blocked(data)
         highlight = self._top_recommendation_row_color(blocked=blocked)
+        unknown_bg = self._unknown_activity_row_color()
+        unknown_fg = QColor(theme.RED or "#f38ba8")
+        default_fg = QColor(theme.TEXT or "#cdd6f4")
         clear = QColor(0, 0, 0, 0)
+        queue_by_id = {
+            str(e.get("user_id") or ""): e
+            for e in (data.get("queue") or [])
+            if e.get("user_id")
+        }
         cols = self.queue_table.columnCount()
         for row in range(self.queue_table.rowCount()):
             name_item = self.queue_table.item(row, 0)
             uid = ""
             if name_item is not None:
                 uid = str(name_item.data(Qt.ItemDataRole.UserRole) or "")
-            bg = (
-                highlight
-                if highlight is not None and uid and uid in target_ids
-                else clear
+            entry = queue_by_id.get(uid) or {}
+            unknown = bool(
+                uid
+                and not entry.get("is_known")
+                and not entry.get("manual_override")
             )
+            if highlight is not None and uid and uid in target_ids:
+                bg = highlight
+                fg = default_fg
+            elif unknown:
+                bg = unknown_bg
+                fg = unknown_fg
+            else:
+                bg = clear
+                fg = default_fg
             for col in range(cols):
                 item = self.queue_table.item(row, col)
                 if item is not None:
                     item.setBackground(bg)
+                    item.setForeground(fg)
 
     def _member_staffcheck_state(self, member: dict) -> tuple[bool, str | None]:
         """Prefer live queue row for staffchecked / OD check mark."""

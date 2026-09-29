@@ -511,9 +511,13 @@ class StaffcheckHub(QMainWindow):
 
     def _update_bridge_status(self) -> None:
         from core.discord_bridge import (
+            bridge_config_ready,
             bridge_plugin_version,
+            bridge_readiness_summary,
+            fetch_bridge_meta,
             is_connected,
             is_enabled,
+            missing_bridge_config,
         )
 
         if not is_enabled():
@@ -524,23 +528,41 @@ class StaffcheckHub(QMainWindow):
 
         self.bridge_status_label.show()
         if is_connected():
+            # Socket up is not enough — leave/process need channel snowflakes.
+            if not bridge_config_ready():
+                fetch_bridge_meta(force=False)
             version = bridge_plugin_version()
-            text = (
-                f"Vencord plugin: Connected · {version}"
-                if version
-                else "Vencord plugin: Connected"
-            )
+            if bridge_config_ready():
+                text = (
+                    f"Vencord plugin: Connected · {version}"
+                    if version
+                    else "Vencord plugin: Connected"
+                )
+                object_name = "statusConnected"
+                tip = "Vencord plugin ready (Settings -> Experimental)"
+            else:
+                gap = bridge_readiness_summary() or "incomplete config"
+                text = (
+                    f"Vencord plugin: Connected · {gap}"
+                    if not version
+                    else f"Vencord plugin: Connected · {version} · {gap}"
+                )
+                object_name = "statusDisconnected"
+                tip = (
+                    "Plugin socket is up but bridge config from the bot is incomplete.\n"
+                    f"Missing: {', '.join(missing_bridge_config()) or '?'}\n"
+                    "Queue leave/process actions will not use the bridge until this is fixed."
+                )
             if self._vencord_update_hint:
                 text = f"{text} | update available"
-            object_name = "statusConnected"
         else:
             text = "Vencord plugin: disconnected"
             if self._vencord_update_hint:
                 text = f"{text} | update available"
             object_name = "statusDisconnected"
-        tip = "Vencord plugin status (Settings -> Experimental)"
+            tip = "Vencord plugin status (Settings -> Experimental)"
         if self._vencord_update_hint:
-            tip = f"{self._vencord_update_hint}\nOpen Settings -> Experimental to update."
+            tip = f"{tip}\n{self._vencord_update_hint}\nOpen Settings -> Experimental to update."
         self.bridge_status_label.setToolTip(tip)
         self.bridge_status_label.setText(text)
         self.bridge_status_label.setObjectName(object_name)
