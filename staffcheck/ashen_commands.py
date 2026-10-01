@@ -12,9 +12,10 @@ from core.keyboard import (
 )
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
-from staffcheck.check_message import build_not_good_to_check
+from staffcheck.check_message import offer_post_check_confirm
 from staffcheck.qt_ui import btn_config, btn_enable
 from staffcheck.tasks import run_background
+
 
 # Must cover Xbox rate-limit waits (~60s × up to 3) plus scrape time on the API.
 SEARCH_API_TIMEOUT_SECONDS = 360
@@ -104,19 +105,19 @@ def _enable_search_redo(self) -> None:
 def needs_to_remove_friends(self):
     self.reason.set("Needs to remove banned friends:")
     self.currentstate = "Done"
-    build_not_good_to_check(self)
+    offer_post_check_confirm(self, not_good=True)
 
 
 def needs_to_unprivate_xbox(self):
     self.reason.set("Needs to unprivate xbox")
     self.currentstate = "Done"
-    build_not_good_to_check(self)
+    offer_post_check_confirm(self, not_good=True)
 
 
 def needs_to_verify(self):
     self.reason.set("Needs to verify account")
     self.currentstate = "Done"
-    build_not_good_to_check(self)
+    offer_post_check_confirm(self, not_good=True)
 
 
 def ashen_api_request(self):

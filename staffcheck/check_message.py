@@ -8,49 +8,35 @@ from staffcheck.edit_check import (
     post_or_edit_check_message,
     resolve_edit_at_click,
 )
-from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
+from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary, label_set
 
 
-def infer_check_button_label(self) -> str:
-    """
-    Label for the advance button that auto-posts Good/Not-good at check_message.
+def post_good_button_label(*, editable: bool) -> str:
+    """Always include the word Post (edit path: Edit: Post …)."""
+    return "Edit: Post good to check" if editable else "Post good to check"
 
-    Matches Post/Edit wording used by ``_apply_check_buttons``: empty reason →
-    Good to check; any reason → Not Good to Check.
-    """
-    reason = ""
-    try:
-        reason = (self.reason.get() or "").strip()
-    except Exception:
-        entry = getattr(self, "reason_entry", None)
-        if entry is not None:
-            reason = (entry.text() or "").strip()
+
+def post_not_good_button_label(*, editable: bool) -> str:
+    """Always include the word Post (edit path: Edit: Post …)."""
+    return "Edit: Post not good to check" if editable else "Post not good to check"
+
+
+def _edit_state(self) -> bool:
     info = getattr(self, "_edit_check", None) or empty_edit_check()
-    editable = bool(info.get("editable")) and edit_check_enabled()
-    if reason:
-        return "Edit: Not Good to Check" if editable else "Not Good to Check"
-    return "Edit: Good to check" if editable else "Post good to check"
+    return bool(info.get("editable")) and edit_check_enabled()
 
 
 def _apply_check_buttons(self, *, editable: bool) -> None:
-    if editable:
-        btn_config(
-            self.kill_button,
-            "Edit: Not Good to Check",
-            lambda: not_good_to_check(self),
-        )
-        btn_config(
-            self.start_button,
-            "Edit: Good to check",
-            lambda: good_to_check(self),
-        )
-    else:
-        btn_config(self.kill_button, "Not Good to Check", lambda: not_good_to_check(self))
-        btn_config(
-            self.start_button,
-            "Post good to check",
-            lambda: good_to_check(self),
-        )
+    btn_config(
+        self.kill_button,
+        post_not_good_button_label(editable=editable),
+        lambda: not_good_to_check(self),
+    )
+    btn_config(
+        self.start_button,
+        post_good_button_label(editable=editable),
+        lambda: good_to_check(self),
+    )
     self.kill_button.setVisible(True)
     btn_set_primary(self.start_button, True)
     btn_set_primary(self.function_button, False)
@@ -58,17 +44,42 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
     btn_enable(self.kill_button, True)
 
 
+def offer_post_check_confirm(self, *, not_good: bool = True) -> None:
+    """
+    Question-style confirm after Ashen Needs actions (verify / friends / unprivate).
+
+    Not-good never posts until staff clicks Post not good; Stop check! stays up.
+    Good posts immediately from its own Post good button — not used here.
+    """
+    # Needs shortcuts always imply not-good confirmation.
+    not_good = True
+    editable = _edit_state(self)
+    self._infer_check_on_arrive = False
+    abort.clear_continue_infer_label(self)
+
+    label_set(self.status_label, "Post not good to check message?")
+    btn_config(
+        self.start_button,
+        post_not_good_button_label(editable=editable),
+        lambda: not_good_to_check(self),
+    )
+
+    pipeline.disable_function_button(self)
+    pipeline.disable_function_button_2(self)
+    btn_enable(self.kill_button, False)
+    self.kill_button.setVisible(False)
+    btn_set_primary(self.start_button, True)
+    btn_set_primary(self.function_button, False)
+    btn_enable(self.start_button, True)
+    btn_enable(self.stop_button, True)
+
+
 def check_message(self):
     """
-    Show Post/Edit buttons from pre-check (essential_data last_check_editable).
-    Offset/content are resolved only when a button is clicked.
+    Show Post good / Post not good buttons.
 
-    When Continue advanced here (``_infer_check_on_arrive``), auto-post:
-    Good if the reason field is empty, Not good when a reason was already set
-    (e.g. Needs to remove banned friends).
-
-    Tell to link xbox / Tell to verify advance here with infer cleared so staff
-    still click Post/Edit Good or Not Good explicitly.
+    The only auto-post allowed: arriving with ``_infer_check_on_arrive`` after an
+    explicit **Post good to check** click (empty reason). Not-good never auto-posts.
     """
     self.currentstate = "Done"
     info = getattr(self, "_edit_check", None) or empty_edit_check()
@@ -85,19 +96,18 @@ def check_message(self):
 
     if getattr(self, "_infer_check_on_arrive", False):
         self._infer_check_on_arrive = False
-        infer_and_post_check(self)
-        return
+        reason = ""
+        try:
+            reason = (self.reason.get() or "").strip()
+        except Exception:
+            reason = ""
+        # Only Good may post from the advance button; never auto not-good.
+        if not reason:
+            good_to_check(self)
+            return
 
+    abort.clear_continue_infer_label(self)
     _apply_check_buttons(self, editable=editable)
-
-
-def infer_and_post_check(self) -> None:
-    """Continue → Good to check, unless a not-good reason is already filled in."""
-    reason = (self.reason.get() or "").strip()
-    if reason:
-        build_not_good_to_check(self)
-        return
-    good_to_check(self)
 
 
 def good_to_check(self):
@@ -185,8 +195,7 @@ def _show_after_check_actions(self) -> None:
     ``continue_to_next`` instead (resets UI while ``currentstate`` is Done).
 
     When the not-good reason already names a follow-up, run it immediately
-    (same idea as Continue→Good / reason→Not good): one clear prior choice
-    should not require a redundant second identical click.
+    after the explicit Post not good click (unprivate / verify slash).
     """
     after_check_message(self)
     reason = (self.reason.get() or "").lower()

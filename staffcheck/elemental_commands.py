@@ -72,6 +72,15 @@ def elemental_commands(self, *args):
 
 
 def add_note(self):
+    # Preserve Ashen "Needs to …" enablement — greying function_button during
+    # /add_note used to leave "Needs to remove banned friends" stuck disabled.
+    restore_function = self.function_button.isEnabled() or (
+        (self.function_button.text() or "").startswith("Needs to")
+    )
+    restore_kill = self.kill_button.isEnabled() or (
+        (self.kill_button.text() or "").startswith("Needs to")
+    )
+    restore_start = self.start_button.isEnabled()
     try:
         switch_channel(self, self.channel.get())
         clear_typing_bar()
@@ -88,9 +97,23 @@ def add_note(self):
             channel_id=resolve_channel_id(self.channel.get()),
         )
     except abort.AbortError:
+        if restore_function:
+            btn_enable(self.function_button, True)
+        if restore_kill:
+            btn_enable(self.kill_button, True)
+        if restore_start:
+            btn_enable(self.start_button, True)
         return
-    btn_enable(self.kill_button, True)
-    btn_enable(self.start_button, True)
+    if restore_function:
+        btn_enable(self.function_button, True)
+    if restore_kill:
+        btn_enable(self.kill_button, True)
+    if restore_start:
+        btn_enable(self.start_button, True)
+    else:
+        # Default: keep Continue / post buttons usable after a GT note.
+        btn_enable(self.start_button, True)
+        btn_enable(self.kill_button, True)
 
 
 def tell_to_link_xbox(self):

@@ -114,20 +114,40 @@ def post_json(self, url: str, payload: dict, timeout: float = 120, headers=None)
         return None
 
 
-def _refresh_infer_check_button_label(self) -> None:
-    """Live-update the advance button while it is waiting to auto-post a check."""
+def clear_continue_infer_label(self) -> None:
+    """Stop live Post-good labeling on the advance button."""
+    self._continue_infer_label_active = False
+
+
+def _advance_button_label(self) -> str:
+    """Post good when reason empty; Continue when reason set (no auto not-good)."""
+    from staffcheck.check_message import post_good_button_label
+    from staffcheck.edit_check import edit_check_enabled, empty_edit_check
+
+    reason = ""
+    try:
+        reason = (self.reason.get() or "").strip()
+    except Exception:
+        entry = getattr(self, "reason_entry", None)
+        if entry is not None:
+            reason = (entry.text() or "").strip()
+    if reason:
+        return "Continue"
+    info = getattr(self, "_edit_check", None) or empty_edit_check()
+    editable = bool(info.get("editable")) and edit_check_enabled()
+    return post_good_button_label(editable=editable)
+
+
+def _refresh_advance_button_label(self) -> None:
     if not getattr(self, "_continue_infer_label_active", False):
         return
-    from staffcheck.check_message import infer_check_button_label
-
     btn = getattr(self, "start_button", None)
     if btn is None:
         return
-    btn.setText(infer_check_button_label(self))
+    btn.setText(_advance_button_label(self))
 
 
-def _ensure_infer_check_label_hook(self) -> None:
-    """Connect reason_entry once so the advance label tracks the reason field."""
+def _ensure_advance_label_hook(self) -> None:
     if getattr(self, "_continue_label_hooked", False):
         return
     entry = getattr(self, "reason_entry", None)
@@ -135,41 +155,42 @@ def _ensure_infer_check_label_hook(self) -> None:
         return
 
     def _on_reason_changed(_text: str = "") -> None:
-        _refresh_infer_check_button_label(self)
+        _refresh_advance_button_label(self)
 
     entry.textChanged.connect(_on_reason_changed)
     self._continue_label_hooked = True
 
 
-def clear_continue_infer_label(self) -> None:
-    """Stop live Post/Edit check labeling (button was reset or advance clicked)."""
-    self._continue_infer_label_active = False
-
-
 def set_continue_button(self, command: Optional[Callable[..., Any]] = None) -> None:
-    from staffcheck import check_message, pipeline
+    from staffcheck import pipeline
     from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 
     if is_abort_requested(self):
         return
     if command is None:
-        # Advance remaining steps; at check_message auto Good/Not-good from the
-        # reason field (empty → Good). Label mirrors Post/Edit check wording.
-        def _continue_inferring() -> None:
+        # Empty reason → this click is Post good (may post on arrive).
+        # Reason set → advance only; not-good still needs an explicit Post click.
+        def _advance() -> None:
             clear_continue_infer_label(self)
-            self._infer_check_on_arrive = True
+            reason = ""
+            try:
+                reason = (self.reason.get() or "").strip()
+            except Exception:
+                reason = ""
+            self._infer_check_on_arrive = not bool(reason)
             pipeline.continue_to_next(self)
 
-        command = _continue_inferring
+        command = _advance
         self._continue_infer_label_active = True
-        label = check_message.infer_check_button_label(self)
+        label = _advance_button_label(self)
     else:
         clear_continue_infer_label(self)
+        self._infer_check_on_arrive = False
         label = "Continue"
     btn_config(self.start_button, label, command)
     btn_set_primary(self.start_button, True)
     btn_enable(self.start_button, True)
-    _ensure_infer_check_label_hook(self)
+    _ensure_advance_label_hook(self)
 
 
 def install_abort_hotkey(self) -> None:
