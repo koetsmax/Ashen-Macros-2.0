@@ -118,6 +118,7 @@ def prepare_for_new_check(self):
     label_set(self.gamertag_label, "Unknown")
     apply_last_check_label(self)
     self.user_name = None
+    abort.clear_continue_infer_label(self)
     self.clear_reason()
     self.check_id = None
     self._edit_check = empty_edit_check()
@@ -332,6 +333,7 @@ def reset_ui(self, preserve_abort: bool = False):
     apply_last_check_label(self)
     btn_enable(self.stop_button, False)
 
+    abort.clear_continue_infer_label(self)
     self.clear_reason()
     self.reason_entry.setEnabled(True)
     self._infer_check_on_arrive = False
@@ -394,6 +396,7 @@ def perform_next_command(self):
 def continue_to_next(self):
     if abort.is_abort_requested(self):
         return
+    abort.clear_continue_infer_label(self)
     btn_enable(self.start_button, False)
     disable_function_button(self)
     disable_function_button_2(self)
