@@ -14,8 +14,17 @@ from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.abort import interruptible_sleep
 from staffcheck.result_panel import _section
-from staffcheck.qt_ui import btn_config, btn_enable
+from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary
 from staffcheck.tasks import run_background
+
+
+def _idle_start_button(self) -> None:
+    """Hide Start check! while waiting for link/verify (not ready to post)."""
+    from staffcheck.pipeline import _button_noop
+
+    btn_config(self.start_button, "—", _button_noop)
+    btn_set_primary(self.start_button, False)
+    btn_enable(self.start_button, False)
 
 
 def elemental_commands(self, *args):
@@ -52,12 +61,14 @@ def elemental_commands(self, *args):
             pipeline.continue_to_next(self)
         return
 
+    # Unlinked Xbox: offer link/verify only — do not show Start check!.
     btn_config(self.function_button, "Tell to link xbox", lambda: tell_to_link_xbox(self))
     btn_enable(self.function_button, True)
+    btn_set_primary(self.function_button, True)
     btn_config(self.kill_button, "Tell to verify", lambda: tell_to_verify(self))
     self.kill_button.setVisible(True)
     btn_enable(self.kill_button, True)
-    btn_enable(self.start_button, False)
+    _idle_start_button(self)
 
 
 def add_note(self):
@@ -99,10 +110,11 @@ def tell_to_link_xbox(self):
         )
     except abort.AbortError:
         return
-    # Skip ahead past Ashen/Invite (no GT yet) and advance immediately —
-    # do not wait for a manual Continue click.
+    # Skip Ashen/Invite (no GT yet) and open Post/Edit check buttons.
+    # Do NOT infer/auto-post Good or Not good — that stays an explicit click.
     self.currentstate = "SOTOfficial"
-    self._infer_check_on_arrive = True
+    self._infer_check_on_arrive = False
+    abort.clear_continue_infer_label(self)
     pipeline.continue_to_next(self)
 
 
@@ -123,8 +135,10 @@ def tell_to_verify(self):
         )
     except abort.AbortError:
         return
+    # Same as Tell to link xbox: advance to check_message without auto-posting.
     self.currentstate = "SOTOfficial"
-    self._infer_check_on_arrive = True
+    self._infer_check_on_arrive = False
+    abort.clear_continue_infer_label(self)
     pipeline.continue_to_next(self)
 
 

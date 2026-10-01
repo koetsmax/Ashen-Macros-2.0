@@ -66,6 +66,9 @@ def check_message(self):
     When Continue advanced here (``_infer_check_on_arrive``), auto-post:
     Good if the reason field is empty, Not good when a reason was already set
     (e.g. Needs to remove banned friends).
+
+    Tell to link xbox / Tell to verify advance here with infer cleared so staff
+    still click Post/Edit Good or Not Good explicitly.
     """
     self.currentstate = "Done"
     info = getattr(self, "_edit_check", None) or empty_edit_check()
