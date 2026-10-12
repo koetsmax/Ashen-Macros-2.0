@@ -104,6 +104,7 @@ def _set_default_values(config) -> bool:
             "compact_panels": "true",
             "queue_debug": "false",
             "queue_splitter_sizes": "",
+            "queue_join_alert": "true",
         },
         "EXPERIMENTAL": {
             "vencord_bridge": "false",

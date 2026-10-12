@@ -134,6 +134,33 @@ class SettingsDialog(QDialog):
         general_layout.addWidget(open_log_btn)
         general_layout.addStretch(1)
 
+        notifications_page = QWidget()
+        notifications_layout = QVBoxLayout(notifications_page)
+        tabs.addTab(notifications_page, "Notifications")
+
+        queue_alert_box = QGroupBox("Queue join alert")
+        queue_alert_layout = QVBoxLayout(queue_alert_box)
+        queue_alert_layout.addWidget(QLabel(
+            "While the Queue Monitor is open: when someone joins an empty queue\n"
+            "and a ship still needs crew, flash the taskbar and show a Windows\n"
+            "notification (at most once per minute). Its sound follows your\n"
+            "Windows notification settings."
+        ))
+        self.queue_join_alert_check = QCheckBox("Enable queue join alert")
+        self.queue_join_alert_check.setChecked(config_bool("queue_join_alert", "true"))
+        queue_alert_layout.addWidget(self.queue_join_alert_check)
+        test_alert_row = QHBoxLayout()
+        test_alert_btn = QPushButton("Test alert")
+        test_alert_btn.setAutoDefault(False)
+        test_alert_btn.setDefault(False)
+        test_alert_btn.setToolTip("Show a sample queue join alert now")
+        test_alert_btn.clicked.connect(self._test_queue_join_alert)
+        test_alert_row.addWidget(test_alert_btn)
+        test_alert_row.addStretch(1)
+        queue_alert_layout.addLayout(test_alert_row)
+        notifications_layout.addWidget(queue_alert_box)
+        notifications_layout.addStretch(1)
+
         experimental_page = QWidget()
         experimental_layout = QVBoxLayout(experimental_page)
         tabs.addTab(experimental_page, "Experimental")
@@ -653,6 +680,12 @@ class SettingsDialog(QDialog):
         set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", str(n))
 
         set_custom_value(
+            "UI",
+            "queue_join_alert",
+            "true" if self.queue_join_alert_check.isChecked() else "false",
+        )
+
+        set_custom_value(
             "EXPERIMENTAL",
             "vencord_bridge",
             "true" if self.vencord_bridge_check.isChecked() else "false",
@@ -703,8 +736,23 @@ class SettingsDialog(QDialog):
         tab = self._tabs.tabText(self._tabs.currentIndex())
         if tab == "Experimental":
             self._reset_experimental_tab()
+        elif tab == "Notifications":
+            self._reset_notifications_tab()
         else:
             self._reset_general_tab()
+
+    def _reset_notifications_tab(self):
+        self.queue_join_alert_check.setChecked(True)
+        set_custom_value("UI", "queue_join_alert", "true")
+
+    def _test_queue_join_alert(self):
+        from gui.components.desktop_alert import show_desktop_alert
+
+        show_desktop_alert(
+            self.window(),
+            "Queue join (test)",
+            "Someone joined the queue · FL 1 Brig 2 needs 1",
+        )
 
     def _reset_general_tab(self):
         defaults = {

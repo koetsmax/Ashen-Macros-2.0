@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -61,8 +62,9 @@ from core.queue_status_banner import (
     wait_for_status_banner,
 )
 from core.queue_ws import QueueWsClient
-from core.settings import read_config, set_custom_value
+from core.settings import config_bool, read_config, set_custom_value
 from gui import theme
+from gui.components.desktop_alert import show_desktop_alert
 from gui.views.app_window import AppWindow
 from staffcheck.abort import (
     AbortError,
@@ -78,6 +80,8 @@ logger = logging.getLogger(__name__)
 QUEUE_COMMAND_START_DELAY_S = 1.2
 # Extra settle after jumping to #queue before typing the slash command.
 QUEUE_CHANNEL_SETTLE_S = 1.2
+# Minimum gap between two "queue was empty, someone joined" alerts.
+QUEUE_JOIN_ALERT_COOLDOWN_S = 60.0
 
 
 def _queue_jump_target() -> str:
@@ -139,6 +143,10 @@ class QueueWindow(AppWindow):
         self._skipped_leave_message_ids: set[str] = set()
         # Optimistic tick/cross before the next leave_notices snapshot lands.
         self._leave_notice_local_marks: dict[str, str] = {}
+        # Queue size from the previous live snapshot; None = no baseline yet
+        # (fresh connect, queue closed, sim) so the next snapshot never alerts.
+        self._join_alert_prev_count: int | None = None
+        self._join_alert_last_at = 0.0
         super().__init__("Queue Monitor", keyboard_lock=True)
         self._ws_message.connect(self._on_message)
         self._ws_status.connect(self._set_status)
@@ -606,6 +614,8 @@ class QueueWindow(AppWindow):
         msg_type = data.get("type")
         if msg_type == "hello":
             self._my_user_id = str(data.get("user_id") or "")
+            # (Re)connected — first snapshot only sets the baseline.
+            self._join_alert_prev_count = None
             self._maybe_update_known_activities(data.get("known_activities"))
             self._apply_sim_meta(data.get("sim") or {})
             return
@@ -616,6 +626,7 @@ class QueueWindow(AppWindow):
             self._maybe_update_known_activities(data.get("known_activities"))
             self._apply_sim_meta(data.get("sim") or {})
             self._apply_snapshot(data)
+            self._check_queue_join_alert(data)
             return
         if msg_type == "ack":
             if "sim" in data:
@@ -629,6 +640,61 @@ class QueueWindow(AppWindow):
                 self._handle_report_ack(data)
             else:
                 self._set_status(f"Server: {data.get('error', 'error')}")
+
+    @staticmethod
+    def _ships_with_room(data: dict) -> list[dict]:
+        """Non-private ships that still need crew (Needs >= 1)."""
+        open_ships = []
+        for ship in data.get("ships") or []:
+            name = str(ship.get("channel_name") or "")
+            if re.search(r"\bprivate\b", name, re.I):
+                continue
+            try:
+                needs = int(ship.get("needs") or 0)
+            except (TypeError, ValueError):
+                continue
+            if needs >= 1:
+                open_ships.append(ship)
+        open_ships.sort(key=_process_ship_sort_key)
+        return open_ships
+
+    def _check_queue_join_alert(self, data: dict) -> None:
+        """Alert when the queue goes from empty to non-empty and a ship has room."""
+        live = bool(data.get("active", True)) and not (data.get("sim") or {}).get(
+            "enabled"
+        )
+        if not live:
+            self._join_alert_prev_count = None
+            return
+        queue = data.get("queue") or []
+        prev = self._join_alert_prev_count
+        self._join_alert_prev_count = len(queue)
+        if prev != 0 or not queue:
+            return
+        if not config_bool("queue_join_alert", "true"):
+            return
+        now = time.monotonic()
+        if now - self._join_alert_last_at < QUEUE_JOIN_ALERT_COOLDOWN_S:
+            return
+        ships = self._ships_with_room(data)
+        if not ships:
+            return
+        self._join_alert_last_at = now
+        self._fire_queue_join_alert(queue, ships)
+
+    def _fire_queue_join_alert(self, queue: list[dict], ships: list[dict]) -> None:
+        first = queue[0]
+        who = str(first.get("display_name") or first.get("user_id") or "Someone")
+        if len(queue) > 1:
+            who = f"{who} +{len(queue) - 1}"
+        ship_bits = [
+            f"{ship.get('channel_name') or ship.get('channel_id')} needs {ship.get('needs')}"
+            for ship in ships[:2]
+        ]
+        if len(ships) > 2:
+            ship_bits.append(f"+{len(ships) - 2} more")
+        message = f"{who} joined the queue · " + ", ".join(ship_bits)
+        show_desktop_alert(self, "Queue join", message)
 
     def _maybe_update_known_activities(self, activities) -> None:
         if not activities or not isinstance(activities, list):
