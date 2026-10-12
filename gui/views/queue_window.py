@@ -606,12 +606,10 @@ class QueueWindow(AppWindow):
         msg_type = data.get("type")
         if msg_type == "hello":
             self._my_user_id = str(data.get("user_id") or "")
-            self._apply_peers(data.get("peers") or [])
             self._maybe_update_known_activities(data.get("known_activities"))
             self._apply_sim_meta(data.get("sim") or {})
             return
         if msg_type == "peers":
-            self._apply_peers(data.get("peers") or [])
             return
         if msg_type == "snapshot":
             self._last_snapshot = data
@@ -639,9 +637,23 @@ class QueueWindow(AppWindow):
         if labels and labels != self._known_activities:
             self._known_activities = labels
 
-    def _apply_peers(self, peers: list) -> None:
-        self.peers_label.setText(f"Staff online: {len(peers)}")
-        self.peers_label.setToolTip(f"{len(peers)} staff connected to Queue Monitor")
+    def _apply_staff_online(self, data: dict) -> None:
+        """Staff online = users listed under OnDuty Staff in the info message."""
+        raw = data.get("staff_online")
+        count: int | None = None
+        if raw is not None and not isinstance(raw, bool):
+            try:
+                count = max(0, int(raw))
+            except (TypeError, ValueError):
+                count = None
+        if count is None:
+            self.peers_label.setText("Staff online: -")
+            self.peers_label.setToolTip("OnDuty Staff count not available")
+            return
+        self.peers_label.setText(f"Staff online: {count}")
+        self.peers_label.setToolTip(
+            f"{count} listed under OnDuty Staff in the info message"
+        )
 
     def _format_scraped(self, scraped: str | None) -> str:
         if not scraped:
@@ -994,8 +1006,7 @@ class QueueWindow(AppWindow):
 
     def _apply_snapshot(self, data: dict) -> None:
         scraped = self._format_scraped(data.get("scraped_at"))
-        peers = data.get("peers") or []
-        self._apply_peers(peers)
+        self._apply_staff_online(data)
         self._apply_private_queue_header(data)
         self._apply_alliance_ping_header(data)
         self._apply_queue_banner_header(data)
