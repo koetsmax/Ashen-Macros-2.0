@@ -29,7 +29,10 @@ class QueueWsClient:
         self,
         on_message: Callable[[dict], None],
         on_status: Callable[[str], None] | None = None,
+        *,
+        path: str = "/ws/queue",
     ):
+        self._path = path
         self._on_message = on_message
         self._on_status = on_status or (lambda _s: None)
         self._stop = threading.Event()
@@ -42,7 +45,9 @@ class QueueWsClient:
         if self._thread and self._thread.is_alive():
             return
         self._stop.clear()
-        self._thread = threading.Thread(target=self._run, name="queue-ws", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name=f"ws{self._path.replace('/', '-')}", daemon=True
+        )
         self._thread.start()
 
     def stop(self) -> None:
@@ -115,7 +120,7 @@ class QueueWsClient:
 
         while not self._stop.is_set():
             api_url = read_config().get("api_url", "https://ashen.api.famkoets.nl")
-            ws_url = api_url_to_ws_url(api_url)
+            ws_url = api_url_to_ws_url(api_url, self._path)
             token = get_token() or ""
             self._on_status(f"Connecting to {ws_url}...")
             try:

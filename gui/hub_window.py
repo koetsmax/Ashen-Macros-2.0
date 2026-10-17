@@ -73,6 +73,8 @@ class StaffcheckHub(QMainWindow):
         self.verified = verified
         self.permissions = list(permissions or [])
         self.connected = False
+        # key -> message shown on the connected label (see set_status_issue).
+        self._status_issues: dict[str, str] = {}
         self._verification_in_progress = False
         self._open_apps: dict[str, AppWindow] = {}
         self._online_version = None
@@ -468,14 +470,7 @@ class StaffcheckHub(QMainWindow):
         self.staffcheck.set_ready(ready)
         self.staffcheck.setVisible(True)
 
-        if self.connected:
-            self.status_label.setText("Connected")
-            self.status_label.setObjectName("statusConnected")
-        else:
-            self.status_label.setText("Not connected")
-            self.status_label.setObjectName("statusDisconnected")
-        self.status_label.style().unpolish(self.status_label)
-        self.status_label.style().polish(self.status_label)
+        self._render_status_label()
         self._update_bridge_status()
         self._update_welcome_header()
         self._update_menu_gating()
@@ -508,6 +503,38 @@ class StaffcheckHub(QMainWindow):
                 self.toast_stack.dismiss("permissions")
 
         self._close_unauthorized_apps()
+
+    def set_status_issue(self, key: str, text: str) -> None:
+        """Show a staffcheck problem on the connected label until it is cleared."""
+        self._status_issues.pop(key, None)
+        self._status_issues[key] = text
+        self._render_status_label()
+
+    def clear_status_issue(self, key: str | None = None) -> None:
+        """Drop one issue (or all with key=None) and fall back to Connected."""
+        if key is None:
+            self._status_issues.clear()
+        else:
+            self._status_issues.pop(key, None)
+        self._render_status_label()
+
+    def _render_status_label(self) -> None:
+        if self._status_issues:
+            # Newest issue wins; the rest stay in the tooltip.
+            texts = list(self._status_issues.values())
+            self.status_label.setText(texts[-1])
+            self.status_label.setToolTip("\n".join(texts))
+            self.status_label.setObjectName("statusDisconnected")
+        elif self.connected:
+            self.status_label.setText("Connected")
+            self.status_label.setToolTip("")
+            self.status_label.setObjectName("statusConnected")
+        else:
+            self.status_label.setText("Not connected")
+            self.status_label.setToolTip("")
+            self.status_label.setObjectName("statusDisconnected")
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
 
     def _update_bridge_status(self) -> None:
         from core.discord_bridge import (

@@ -1,7 +1,10 @@
+import logging
+
 from gui.components.mutual_servers_section import MutualServersSection
 from gui.components.classic_result_section import ClassicResultSection
+from gui.components.pending_checks_panel import PendingChecksPanel
 from gui.components.result_section import ResultSection
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
     QComboBox,
@@ -22,14 +25,18 @@ from PySide6.QtWidgets import (
 )
 
 from core.auth import auth_headers
+from core.pending_staffchecks import PendingStaffchecks, changed_kinds, diff_prefetch
 from core.settings import config_bool, read_config, set_custom_value
 from staffcheck import abort, pipeline
-from staffcheck.build_example_message import build_example_message
+from staffcheck.build_example_message import build_example_message, customize_messages_valid
 from staffcheck.elemental_commands import fix_issues as elemental_fix
 from staffcheck.invite_tracker import check_invited_users, check_loghistory
-from staffcheck.qt_ui import Var, btn_config, btn_enable, label_set
+from staffcheck.qt_ui import Var, btn_config, btn_enable, label_set, staffcheck_toast
 from staffcheck.sot_official import check_for_yourself
 from staffcheck.result_panel import SECTION_IDLE_TOOLTIPS
+from staffcheck.tasks import run_background
+
+logger = logging.getLogger(__name__)
 
 REASON_PLACEHOLDER = "Reason for not good to check"
 FIELD_HEIGHT = 38
@@ -77,6 +84,9 @@ class RerunCheckButton(QPushButton):
 
 
 class StaffcheckView(QWidget):
+    # Pending-check list from the bot (emitted from the network thread).
+    _pending_changed = Signal(list)
+
     def __init__(self, hub):
         super().__init__()
         self.hub = hub
@@ -89,6 +99,11 @@ class StaffcheckView(QWidget):
         self.check_in_progress = False
         self.user_name = None
         self.xbox_gt = None
+        self._ready = False
+        # {"user_id", "username", "prefetch"} for the pending check being run.
+        self._check_prefetch: dict | None = None
+        self._pending = PendingStaffchecks(self._pending_changed.emit)
+        self._pending_changed.connect(self._on_pending_changed)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 8, 12, 12)
@@ -132,7 +147,7 @@ class StaffcheckView(QWidget):
         pipeline.disable_function_button(self)
         pipeline.disable_function_button_2(self)
         btn_enable(self.stop_button, False)
-        build_example_message(self, 99, self.status_label)
+        build_example_message(self, 99)
 
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
@@ -241,6 +256,7 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self._input_field_label("Discord ID:"), row, 0)
         self.user_id_entry = self._line_field()
         self.user_id = Var(self.user_id_entry.text, self.user_id_entry.setText)
+        self.user_id_entry.textChanged.connect(lambda _text: self.refresh_start_enabled())
         self.input_layout.addWidget(self.user_id_entry, row, 1)
         row += 1
 
@@ -324,9 +340,107 @@ class StaffcheckView(QWidget):
         self.input_layout.addWidget(self.reason_entry, row, 0, 1, 2)
         row += 1
 
-        self.status_label = QLabel("Waiting for ID")
-        self.status_label.setObjectName("resultValue")
-        self.input_layout.addWidget(self.status_label, row, 0, 1, 2)
+        # Replaces the old status line; only shown while someone awaits a check.
+        self.pending_panel = PendingChecksPanel(self._pick_pending)
+        self.input_layout.addWidget(self.pending_panel, row, 0, 1, 2)
+
+    def refresh_start_enabled(self) -> None:
+        """Grey out the idle Start check! button unless the Discord ID is checkable."""
+        if self.check_in_progress or self.start_button.text() != "Start check!":
+            return
+        problem = pipeline.user_id_problem(self.user_id_entry.text())
+        if not self._ready:
+            problem = problem or "Not connected"
+        elif not customize_messages_valid():
+            problem = "Fix the Customize messages first"
+        self.start_button.setEnabled(problem is None)
+        self.start_button.setToolTip(problem or "")
+
+    def _pick_pending(self, user_id: str) -> None:
+        if self.check_in_progress or not self.user_id_entry.isEnabled():
+            return
+        self.user_id.set(user_id)
+
+    def _on_pending_changed(self, checks: list) -> None:
+        self.pending_panel.set_checks(checks)
+
+    def on_check_started(self, user_id: str) -> None:
+        """Called by pipeline.start_check: claim the alert if this is a pending check."""
+        self._check_prefetch = None
+        check = self._pending.get(user_id)
+        if check is None:
+            return
+        prefetch = check.get("prefetch")
+        self._check_prefetch = {
+            "user_id": str(user_id),
+            "username": str(check.get("username") or user_id),
+            "prefetch": prefetch if isinstance(prefetch, dict) else None,
+        }
+        self._pending.drop_local(user_id)
+        run_background(self._claim_pending, check)
+
+    def _claim_pending(self, check: dict) -> None:
+        """Background: mark the alert as taken and add the pending reaction."""
+        from core.discord_bridge import (
+            DiscordBridgeError,
+            get_bridge,
+            pending_emoji,
+            prefer_bridge,
+        )
+
+        uid = str(check.get("user_id"))
+        message_id = str(check.get("message_id") or "")
+        channel_id = str(check.get("channel_id") or "")
+        use_bridge = bool(message_id and channel_id) and prefer_bridge()
+        result = self._pending.claim(uid, message_id, bot_react=not use_bridge)
+        if result["reason"] == "already_reacted":
+            staffcheck_toast(
+                self,
+                "pending_claim",
+                f"Someone already reacted to {check.get('username') or uid}'s alert.",
+            )
+            return
+        if not result["ok"]:
+            logger.warning("Claiming pending staffcheck %s failed: %s", uid, result["reason"])
+        if not use_bridge:
+            return
+        try:
+            get_bridge().react(channel_id, message_id, pending_emoji())
+        except DiscordBridgeError as exc:
+            # The plugin is optional: let the bot add the reaction instead.
+            logger.warning("Pending react via plugin failed for %s: %s", uid, exc)
+            self._pending.claim(uid, message_id, bot_react=True)
+
+    def on_essential_data(self, user_id: str, data: dict) -> None:
+        """Compare fresh check data with the bot's prefetch and log any change."""
+        ctx = self._check_prefetch
+        if not ctx or ctx["user_id"] != str(user_id):
+            return
+        self._check_prefetch = None
+        name = ctx["username"]
+        prefetch = ctx["prefetch"]
+        if prefetch is None:
+            self._pending.log(
+                user_id,
+                f"Error: no cached staffcheck info for {name} (`{user_id}`); "
+                "requested it fresh.",
+            )
+            return
+        lines = diff_prefetch(prefetch, data)
+        if not lines:
+            return
+        self._pending.log(
+            user_id,
+            f"Staffcheck info for {name} (`{user_id}`) changed since they joined the queue:\n"
+            + "\n".join(f"- {line}" for line in lines),
+        )
+        staffcheck_toast(
+            self,
+            "prefetch_changed",
+            f"{name}'s info changed since they joined the queue "
+            f"({', '.join(changed_kinds(lines))}). Using the fresh data.",
+            dismiss_ms=12000,
+        )
 
     @staticmethod
     def use_compact_panels() -> bool:
@@ -362,7 +476,8 @@ class StaffcheckView(QWidget):
         self.check_for_yourself_button.setEnabled(False)
 
     def _build_mutual_servers_section(self):
-        self.result_sections["mutual_servers"] = MutualServersSection()
+        # Lives inside the SOT Official section to save vertical space.
+        self.result_sections["mutual_servers"] = MutualServersSection(embedded=True)
 
     def _build_compact_results(self, panel: QWidget) -> None:
         layout = QVBoxLayout(panel)
@@ -393,6 +508,7 @@ class StaffcheckView(QWidget):
             [self.check_for_yourself_button],
             idle_tooltip=SECTION_IDLE_TOOLTIPS["sot_official"],
             always_show_keys=frozenset({"total_messages"}),
+            lead_widget=self.result_sections["mutual_servers"],
         )
         self.result_sections["flagged_messages"] = ResultSection("Flagged Messages", [])
         self.result_sections["flagged_messages"]._button_row.setVisible(False)
@@ -400,8 +516,8 @@ class StaffcheckView(QWidget):
         self.result_sections["flagged_messages"].setVisible(False)
 
         for key in (
-            "mutual_servers", "user_report", "search", "invite_tracker",
-            "sot_official", "flagged_messages",
+            "sot_official", "user_report", "search", "invite_tracker",
+            "flagged_messages",
         ):
             section = self.result_sections[key]
             section.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
@@ -464,6 +580,7 @@ class StaffcheckView(QWidget):
                 ("Other flagged messages", "bad_words"),
             ],
             [self.check_for_yourself_button],
+            lead_widget=self.result_sections["mutual_servers"],
         )
         self.result_sections["flagged_messages"] = ClassicResultSection(
             "Flagged Messages",
@@ -471,12 +588,11 @@ class StaffcheckView(QWidget):
         )
         self.result_sections["flagged_messages"].setVisible(False)
 
-        left.addWidget(self.result_sections["mutual_servers"], alignment=Qt.AlignmentFlag.AlignTop)
+        left.addWidget(self.result_sections["sot_official"], alignment=Qt.AlignmentFlag.AlignTop)
         left.addWidget(self.result_sections["user_report"], alignment=Qt.AlignmentFlag.AlignTop)
         left.addWidget(self.result_sections["invite_tracker"], alignment=Qt.AlignmentFlag.AlignTop)
 
         right.addWidget(self.result_sections["search"], alignment=Qt.AlignmentFlag.AlignTop)
-        right.addWidget(self.result_sections["sot_official"], alignment=Qt.AlignmentFlag.AlignTop)
         right.addWidget(self.result_sections["flagged_messages"], alignment=Qt.AlignmentFlag.AlignTop)
 
         outer.addLayout(left, stretch=1)
@@ -491,6 +607,8 @@ class StaffcheckView(QWidget):
             self._build_compact_results(panel)
         else:
             self._build_classic_results(panel)
+        # SOT Official results only show once mutuals confirm they're in that server.
+        self.result_sections["sot_official"].set_body_visible(False)
         return panel
 
     def rebuild_results_panel(self):
@@ -523,6 +641,12 @@ class StaffcheckView(QWidget):
             action.setEnabled(on)
 
     def set_ready(self, ready: bool):
+        if ready != self._ready:
+            if ready:
+                self._pending.start()
+            else:
+                self._pending.stop()
+        self._ready = ready
         if self.check_in_progress:
             return
 
@@ -532,7 +656,7 @@ class StaffcheckView(QWidget):
         ):
             w.setEnabled(ready)
         if ready:
-            build_example_message(self, 99, self.status_label)
+            build_example_message(self, 99)
             btn_enable(self.stop_button, False)
             self.kill_button.setVisible(False)
         else:
@@ -573,7 +697,7 @@ class CustomizeDialog(QDialog):
         self.message_entry = QLineEdit(config[key])
         self.message = Var(self.message_entry.text, self.message_entry.setText)
         self.customize_layout.addWidget(self.message_entry)
-        build_example_message(view, example_id, view.status_label)
+        build_example_message(view, example_id)
 
         btn_row = QHBoxLayout()
         save_btn = QPushButton("Save Changes")
@@ -588,12 +712,12 @@ class CustomizeDialog(QDialog):
         set_custom_value("STAFFCHECK", self.key, self.message.get())
         if self.example_label:
             self.example_label.deleteLater()
-        build_example_message(self.view, self.example_id, self.view.status_label)
-        build_example_message(self.view, 99, self.view.status_label)
+        build_example_message(self.view, self.example_id)
+        build_example_message(self.view, 99)
 
     def _reset(self):
         set_custom_value("STAFFCHECK", self.key, self.default)
         self.message.set(self.default)
         if self.example_label:
             self.example_label.deleteLater()
-        build_example_message(self.view, self.example_id, self.view.status_label)
+        build_example_message(self.view, self.example_id)

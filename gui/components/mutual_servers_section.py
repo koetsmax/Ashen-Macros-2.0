@@ -41,11 +41,18 @@ def mutuals_have_extra_servers(guilds: list[str]) -> bool:
     return False
 
 
+def in_sot_official(guilds: list[str]) -> bool:
+    """True when the user shares the official Sea of Thieves server."""
+    return any(_guild_base_name(label) == "Sea of Thieves" for label in guilds or [])
+
+
 class MutualServersSection(QWidget):
     """Lists mutual Discord servers for the checked user."""
 
-    def __init__(self):
+    def __init__(self, *, embedded: bool = False):
         super().__init__()
+        # Embedded inside the SOT Official section: no own divider.
+        self._embedded = embedded
         self._state = "idle"
         self._guilds: list[str] = []
         self._use_two_columns = False
@@ -103,6 +110,7 @@ class MutualServersSection(QWidget):
         self._hdivider.setObjectName("sectionDivider")
         self._hdivider.setFixedHeight(1)
         outer.addWidget(self._hdivider)
+        self._hdivider.setVisible(not embedded)
 
         self.reset()
 

@@ -25,6 +25,7 @@ class ResultSection(QWidget):
         idle_tooltip: str = "",
         show_all_results: bool = False,
         always_show_keys: frozenset[str] | None = None,
+        lead_widget: QWidget | None = None,
     ):
         super().__init__()
         self._title = title
@@ -36,6 +37,7 @@ class ResultSection(QWidget):
         self._fields: dict[str, ResultField] = {}
         self._field_order: list[str] = []
         self._buttons = buttons or []
+        self._lead_mode = lead_widget is not None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -44,6 +46,11 @@ class ResultSection(QWidget):
         self._header = QLabel(title)
         self._header.setObjectName("sectionHeader")
         outer.addWidget(self._header)
+        if lead_widget is not None:
+            # Another section (e.g. mutual servers) heads this one; its header
+            # replaces ours so the merged block has a single title.
+            self._header.setVisible(False)
+            outer.insertWidget(0, lead_widget)
 
         self._summary_host = QWidget()
         self._summary_host.setObjectName("resultSection")
@@ -85,12 +92,17 @@ class ResultSection(QWidget):
 
         self.reset()
 
+    def set_body_visible(self, visible: bool) -> None:
+        """Show or omit this section's own results (the lead widget stays)."""
+        self._summary_host.setVisible(visible)
+        self._button_row.setVisible(visible)
+
     def set_loading(self) -> None:
         self._state = "loading"
         self._error_message = ""
         self.clear_fields()
         self._header.setText(f"{self._title} — Checking…")
-        self._summary.setText("—")
+        self._set_summary("Checking…" if self._lead_mode else "—")
         self._apply_header_style("loading")
         # No tooltip while empty placeholder is showing.
         self._apply_tooltip("")
@@ -134,7 +146,7 @@ class ResultSection(QWidget):
         self._error_message = ""
         self._state = "idle"
         self._header.setText(self._title)
-        self._summary.setText("—")
+        self._set_summary("—")
         self._apply_header_style("idle")
         self._apply_tooltip("")
         for btn in self._buttons:
@@ -160,9 +172,15 @@ class ResultSection(QWidget):
         for btn in self._buttons:
             btn.setToolTip("")
 
+    def _set_summary(self, text: str) -> None:
+        # Without our own header, name the results so they read as e.g. SOT data.
+        if self._lead_mode:
+            text = f"{self._title} — {text}"
+        self._summary.setText(text)
+
     def _refresh(self) -> None:
         text = self._build_summary()
-        self._summary.setText(text)
+        self._set_summary(text)
         self._apply_tooltip(self._build_tooltip())
 
     def _build_summary(self) -> str:

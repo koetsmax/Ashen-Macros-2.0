@@ -365,6 +365,12 @@ def _qss() -> str:
         background-color: {BLUE};
         color: {CRUST};
     }}
+    QPushButton#primary:disabled {{
+        background-color: {MANTLE};
+        color: {OVERLAY0};
+        border: 1px solid {SURFACE0};
+        font-weight: 400;
+    }}
     QPushButton#classicPanelButton {{
         padding: 4px 8px;
         min-height: 22px;

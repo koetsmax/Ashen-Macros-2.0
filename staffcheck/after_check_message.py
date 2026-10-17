@@ -15,7 +15,14 @@ from core.keyboard import (
 )
 from core.settings import read_config
 from staffcheck import abort, pipeline
-from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary, label_set, on_main_thread, report_bridge_error
+from staffcheck.qt_ui import (
+    btn_config,
+    btn_enable,
+    btn_set_primary,
+    on_main_thread,
+    report_bridge_error,
+    staffcheck_toast,
+)
 from staffcheck.tasks import run_background
 
 logger = logging.getLogger(__name__)
@@ -52,7 +59,7 @@ def unprivate_xbox(self):
     from core.discord_bridge import DiscordBridgeError
 
     _set_after_check_buttons_enabled(self, False)
-    label_set(self.status_label, "Opening modmail…", "orange")
+    logger.info("Staffcheck %s: opening modmail", self.user_id.get())
     # Register the bot waiter before /create so the channel-create event is not missed.
     run_background(unprivate_api_request, self)
     try:
@@ -106,7 +113,7 @@ def unprivate_api_request(self):
         elif response.json().get("error") != "none":
             request_error = True
             err = response.json().get("error") or "Failed to get modmail channel"
-            label_set(self.status_label, err, "red")
+            staffcheck_toast(self, "modmail", err)
         else:
             r = response.json()
             channel_name = str(r.get("modmail_channel") or "").strip()
@@ -153,7 +160,7 @@ def unprivate_api_request(self):
             return
 
         def _fail():
-            label_set(self.status_label, "Failed to get modmail channel", "red")
+            staffcheck_toast(self, "modmail", "Failed to get modmail channel")
             _set_after_check_buttons_enabled(self, True)
             pipeline.continue_to_next(self)
 

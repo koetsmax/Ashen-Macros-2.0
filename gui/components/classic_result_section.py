@@ -14,6 +14,7 @@ class ClassicResultSection(QWidget):
         title: str,
         rows: list[tuple[str, str]],
         buttons: list[QPushButton] | None = None,
+        lead_widget: QWidget | None = None,
     ):
         super().__init__()
         self._title = title
@@ -32,6 +33,11 @@ class ClassicResultSection(QWidget):
         self._header = QLabel(title)
         self._header.setObjectName("sectionHeader")
         outer.addWidget(self._header)
+        if lead_widget is not None:
+            # Another section (e.g. mutual servers) heads this one; its header
+            # replaces ours so the merged block has a single title.
+            self._header.setVisible(False)
+            outer.insertWidget(0, lead_widget)
 
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
@@ -50,7 +56,8 @@ class ClassicResultSection(QWidget):
             self._value_labels[key] = value
 
         status_row = len(rows)
-        status_name = QLabel("Status")
+        # Without our own header, the status row names the section instead.
+        status_name = QLabel(f"{title} status" if lead_widget is not None else "Status")
         status_name.setObjectName("resultLabel")
         self._status_label = QLabel("Waiting")
         self._status_label.setObjectName("resultValue")
@@ -63,18 +70,27 @@ class ClassicResultSection(QWidget):
         body.setObjectName("resultSection")
         body.setLayout(grid)
         outer.addWidget(body)
+        self._body = body
 
+        self._button_row: QWidget | None = None
         if self._buttons:
-            btn_row = QHBoxLayout()
+            self._button_row = QWidget()
+            btn_row = QHBoxLayout(self._button_row)
             btn_row.setContentsMargins(0, 2, 0, 0)
             btn_row.setSpacing(4)
             for btn in self._buttons:
                 btn.setObjectName("classicPanelButton")
                 btn_row.addWidget(btn)
             btn_row.addStretch()
-            outer.addLayout(btn_row)
+            outer.addWidget(self._button_row)
 
         self.reset()
+
+    def set_body_visible(self, visible: bool) -> None:
+        """Show or omit this section's own results (the lead widget stays)."""
+        self._body.setVisible(visible)
+        if self._button_row is not None:
+            self._button_row.setVisible(visible)
 
     def set_loading(self) -> None:
         self._state = "loading"

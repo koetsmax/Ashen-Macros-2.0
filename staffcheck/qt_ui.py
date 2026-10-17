@@ -116,11 +116,48 @@ def warn_command_index_miss(exc: BaseException | str | None = None) -> None:
     on_main_thread(_show)
 
 
+def _issue_hub(ctx):
+    hub = getattr(ctx, "hub", None)
+    return hub if hub is not None and hasattr(hub, "set_status_issue") else None
+
+
+def status_issue(ctx, key: str, text: str) -> None:
+    """Show a staffcheck problem on the hub's connected label (main thread safe)."""
+    hub = _issue_hub(ctx)
+    if hub is not None:
+        on_main_thread(lambda: hub.set_status_issue(key, text))
+
+
+def clear_status_issue(ctx, key: str | None = None) -> None:
+    """Restore the connected label once an issue is resolved or no longer relevant."""
+    hub = _issue_hub(ctx)
+    if hub is not None:
+        on_main_thread(lambda: hub.clear_status_issue(key))
+
+
+def staffcheck_toast(ctx, key: str, text: str, dismiss_ms: int = 8000) -> None:
+    """Show a toast on the hub that owns this staffcheck view."""
+    hub = getattr(ctx, "hub", None)
+    stack = getattr(hub, "toast_stack", None)
+    if stack is None:
+        return
+
+    def _show() -> None:
+        stack.show_toast(key, text, dismiss_ms=dismiss_ms)
+        if hasattr(hub, "_position_toast_stack"):
+            hub._position_toast_stack()
+
+    on_main_thread(_show)
+
+
 def report_bridge_error(ctx, exc: BaseException) -> None:
     """Show a bridge failure on the nearest status UI for this context."""
     if is_command_index_miss(exc):
         warn_command_index_miss(exc)
     msg = f"Vencord plugin error: {exc}"
+    if _issue_hub(ctx) is not None:
+        status_issue(ctx, "bridge", msg)
+        return
     status = getattr(ctx, "status_label", None)
     if status is not None:
         label_set(status, msg, "red")

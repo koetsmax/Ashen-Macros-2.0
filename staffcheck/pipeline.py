@@ -1,10 +1,22 @@
-import requests
+import logging
 from datetime import datetime, timezone
+
+import requests
 
 from core.settings import read_config
 from staffcheck import abort, result_panel
-from staffcheck.qt_ui import btn_config, btn_enable, btn_set_primary, label_set, on_main_thread
+from staffcheck.qt_ui import (
+    btn_config,
+    btn_enable,
+    btn_set_primary,
+    clear_status_issue,
+    label_set,
+    on_main_thread,
+    status_issue,
+)
 from staffcheck.tasks import run_background
+
+logger = logging.getLogger(__name__)
 
 _TWELVE_HOURS = 12 * 3600
 
@@ -125,23 +137,29 @@ def prepare_for_new_check(self):
     self._infer_check_on_arrive = False
 
 
+def user_id_problem(uid: str) -> str | None:
+    """Why a Discord ID can't be checked, or None when it looks valid."""
+    uid = (uid or "").strip()
+    if not uid:
+        return "Enter a Discord ID"
+    if not uid.isdigit():
+        return "ID must be a number"
+    if len(uid) not in (17, 18, 19):
+        return f"ID is an incorrect length at {len(uid)} characters"
+    return None
+
+
 def validate_user_id(self) -> bool:
     uid = self.user_id.get().strip()
     self.user_id.set(uid)
+    return user_id_problem(uid) is None
 
-    if not uid.isdigit():
-        label_set(self.status_label, "ID must be a number", "red")
-        return False
 
-    if len(uid) in (17, 18, 19):
-        return True
-
-    label_set(
-        self.status_label,
-        f"ID is an incorrect length at {len(uid)} characters",
-        "red",
-    )
-    return False
+def refresh_start_button(self) -> None:
+    """Re-evaluate whether the idle Start check! button may be pressed."""
+    refresh = getattr(self, "refresh_start_enabled", None)
+    if callable(refresh):
+        on_main_thread(refresh)
 
 
 def start_check(self):
@@ -149,6 +167,8 @@ def start_check(self):
         return
 
     prepare_for_new_check(self)
+    clear_status_issue(self, "check")
+    clear_status_issue(self, "bridge")
     abort.start_check_session(self)
     btn_enable(self.stop_button, True)
     btn_enable(self.start_button, False)
@@ -156,7 +176,10 @@ def start_check(self):
     self.user_id_entry.setEnabled(False)
     self.channel_combo_box.setEnabled(False)
     self.method_combo_box.setEnabled(False)
-    label_set(self.status_label, "Sending API request")
+    logger.info("Staffcheck %s: sending API request", self.user_id.get())
+    on_start = getattr(self, "on_check_started", None)
+    if callable(on_start):
+        on_start(self.user_id.get())
     # Capture widget values on the main thread before the background request.
     user_id = self.user_id.get()
     run_background(_fetch_essential_data, self, user_id)
@@ -217,11 +240,18 @@ def _handle_essential_data(self, request_error: bool):
             except IndexError:
                 self.xbox_gt = []
             if len(linked) > 1:
-                label_set(
-                    self.status_label,
+                status_issue(
+                    self,
+                    "check",
                     "Warning: Has multiple accounts linked. Only showing the first one.",
-                    "red",
                 )
+                label_set(self.gamertag_label, str(self.xbox_gt), "red")
+            on_data = getattr(self, "on_essential_data", None)
+            if callable(on_data):
+                try:
+                    on_data(user_id_for_data(self), data)
+                except Exception:
+                    logger.exception("Prefetch comparison failed")
             continue_check(self)
             return
         except Exception:
@@ -239,17 +269,21 @@ def _handle_essential_data(self, request_error: bool):
     except Exception:
         pass
 
-    label_set(
-        self.status_label,
+    status_issue(
+        self,
+        "check",
         "Could not load account data from the API. Fix the connection and try again.",
-        "red",
     )
-    btn_enable(self.start_button, True)
     btn_enable(self.stop_button, False)
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
     abort.end_check_session(self)
+    refresh_start_button(self)
+
+
+def user_id_for_data(self) -> str:
+    return str(self.user_id.get() or "").strip()
 
 
 def continue_check(self):
@@ -262,11 +296,10 @@ def continue_check(self):
     except Exception:
         multi_xbox = False
 
-    if not multi_xbox:
-        label_set(self.status_label, "Running Check")
+    logger.info("Staffcheck %s: running check", user_id_for_data(self))
 
     if self.xbox_gt != [] or self.method.get() in ("Invite Tracker", "SOT Official"):
-        if self.xbox_gt != []:
+        if self.xbox_gt != [] and not multi_xbox:
             label_set(self.gamertag_label, str(self.xbox_gt))
         else:
             label_set(self.gamertag_label, "Not linked", "red")
@@ -295,12 +328,11 @@ def continue_check(self):
 def finish_single_method(self):
     """End a one-off method check: keep results and gamertag, clear Discord ID."""
     abort.end_check_session(self)
-    label_set(self.status_label, "Check complete")
+    logger.info("Staffcheck %s: check complete", user_id_for_data(self))
     btn_enable(self.stop_button, False)
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
     btn_set_primary(self.start_button, True)
     btn_set_primary(self.function_button, False)
-    btn_enable(self.start_button, True)
     btn_enable(self.kill_button, False)
     self.kill_button.setVisible(False)
     self._set_customize_enabled(True)
@@ -315,6 +347,8 @@ def finish_single_method(self):
     self.user_id.set("")
     disable_function_button(self)
     configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
+    clear_status_issue(self, "bridge")
+    refresh_start_button(self)
 
 
 def reset_ui(self, preserve_abort: bool = False):
@@ -328,7 +362,9 @@ def reset_ui(self, preserve_abort: bool = False):
 
     previous_user_id = self.user_id.get()
     self.user_id.set("")
-    label_set(self.status_label, "Waiting for ID")
+    # Check-specific warnings no longer apply once the view is idle again.
+    clear_status_issue(self, "check")
+    clear_status_issue(self, "bridge")
     label_set(self.gamertag_label, "Unknown")
     apply_last_check_label(self)
     btn_enable(self.stop_button, False)
@@ -360,13 +396,13 @@ def reset_ui(self, preserve_abort: bool = False):
     btn_config(self.start_button, "Start check!", lambda: start_check(self))
     btn_set_primary(self.start_button, True)
     btn_set_primary(self.function_button, False)
-    btn_enable(self.start_button, True)
     btn_enable(self.kill_button, False)
     self.kill_button.setVisible(False)
     self._set_customize_enabled(True)
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
+    refresh_start_button(self)
 
 
 def perform_next_command(self):

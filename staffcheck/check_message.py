@@ -57,7 +57,6 @@ def offer_post_check_confirm(self, *, not_good: bool = True) -> None:
     self._infer_check_on_arrive = False
     abort.clear_continue_infer_label(self)
 
-    label_set(self.status_label, "Post not good to check message?")
     btn_config(
         self.start_button,
         post_not_good_button_label(editable=editable),

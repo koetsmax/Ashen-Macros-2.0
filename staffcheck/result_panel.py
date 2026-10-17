@@ -99,13 +99,24 @@ def _apply_flagged_messages(view, response: dict) -> None:
     sec.setVisible(True)
 
 
+def _show_sot_official(view, visible: bool) -> None:
+    """SOT Official results live under Mutual Servers; omit them for non-members."""
+    sec = view.result_sections.get("sot_official")
+    if sec is not None and hasattr(sec, "set_body_visible"):
+        sec.set_body_visible(visible)
+
+
 def mutual_servers_apply(view, guilds: list[str]) -> None:
+    from gui.components.mutual_servers_section import in_sot_official
+
     view.result_sections["mutual_servers"].set_guilds(guilds)
+    _show_sot_official(view, in_sot_official(guilds))
 
 
 def mutual_servers_reset(view) -> None:
     if "mutual_servers" in view.result_sections:
         view.result_sections["mutual_servers"].reset()
+    _show_sot_official(view, False)
 
 
 def user_report_failed(view, message: str) -> None:

@@ -308,7 +308,6 @@ def _finish_abort(self) -> None:
         logger.exception("Failed to report aborted staffcheck")
 
     from staffcheck.pipeline import reset_ui
-    from staffcheck.qt_ui import label_set
 
     reset_ui(self, preserve_abort=True)
-    label_set(self.status_label, "Check aborted", "red")
+    logger.info("Staffcheck aborted")
