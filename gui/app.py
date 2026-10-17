@@ -32,6 +32,11 @@ class App:
         app = QApplication(sys.argv)
         theme.apply_theme(app)
 
+        # Lets Win+V clipboard history open next to the text cursor.
+        from gui.components.system_caret import install_system_caret
+
+        install_system_caret(app)
+
         from staffcheck.qt_ui import init_main_thread_bridge
 
         init_main_thread_bridge()

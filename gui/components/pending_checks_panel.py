@@ -3,7 +3,17 @@ from __future__ import annotations
 from typing import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+EMPTY_TEXT = "No one is waiting for a staffcheck"
 
 
 def _xbox_text(check: dict) -> str:
@@ -27,32 +37,46 @@ def check_row_text(check: dict) -> str:
 
 
 class PendingChecksPanel(QWidget):
-    """People waiting for a staffcheck. Hidden while the list is empty."""
+    """Staffcheck queue strip across the top of the view; always visible."""
 
     def __init__(self, on_pick: Callable[[str], None]):
         super().__init__()
         self._on_pick = on_pick
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 4, 0, 0)
+        outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(4)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+
+        self._header = QLabel("Pending checks")
+        self._header.setObjectName("sectionHeader")
+        # Green like a healthy section header (QLabel#sectionHeader[state="success"]).
+        self._header.setProperty("state", "success")
+        row.addWidget(self._header)
+
+        self._empty = QLabel(EMPTY_TEXT)
+        self._empty.setObjectName("resultSectionSummary")
+        row.addWidget(self._empty)
+
+        self._rows = QHBoxLayout()
+        self._rows.setContentsMargins(0, 0, 0, 0)
+        self._rows.setSpacing(6)
+        row.addLayout(self._rows)
+        row.addStretch()
+        outer.addLayout(row)
 
         divider = QFrame()
         divider.setObjectName("sectionDivider")
         divider.setFixedHeight(1)
         outer.addWidget(divider)
 
-        self._header = QLabel("Pending checks")
-        self._header.setObjectName("sectionHeader")
-        outer.addWidget(self._header)
-
-        self._rows = QVBoxLayout()
-        self._rows.setContentsMargins(0, 0, 0, 0)
-        self._rows.setSpacing(4)
-        outer.addLayout(self._rows)
-
-        self.setVisible(False)
+        self.set_checks([])
 
     def set_checks(self, checks: list[dict]) -> None:
         while self._rows.count():
@@ -66,8 +90,9 @@ class PendingChecksPanel(QWidget):
             if not uid:
                 continue
             btn = QPushButton(check_row_text(check))
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setStyleSheet("text-align: left; padding-left: 8px;")
+            # Compact button style (same as the classic panel's small buttons).
+            btn.setObjectName("pendingChip")
+            btn.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             tip = f"Discord ID: {uid}\nClick to fill the Discord ID, then press Start check!"
             if check.get("prefetch") is None:
@@ -77,5 +102,5 @@ class PendingChecksPanel(QWidget):
             self._rows.addWidget(btn)
 
         count = self._rows.count()
-        self._header.setText(f"Pending checks ({count})")
-        self.setVisible(count > 0)
+        self._header.setText(f"Pending checks ({count})" if count else "Pending checks")
+        self._empty.setVisible(count == 0)

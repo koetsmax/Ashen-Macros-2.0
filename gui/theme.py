@@ -172,6 +172,15 @@ def _refresh_palette_exports():
     g["MAUVE"] = colors.mauve.hex
 
 
+def _mix(color: str, other: str, amount: float) -> str:
+    """Blend ``amount`` of ``color`` into ``other`` (hex in, hex out)."""
+    a, b = QColor(color), QColor(other)
+    r = round(a.red() * amount + b.red() * (1 - amount))
+    g = round(a.green() * amount + b.green() * (1 - amount))
+    bl = round(a.blue() * amount + b.blue() * (1 - amount))
+    return QColor(r, g, bl).name()
+
+
 def _palette() -> QPalette:
     p = QPalette()
     p.setColor(QPalette.ColorRole.Window, QColor(BASE))
@@ -355,26 +364,133 @@ def _qss() -> str:
     QPushButton#primary {{
         background-color: {MAUVE};
         color: {CRUST};
-        border: none;
+        /* Same-colour 1px border so primary buttons are as tall as bordered ones. */
+        border: 1px solid {MAUVE};
         font-weight: 600;
     }}
     QPushButton#primary:hover {{
         background-color: {LAVENDER};
+        border-color: {LAVENDER};
     }}
     QPushButton#primary:pressed {{
         background-color: {BLUE};
+        border-color: {BLUE};
         color: {CRUST};
     }}
     QPushButton#primary:disabled {{
-        background-color: {MANTLE};
-        color: {OVERLAY0};
-        border: 1px solid {SURFACE0};
+        /* Dimmed purple: same button, clearly inactive. */
+        background-color: {_mix(MAUVE, BASE, 0.5)};
+        border-color: {_mix(MAUVE, BASE, 0.5)};
+        color: {_mix(CRUST, _mix(MAUVE, BASE, 0.5), 0.7)};
+    }}
+    QPushButton#dangerButton {{
+        background-color: {_mix(RED, BASE, 0.22)};
+        border: 1px solid {_mix(RED, SURFACE0, 0.5)};
+        color: {RED};
+        font-weight: 600;
+    }}
+    QPushButton#dangerButton:hover {{
+        background-color: {_mix(RED, BASE, 0.32)};
+        border-color: {RED};
+    }}
+    QPushButton#dangerButton:pressed {{
+        background-color: {_mix(RED, BASE, 0.42)};
+    }}
+    QPushButton#dangerButton:disabled {{
+        /* Faint red so it still reads as Stop, clearly inactive. */
+        background-color: {_mix(RED, MANTLE, 0.08)};
+        border-color: {_mix(RED, SURFACE0, 0.2)};
+        color: {_mix(RED, OVERLAY0, 0.35)};
         font-weight: 400;
     }}
     QPushButton#classicPanelButton {{
         padding: 4px 8px;
         min-height: 22px;
         font-size: 8pt;
+    }}
+    /* Staffcheck result cards (compact) and boxes (classic). */
+    QWidget#resultCard, QWidget#resultBox, QWidget#personCard {{
+        background-color: {MANTLE};
+        border: 1px solid {SURFACE0};
+        border-radius: 8px;
+    }}
+    QWidget#resultCard QLabel, QWidget#resultBox QLabel, QWidget#personCard QLabel {{
+        background: transparent;
+    }}
+    QLabel#personName {{
+        font-size: 11pt;
+        font-weight: 600;
+        color: {TEXT};
+    }}
+    QLabel#personName[empty="true"] {{
+        color: {OVERLAY0};
+        font-weight: 400;
+    }}
+    QWidget#personCard QLineEdit {{
+        padding: 3px 10px;
+        min-height: 22px;
+    }}
+    QPushButton#cardButton {{
+        padding: 4px 8px;
+        min-height: 20px;
+        font-size: 8pt;
+    }}
+    /* The frame paints the rounded fill; viewport and body stay transparent so
+       their square backgrounds don't cover the corners. Padding keeps the
+       scrollbar inside the rounding. */
+    QScrollArea#mutualsList {{
+        background-color: {CRUST};
+        border: 1px solid {SURFACE0};
+        border-radius: 6px;
+        padding: 3px;
+    }}
+    QScrollArea#mutualsList > QWidget#qt_scrollarea_viewport,
+    QWidget#mutualsListBody {{
+        background: transparent;
+    }}
+    /* Compact action bar: column-width buttons, tight enough for long labels. */
+    QPushButton[actionBar="true"] {{
+        padding: 4px 6px;
+        min-height: 22px;
+        font-size: 8.5pt;
+    }}
+    QPushButton#pendingChip {{
+        padding: 2px 8px;
+        min-height: 16px;
+        font-size: 8.5pt;
+        border-radius: 6px;
+    }}
+    QLabel#mutualChip {{
+        font-size: 8.5pt;
+        background-color: {MANTLE};
+        border: 1px solid {SURFACE0};
+        border-radius: 6px;
+        padding: 2px 7px;
+    }}
+    QLabel#mutualChip[priority="bad"] {{
+        color: {RED};
+        border-color: {_mix(RED, SURFACE0, 0.4)};
+    }}
+    QLabel#mutualChip[priority="depends"] {{
+        color: {PEACH};
+        border-color: {_mix(PEACH, SURFACE0, 0.35)};
+    }}
+    QLabel#mutualChip[priority="ok"] {{
+        color: {GREEN};
+        border-color: {_mix(GREEN, SURFACE0, 0.35)};
+    }}
+    QLabel#mutualServerRow {{
+        font-size: 8.5pt;
+        background: transparent;
+    }}
+    /* Staffcheck left column: shorter fields and buttons (~30px rows). */
+    QWidget#staffcheckInputs QLineEdit, QWidget#staffcheckInputs QComboBox {{
+        padding: 3px 10px;
+        min-height: 22px;
+    }}
+    QWidget#staffcheckInputs QPushButton {{
+        padding: 4px 14px;
+        min-height: 22px;
     }}
     QCheckBox {{
         spacing: 8px;

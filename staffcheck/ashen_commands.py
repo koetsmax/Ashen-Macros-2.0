@@ -190,11 +190,6 @@ def ashen_api_request(self):
                         pass
             else:
                 result_panel.search_apply(self, body)
-                btn_enable(self.jump_to_message_search_button, True)
-                btn_config(
-                    self.jump_to_message_search_button,
-                    on_click=lambda: switch_channel(self, body["jump_url"], kwargs=True),
-                )
 
     except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
         request_error = True

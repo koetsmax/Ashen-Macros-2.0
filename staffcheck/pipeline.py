@@ -47,7 +47,9 @@ def _rerun_button_text(view) -> str:
 
 
 def configure_rerun_button(view, on_click) -> None:
-    btn = view.function_button_2
+    # The compact layout has its own Re-run button; classic reuses function_button_2.
+    target = getattr(view, "rerun_target", None)
+    btn = target() if callable(target) else view.function_button_2
     btn.setObjectName("rerunCheckButton")
     btn_config(btn, _rerun_button_text(view), on_click)
     btn_enable(btn, True)
@@ -104,14 +106,19 @@ def apply_last_check_label(self, data: dict | None = None):
     label_set(self.last_check_label, "Not found", "muted")
 
 
+def _show_person(self, name: str | None) -> None:
+    """Update the compact layout's person card title (no-op in classic)."""
+    show = getattr(self, "show_person", None)
+    if callable(show):
+        on_main_thread(lambda: show(name))
+
+
 def _reset_result_panels(self):
     result_panel.reset_all(self)
     self.loghistory_issues = []
     btn_enable(self.loghistory_fix_issues_button, False)
-    btn_enable(self.jump_to_message_button, False)
     btn_enable(self.invited_by_loghistory_button, False)
     btn_enable(self.invited_users_loghistory_button, False)
-    btn_enable(self.jump_to_message_search_button, False)
     btn_enable(self.search_fix_issues_button, False)
     btn_enable(self.check_for_yourself_button, False)
 
@@ -130,6 +137,7 @@ def prepare_for_new_check(self):
     label_set(self.gamertag_label, "Unknown")
     apply_last_check_label(self)
     self.user_name = None
+    _show_person(self, None)
     abort.clear_continue_infer_label(self)
     self.clear_reason()
     self.check_id = None
@@ -229,6 +237,7 @@ def _handle_essential_data(self, request_error: bool):
             data = self.essential_data_response.json()
             sc_analytics.store_check_id_from_response(self, data)
             self.user_name = data["discord_name"]
+            _show_person(self, self.user_name)
             self.mutual_guilds = data["mutual_guilds"]
             result_panel.mutual_servers_apply(self, self.mutual_guilds)
             apply_last_check_label(self, data)
@@ -365,6 +374,7 @@ def reset_ui(self, preserve_abort: bool = False):
     # Check-specific warnings no longer apply once the view is idle again.
     clear_status_issue(self, "check")
     clear_status_issue(self, "bridge")
+    _show_person(self, None)
     label_set(self.gamertag_label, "Unknown")
     apply_last_check_label(self)
     btn_enable(self.stop_button, False)

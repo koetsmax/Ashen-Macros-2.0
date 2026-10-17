@@ -307,15 +307,52 @@ def apply_bridge_meta(payload: dict | None) -> bool:
     return True
 
 
+# After a failed fetch, non-forced callers skip the request for this long so an
+# unreachable API is not hit (and waited on) by every status refresh.
+_META_RETRY_COOLDOWN_S = 30.0
+_meta_last_failure = 0.0
+_meta_fetch_lock = threading.Lock()
+_meta_fetch_thread: threading.Thread | None = None
+
+
 def fetch_bridge_meta(*, force: bool = False) -> bool:
     """POST /macros/discord_bridge_config when the experiment is on.
 
-    No-op when disabled. Safe to call on launch and after enabling the toggle.
+    Blocks for up to the request timeout; call it from a background thread, or
+    use ``refresh_bridge_meta_async`` on the GUI thread. No-op when disabled.
     """
+    global _meta_last_failure
     if not is_enabled():
         return False
     if not force and bridge_config_ready():
         return True
+    if not force and time.monotonic() - _meta_last_failure < _META_RETRY_COOLDOWN_S:
+        return False
+    ok = _fetch_bridge_meta_once()
+    _meta_last_failure = 0.0 if ok else time.monotonic()
+    return ok
+
+
+def refresh_bridge_meta_async(*, force: bool = False) -> None:
+    """Run ``fetch_bridge_meta`` on a daemon thread (at most one in flight)."""
+    global _meta_fetch_thread
+    if not is_enabled():
+        return
+    if not force and bridge_config_ready():
+        return
+    with _meta_fetch_lock:
+        if _meta_fetch_thread is not None and _meta_fetch_thread.is_alive():
+            return
+        _meta_fetch_thread = threading.Thread(
+            target=fetch_bridge_meta,
+            kwargs={"force": force},
+            name="bridge-meta-fetch",
+            daemon=True,
+        )
+        _meta_fetch_thread.start()
+
+
+def _fetch_bridge_meta_once() -> bool:
     try:
         api_url = read_config().get("api_url") or ""
         if not api_url:
@@ -427,7 +464,8 @@ def sync_bridge_lifecycle() -> None:
     """Start or stop the background client to match the Experimental toggle."""
     bridge = get_bridge()
     if is_enabled():
-        fetch_bridge_meta(force=True)
+        # Called from the GUI thread (startup, Settings save); never block it.
+        refresh_bridge_meta_async(force=True)
         bridge.ensure_started()
     else:
         bridge.stop()

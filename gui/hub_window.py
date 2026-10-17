@@ -34,6 +34,13 @@ class PollWorker(QThread):
         self.finished.emit(connected)
 
 
+class AuthWorker(QThread):
+    finished = Signal(object)
+
+    def run(self):
+        self.finished.emit(auth.check_login())
+
+
 class UpdateWorker(QThread):
     finished = Signal(dict)
 
@@ -81,6 +88,8 @@ class StaffcheckHub(QMainWindow):
         self._online_tag_name = None
         self._update_worker = None
         self._poll_worker = None
+        self._auth_worker = None
+        self._auth_callbacks: list = []
         self._vencord_update_worker = None
         self._vencord_update_hint = ""
         self._update_request_id = 0
@@ -100,7 +109,9 @@ class StaffcheckHub(QMainWindow):
         self.setWindowTitle("Ashen Macros")
         # Content is ~700–800px wide and left-aligned; a 960px floor left a
         # permanent empty strip (~toast width) on the right that could not shrink.
-        self.setMinimumSize(720, 520)
+        # Height floor is low on purpose: the staffcheck view scrolls when the
+        # window is shorter than its content, so the window can hug the layout.
+        self.setMinimumSize(720, 360)
         load_window_geometry(self)
         track_window_geometry(self)
 
@@ -364,26 +375,54 @@ class StaffcheckHub(QMainWindow):
     def _schedule_refresh_auth(self):
         QTimer.singleShot(0, self._refresh_auth)
 
-    def _sync_auth_from_login(self, *, log: bool = False) -> None:
-        verified, username, permissions = auth.check_login()
+    def _sync_auth_from_login(self, then=None) -> None:
+        """Re-validate the token on a worker thread, then apply it and run ``then``.
+
+        check_login() blocks on the API (up to its timeout when the server is
+        unreachable), so it must never run on the GUI thread.
+        """
+        if then is not None:
+            self._auth_callbacks.append(then)
+        if self._worker_running(self._auth_worker):
+            return
+        worker = AuthWorker(self)
+        worker.finished.connect(self._on_auth_result)
+        worker.finished.connect(lambda *_args, w=worker: self._release_auth_worker(w))
+        worker.start()
+        self._auth_worker = worker
+
+    def _release_auth_worker(self, worker: AuthWorker):
+        if self._auth_worker is worker:
+            self._auth_worker = None
+        worker.deleteLater()
+
+    @Slot(object)
+    def _on_auth_result(self, result) -> None:
+        self._apply_login(*result)
+        callbacks, self._auth_callbacks = self._auth_callbacks, []
+        for callback in callbacks:
+            callback()
+
+    def _apply_login(self, verified: bool, username: str | None, permissions: list[str]) -> None:
         self.verified = verified
         self.username = username if verified else None
         self.permissions = list(permissions or []) if verified else []
         self._set_welcome_text(self.username)
         self._update_prerelease_badge()
-        if log:
-            logger.info(
-                "Auth sync: verified=%s username=%s permissions=%s prefer_prerelease=%s",
-                self.verified,
-                self.username or "none",
-                self.permissions,
-                updates.prefer_prerelease_enabled(),
-            )
+        logger.info(
+            "Auth sync: verified=%s username=%s permissions=%s prefer_prerelease=%s",
+            self.verified,
+            self.username or "none",
+            self.permissions,
+            updates.prefer_prerelease_enabled(),
+        )
 
     def _refresh_auth(self):
         was_verified = self.verified
         self._verification_in_progress = False
-        self._sync_auth_from_login(log=True)
+        self._sync_auth_from_login(then=lambda: self._on_refresh_auth_done(was_verified))
+
+    def _on_refresh_auth_done(self, was_verified: bool):
         self._apply_gating()
         if self.verified and not was_verified:
             if self.permissions:
@@ -414,7 +453,9 @@ class StaffcheckHub(QMainWindow):
         if not self.connected:
             return
         before = set(self.permissions or [])
-        self._sync_auth_from_login(log=True)
+        self._sync_auth_from_login(then=lambda: self._on_recheck_permissions_done(before))
+
+    def _on_recheck_permissions_done(self, before: set[str]):
         self._apply_gating()
         after = set(self.permissions or [])
         if before == after:
@@ -461,7 +502,7 @@ class StaffcheckHub(QMainWindow):
         was_connected = self.connected
         self.connected = connected
         if connected and not was_connected:
-            self._sync_auth_from_login(log=True)
+            self._sync_auth_from_login(then=self._apply_gating)
         self._apply_gating()
 
     def _apply_gating(self):
@@ -541,10 +582,10 @@ class StaffcheckHub(QMainWindow):
             bridge_config_ready,
             bridge_plugin_version,
             bridge_readiness_summary,
-            fetch_bridge_meta,
             is_connected,
             is_enabled,
             missing_bridge_config,
+            refresh_bridge_meta_async,
         )
 
         if not is_enabled():
@@ -557,7 +598,8 @@ class StaffcheckHub(QMainWindow):
         if is_connected():
             # Socket up is not enough — leave/process need channel snowflakes.
             if not bridge_config_ready():
-                fetch_bridge_meta(force=False)
+                # Runs every 3s on the GUI thread; the fetch result shows on a later tick.
+                refresh_bridge_meta_async(force=False)
             version = bridge_plugin_version()
             if bridge_config_ready():
                 text = (

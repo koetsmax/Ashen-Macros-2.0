@@ -26,8 +26,10 @@ class ResultSection(QWidget):
         show_all_results: bool = False,
         always_show_keys: frozenset[str] | None = None,
         lead_widget: QWidget | None = None,
+        card: bool = False,
     ):
         super().__init__()
+        self._card = card
         self._title = title
         self._idle_tooltip = idle_tooltip or f"{title}\nStart a check to see results."
         self._show_all_results = show_all_results
@@ -42,6 +44,12 @@ class ResultSection(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(2)
+        if card:
+            # Framed column in the compact layout (see #resultCard in gui/theme.py).
+            self.setObjectName("resultCard")
+            self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            outer.setContentsMargins(10, 8, 10, 8)
+            outer.setSpacing(4)
 
         self._header = QLabel(title)
         self._header.setObjectName("sectionHeader")
@@ -70,14 +78,29 @@ class ResultSection(QWidget):
         outer.addWidget(self._summary_host)
 
         self._button_row = QWidget()
-        self._button_row.setMinimumHeight(42)
-        btn_layout = QHBoxLayout(self._button_row)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setSpacing(6)
-        for btn in self._buttons:
-            btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-            btn_layout.addWidget(btn)
-        btn_layout.addStretch()
+        if card:
+            # Full-width buttons pinned to the bottom so every card lines them up.
+            # A lead widget (mutuals list) expands into the spare height instead.
+            if lead_widget is None:
+                outer.addStretch(1)
+            else:
+                outer.setStretchFactor(lead_widget, 1)
+            btn_layout = QVBoxLayout(self._button_row)
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            btn_layout.setSpacing(4)
+            for btn in self._buttons:
+                btn.setObjectName("cardButton")
+                btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                btn_layout.addWidget(btn)
+        else:
+            self._button_row.setMinimumHeight(42)
+            btn_layout = QHBoxLayout(self._button_row)
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            btn_layout.setSpacing(6)
+            for btn in self._buttons:
+                btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+                btn_layout.addWidget(btn)
+            btn_layout.addStretch()
         outer.addWidget(self._button_row)
 
         self._divider = QFrame()
@@ -85,6 +108,7 @@ class ResultSection(QWidget):
         self._divider.setFixedHeight(1)
         self._divider.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         outer.addWidget(self._divider)
+        self._divider.setVisible(not card)
 
         for btn in self._buttons:
             btn.raise_()
@@ -96,6 +120,10 @@ class ResultSection(QWidget):
         """Show or omit this section's own results (the lead widget stays)."""
         self._summary_host.setVisible(visible)
         self._button_row.setVisible(visible)
+
+    def set_membership(self, state: str) -> None:
+        """SOT results only show once mutuals confirm membership ('member')."""
+        self.set_body_visible(state == "member")
 
     def set_loading(self) -> None:
         self._state = "loading"
@@ -175,7 +203,7 @@ class ResultSection(QWidget):
     def _set_summary(self, text: str) -> None:
         # Without our own header, name the results so they read as e.g. SOT data.
         if self._lead_mode:
-            text = f"{self._title} — {text}"
+            text = f"{self._title} — {'Waiting' if text == '—' else text}"
         self._summary.setText(text)
 
     def _refresh(self) -> None:

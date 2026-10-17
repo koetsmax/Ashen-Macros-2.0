@@ -143,7 +143,7 @@ class QueueWindow(AppWindow):
         self._skipped_leave_message_ids: set[str] = set()
         # Optimistic tick/cross before the next leave_notices snapshot lands.
         self._leave_notice_local_marks: dict[str, str] = {}
-        # Queue size from the previous live snapshot; None = no baseline yet
+        # Joinable queue size from the previous live snapshot; None = no baseline yet
         # (fresh connect, queue closed, sim) so the next snapshot never alerts.
         self._join_alert_prev_count: int | None = None
         self._join_alert_last_at = 0.0
@@ -658,15 +658,24 @@ class QueueWindow(AppWindow):
         open_ships.sort(key=_process_ship_sort_key)
         return open_ships
 
+    @staticmethod
+    def _joinable_queue_entries(data: dict) -> list[dict]:
+        """Queue entries who would fill a free spot (shipswaps are already on a ship)."""
+        return [
+            entry
+            for entry in data.get("queue") or []
+            if not entry.get("shipswap") and not entry.get("valid_shipswap")
+        ]
+
     def _check_queue_join_alert(self, data: dict) -> None:
-        """Alert when the queue goes from empty to non-empty and a ship has room."""
+        """Alert when nobody joinable was queued, someone joinable joins and a ship has room."""
         live = bool(data.get("active", True)) and not (data.get("sim") or {}).get(
             "enabled"
         )
         if not live:
             self._join_alert_prev_count = None
             return
-        queue = data.get("queue") or []
+        queue = self._joinable_queue_entries(data)
         prev = self._join_alert_prev_count
         self._join_alert_prev_count = len(queue)
         if prev != 0 or not queue:

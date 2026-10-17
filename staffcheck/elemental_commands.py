@@ -203,11 +203,6 @@ def elemental_api_request(self):
                 r = response.json()
                 result_panel.user_report_apply(self, r, xbox_gt=self.xbox_gt)
                 self._loghistory_jump_url = r["jump_url"]
-                btn_enable(self.jump_to_message_button, True)
-                btn_config(
-                    self.jump_to_message_button,
-                    on_click=lambda: switch_channel(self, r["jump_url"], kwargs=True),
-                )
                 if self.loghistory_issues:
                     btn_enable(self.loghistory_fix_issues_button, True)
 

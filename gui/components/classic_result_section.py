@@ -1,7 +1,15 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui.components.result_section import ResultField
 
@@ -14,7 +22,8 @@ class ClassicResultSection(QWidget):
         title: str,
         rows: list[tuple[str, str]],
         buttons: list[QPushButton] | None = None,
-        lead_widget: QWidget | None = None,
+        *,
+        absent_note: str = "",
     ):
         super().__init__()
         self._title = title
@@ -26,18 +35,23 @@ class ClassicResultSection(QWidget):
         self._buttons = buttons or []
         self._value_labels: dict[str, QLabel] = {}
 
+        # Boxed group like the old StaffCheck window (see #resultBox in gui/theme.py).
+        self.setObjectName("resultBox")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(2)
+        outer.setContentsMargins(8, 6, 8, 8)
+        outer.setSpacing(4)
 
         self._header = QLabel(title)
         self._header.setObjectName("sectionHeader")
         outer.addWidget(self._header)
-        if lead_widget is not None:
-            # Another section (e.g. mutual servers) heads this one; its header
-            # replaces ours so the merged block has a single title.
-            self._header.setVisible(False)
-            outer.insertWidget(0, lead_widget)
+
+        # Shown instead of the rows when the section doesn't apply (e.g. not in SOT).
+        self._absent_note = QLabel(absent_note)
+        self._absent_note.setObjectName("resultSectionSummary")
+        self._absent_note.setWordWrap(True)
+        self._absent_note.setVisible(False)
+        outer.addWidget(self._absent_note)
 
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
@@ -50,18 +64,17 @@ class ClassicResultSection(QWidget):
             name.setObjectName("resultLabel")
             value = QLabel("N/A")
             value.setObjectName("resultValue")
-            value.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+            value.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
             grid.addWidget(name, i, 0)
             grid.addWidget(value, i, 1)
             self._value_labels[key] = value
 
         status_row = len(rows)
-        # Without our own header, the status row names the section instead.
-        status_name = QLabel(f"{title} status" if lead_widget is not None else "Status")
+        status_name = QLabel("Status")
         status_name.setObjectName("resultLabel")
         self._status_label = QLabel("Waiting")
         self._status_label.setObjectName("resultValue")
-        self._status_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self._status_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
         grid.addWidget(status_name, status_row, 0)
         grid.addWidget(self._status_label, status_row, 1)
         self._summary = self._status_label
@@ -71,6 +84,8 @@ class ClassicResultSection(QWidget):
         body.setLayout(grid)
         outer.addWidget(body)
         self._body = body
+        # Boxes in one grid row share a height; this keeps buttons on the bottom edge.
+        outer.addStretch(1)
 
         self._button_row: QWidget | None = None
         if self._buttons:
@@ -80,17 +95,22 @@ class ClassicResultSection(QWidget):
             btn_row.setSpacing(4)
             for btn in self._buttons:
                 btn.setObjectName("classicPanelButton")
+                btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
                 btn_row.addWidget(btn)
-            btn_row.addStretch()
             outer.addWidget(self._button_row)
 
         self.reset()
 
     def set_body_visible(self, visible: bool) -> None:
-        """Show or omit this section's own results (the lead widget stays)."""
+        """Show or omit this section's own results."""
         self._body.setVisible(visible)
         if self._button_row is not None:
             self._button_row.setVisible(visible)
+        self._absent_note.setVisible(not visible and bool(self._absent_note.text()))
+
+    def set_membership(self, state: str) -> None:
+        """'unknown' and 'member' show the rows; 'not_member' shows the absent note."""
+        self.set_body_visible(state != "not_member")
 
     def set_loading(self) -> None:
         self._state = "loading"
