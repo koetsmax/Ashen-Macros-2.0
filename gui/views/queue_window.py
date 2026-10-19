@@ -1030,6 +1030,9 @@ class QueueWindow(AppWindow):
                 fill = "green"
 
         detail = f" — Needs {needs}" if needs is not None else ""
+        # Bot found no known activity in the name (treated as undecided).
+        if ship.get("unrecognized"):
+            return f"{label}{detail}", theme.PINK
         return f"{label}{detail}", self._ship_fill_color(fill)
 
     def _private_leaving_ship_ids(self, data: dict) -> set[str]:
@@ -1077,6 +1080,11 @@ class QueueWindow(AppWindow):
             text, color = self._format_ship_line(ship)
             item = QListWidgetItem(text)
             item.setForeground(QColor(color))
+            if ship.get("unrecognized"):
+                item.setToolTip(
+                    "Unrecognized ship activity: no known activity in this name, "
+                    "so recommendations treat it as undecided."
+                )
             self.ships_list.addItem(item)
 
     def _apply_snapshot(self, data: dict) -> None:

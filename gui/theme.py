@@ -48,6 +48,7 @@ MATRIX_FLAVOR = _make_flavor(
         "peach": "#55ff77",
         "red": "#ff3355",
         "mauve": "#00ff66",
+        "pink": "#ff66cc",
     },
 )
 
@@ -73,6 +74,7 @@ ASHEN_FLAVOR = _make_flavor(
         "peach": "#ff6700",
         "red": "#ff4444",
         "mauve": "#ff6700",
+        "pink": "#ff79c6",
     },
 )
 
@@ -116,6 +118,7 @@ YELLOW = ""
 PEACH = ""
 RED = ""
 MAUVE = ""
+PINK = ""
 
 
 def get_flavor_identifier() -> str:
@@ -170,6 +173,7 @@ def _refresh_palette_exports():
     g["PEACH"] = colors.peach.hex
     g["RED"] = colors.red.hex
     g["MAUVE"] = colors.mauve.hex
+    g["PINK"] = colors.pink.hex
 
 
 def _mix(color: str, other: str, amount: float) -> str:
