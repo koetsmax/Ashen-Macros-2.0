@@ -203,7 +203,9 @@ def elemental_api_request(self):
                 r = response.json()
                 result_panel.user_report_apply(self, r, xbox_gt=self.xbox_gt)
                 self._loghistory_jump_url = r["jump_url"]
-                if self.loghistory_issues:
+                # The button only adds a GT note, so other issues (e.g. an
+                # anti-alliance note) must not enable it.
+                if "Gamertag in Notes" in self.loghistory_issues:
                     btn_enable(self.loghistory_fix_issues_button, True)
 
         except (requests.exceptions.ConnectionError, TypeError, requests.exceptions.ReadTimeout):
@@ -230,5 +232,4 @@ def fix_issues(self):
             detail="Gamertag in notes: True",
         )
         sec.set_success_or_issues()
-    if not self.loghistory_issues:
-        btn_enable(self.loghistory_fix_issues_button, False)
+    btn_enable(self.loghistory_fix_issues_button, False)
