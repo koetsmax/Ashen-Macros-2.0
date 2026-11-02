@@ -141,7 +141,8 @@ def _set_default_values(config) -> bool:
         "VENCORD": {
             "vencord_bridge": bridge_default(),
             "vencord_bridge_port": "47832",
-            "vencord_bridge_token": "change-me",
+            # Empty = automatic: read the plugin's generated token from Vencord's settings.json.
+            "vencord_bridge_token": "",
             "vencord_install_path": "",
             "vencord_auto_update_check": "true",
         },

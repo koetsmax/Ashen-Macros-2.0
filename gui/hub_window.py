@@ -92,6 +92,11 @@ class StaffcheckHub(QMainWindow):
         self._auth_callbacks: list = []
         self._vencord_update_worker = None
         self._vencord_update_hint = ""
+        self._vencord_restart_hint = ""
+        self._vencord_recheck_pending = False
+        # Plugin version the last update check saw; a change means Discord
+        # reloaded the plugin and the hint must be re-checked.
+        self._vencord_checked_plugin_version = ""
         self._update_request_id = 0
         self._update_download_in_progress = False
         self._update_apply_scheduled = False
@@ -634,6 +639,13 @@ class StaffcheckHub(QMainWindow):
                 # Runs every 3s on the GUI thread; the fetch result shows on a later tick.
                 refresh_bridge_meta_async(force=False)
             version = bridge_plugin_version()
+            if (
+                version
+                and version != self._vencord_checked_plugin_version
+                and (self._vencord_update_hint or self._vencord_restart_hint)
+            ):
+                self._vencord_checked_plugin_version = version
+                self._check_vencord_updates(silent=True, force=True)
             if bridge_config_ready():
                 text = (
                     f"Vencord plugin: Connected · {version}"
@@ -657,6 +669,8 @@ class StaffcheckHub(QMainWindow):
                 )
             if self._vencord_update_hint:
                 text = f"{text} | update available"
+            elif self._vencord_restart_hint:
+                text = f"{text} | restart Discord to finish update"
         else:
             text = "Vencord plugin: disconnected"
             if self._vencord_update_hint:
@@ -665,21 +679,28 @@ class StaffcheckHub(QMainWindow):
             tip = "Vencord plugin status (Settings -> Vencord plugin)"
         if self._vencord_update_hint:
             tip = f"{tip}\n{self._vencord_update_hint}\nOpen Settings -> Vencord plugin to update."
+        elif self._vencord_restart_hint:
+            tip = f"{tip}\n{self._vencord_restart_hint}"
         self.bridge_status_label.setToolTip(tip)
         self.bridge_status_label.setText(text)
         self.bridge_status_label.setObjectName(object_name)
         self.bridge_status_label.style().unpolish(self.bridge_status_label)
         self.bridge_status_label.style().polish(self.bridge_status_label)
 
-    def _check_vencord_updates(self, silent: bool = True) -> None:
+    def _check_vencord_updates(self, silent: bool = True, force: bool = False) -> None:
+        """``force`` re-checks even with auto-check off (after an update or a
+        plugin reload), so a hint set earlier can be cleared."""
         from core.discord_bridge import is_enabled
         from core.vencord_setup import auto_update_check_enabled
 
         if not is_enabled():
             return
-        if silent and not auto_update_check_enabled():
+        if silent and not force and not auto_update_check_enabled():
             return
         if self._worker_running(self._vencord_update_worker):
+            if force:
+                # A check started before the update would report stale data.
+                self._vencord_recheck_pending = True
             return
 
         worker = VencordUpdateWorker(parent=self)
@@ -695,12 +716,22 @@ class StaffcheckHub(QMainWindow):
         if self._vencord_update_worker is worker:
             self._vencord_update_worker = None
         worker.deleteLater()
+        if self._vencord_recheck_pending:
+            self._vencord_recheck_pending = False
+            self._check_vencord_updates(silent=True, force=True)
+            return
         try:
             any_update = bool(getattr(result, "any_update", False))
             message = str(getattr(result, "message", "") or "")
+            restart_needed = bool(getattr(result, "plugin_restart_needed", False))
+            self._vencord_checked_plugin_version = str(
+                getattr(result, "connected_plugin_version", "") or ""
+            )
         except Exception:
             any_update = False
             message = ""
+            restart_needed = False
+        self._vencord_restart_hint = message if restart_needed and not any_update else ""
         if any_update:
             self._vencord_update_hint = message or "Vencord bridge updates available"
             self._update_bridge_status()

@@ -222,9 +222,16 @@ class SettingsDialog(QDialog):
         self.vencord_port_entry.setMaximumWidth(100)
         self._bridge_fields.addWidget(self.vencord_port_entry, 0, 1)
         self._bridge_fields.addWidget(QLabel("Shared token:"), 1, 0)
-        self.vencord_token_entry = QLineEdit(config.get("vencord_bridge_token", "change-me"))
+        saved_token = str(config.get("vencord_bridge_token") or "").strip()
+        # change-me from older installs means "automatic" now — show it as empty.
+        self.vencord_token_entry = QLineEdit("" if saved_token.lower() == "change-me" else saved_token)
         self.vencord_token_entry.setEchoMode(QLineEdit.EchoMode.Password)
-        self.vencord_token_entry.setPlaceholderText("change-me")
+        self.vencord_token_entry.setPlaceholderText("Automatic (read from the plugin)")
+        self.vencord_token_entry.setToolTip(
+            "Leave empty: the plugin generates a random token and Ashen Macros reads it "
+            "from Vencord's settings. Only fill this in if the plugin runs somewhere "
+            "Ashen Macros can't read its settings."
+        )
         self._bridge_fields.addWidget(self.vencord_token_entry, 1, 1)
         show_token = QPushButton("Show")
         show_token.setAutoDefault(False)
@@ -476,6 +483,9 @@ class SettingsDialog(QDialog):
                         )
                     )
                     self.vencord_status_label.setStyleSheet(f"color: {theme.GREEN};")
+                    hub = self.parent()
+                    if hub is not None and hasattr(hub, "_check_vencord_updates"):
+                        hub._check_vencord_updates(silent=True, force=True)
                 else:
                     err = result.error or "Installer failed"
                     dlg.mark_finished(False, err)
@@ -793,8 +803,8 @@ class SettingsDialog(QDialog):
         set_custom_value("VENCORD", "vencord_bridge", bridge_default())
         self.vencord_port_entry.setText("47832")
         set_custom_value("VENCORD", "vencord_bridge_port", "47832")
-        self.vencord_token_entry.setText("change-me")
-        set_custom_value("VENCORD", "vencord_bridge_token", "change-me")
+        self.vencord_token_entry.setText("")
+        set_custom_value("VENCORD", "vencord_bridge_token", "")
         from core.vencord_setup import default_vencord_path
 
         self.vencord_path_entry.setText(default_vencord_path())

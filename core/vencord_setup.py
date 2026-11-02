@@ -281,6 +281,8 @@ class UpdateCheckResult:
     local_plugin_version: str | None = None
     remote_plugin_version: str | None = None
     connected_plugin_version: str | None = None
+    # New plugin is on disk but Discord is still running the old build.
+    plugin_restart_needed: bool = False
     vencord_sha: str | None = None
     vencord_behind: int | None = None
     vencord_path: str = ""
@@ -314,7 +316,16 @@ def check_updates(*, vencord_path: str | None = None) -> UpdateCheckResult:
         logger.debug("Could not read connected bridge version", exc_info=True)
 
     result.local_plugin_version = read_local_plugin_version(path)
-    current_plugin = result.connected_plugin_version or result.local_plugin_version
+    connected = result.connected_plugin_version
+    local = result.local_plugin_version
+    # Compare the newest copy we know of: right after an update the running
+    # plugin still reports the old version until Discord is fully restarted,
+    # which is not "update available" any more.
+    if connected and local and _version_outdated(connected, local):
+        current_plugin = local
+        result.plugin_restart_needed = True
+    else:
+        current_plugin = connected or local
 
     try:
         result.remote_plugin_version = fetch_remote_plugin_version(vencord_path=path)
@@ -364,6 +375,11 @@ def check_updates(*, vencord_path: str | None = None) -> UpdateCheckResult:
                 parts.append(
                     f"Plugin update: {current_plugin or '?'} -> {result.remote_plugin_version}"
                 )
+        elif result.plugin_restart_needed:
+            parts.append(
+                f"Plugin {current_plugin} installed (Discord is running "
+                f"{result.connected_plugin_version}) - fully restart Discord to load it"
+            )
         elif current_plugin:
             parts.append(f"Plugin up to date ({current_plugin})")
         if result.vencord_update_available:

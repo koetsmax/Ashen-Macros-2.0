@@ -20,9 +20,8 @@ from PySide6.QtWidgets import (
 
 _NEXT_STEPS = (
     "Fully quit Discord (system tray too), then open it again.",
-    "In Discord: Vencord settings → Plugins → enable AshenMacrosBridge.",
-    "In that plugin, set the same Port and Auth token as Ashen Macros "
-    "(Settings → Vencord plugin)."
+    "In Discord: Vencord settings → Plugins → enable AshenMacrosBridge. "
+    "The plugin creates its own token and Ashen Macros picks it up automatically.",
 )
 
 

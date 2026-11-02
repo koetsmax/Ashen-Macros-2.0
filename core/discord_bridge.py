@@ -13,15 +13,18 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import requests
 
 from core.auth import auth_headers
+from core.platform import IS_WINDOWS
 from core.settings import config_bool, read_config
 from staffcheck.abort import AbortError, check_abort, is_abort_requested
 
@@ -87,8 +90,79 @@ def bridge_port() -> int:
     return port if 1 <= port <= 65535 else DEFAULT_PORT
 
 
-def bridge_token() -> str:
+PLUGIN_SETTINGS_KEY = "AshenMacrosBridge"
+# Keep in sync with token.ts in the plugin.
+MIN_TOKEN_LENGTH = 16
+_KNOWN_DEFAULT_TOKENS = {"", "change-me", "changeme", "token", "password", "secret"}
+
+
+def is_weak_token(token: str | None) -> bool:
+    t = str(token or "").strip()
+    return t.lower() in _KNOWN_DEFAULT_TOKENS or len(t) < MIN_TOKEN_LENGTH
+
+
+def _vencord_settings_files() -> list[Path]:
+    """Every Vencord settings.json the plugin could be saving its token to."""
+    home = Path.home()
+    bases: list[Path] = []
+    env_dir = os.environ.get("VENCORD_USER_DATA_DIR", "").strip()
+    if env_dir:
+        bases.append(Path(env_dir))
+    if IS_WINDOWS:
+        appdata = Path(os.environ.get("APPDATA") or home / "AppData" / "Roaming")
+        bases += [appdata / "Vencord", appdata / "vesktop"]
+    else:
+        xdg = os.environ.get("XDG_CONFIG_HOME", "").strip()
+        config_home = Path(xdg) if xdg and os.path.isabs(xdg) else home / ".config"
+        flatpak = home / ".var" / "app"
+        bases += [
+            config_home / "Vencord",
+            config_home / "vesktop",
+            flatpak / "com.discordapp.Discord" / "config" / "Vencord",
+            flatpak / "dev.vencord.Vesktop" / "config" / "vesktop",
+        ]
+    return [base / "settings" / "settings.json" for base in bases]
+
+
+def plugin_token_from_vencord() -> str | None:
+    """The token the plugin generated, read from Vencord's settings.json.
+
+    The plugin replaces a missing/default token with a random one on start and
+    Vencord persists it, so staff never have to copy it by hand. When several
+    clients have the plugin, the most recently saved settings file wins.
+    """
+    best: str | None = None
+    best_mtime = -1.0
+    for path in _vencord_settings_files():
+        try:
+            mtime = path.stat().st_mtime
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        plugins = data.get("plugins") if isinstance(data, dict) else None
+        plugin = plugins.get(PLUGIN_SETTINGS_KEY) if isinstance(plugins, dict) else None
+        if not isinstance(plugin, dict) or plugin.get("enabled") is False:
+            continue
+        token = str(plugin.get("authToken") or "").strip()
+        if is_weak_token(token):
+            continue
+        if mtime > best_mtime:
+            best, best_mtime = token, mtime
+    return best
+
+
+def configured_bridge_token() -> str:
+    """Manual override from Settings → Vencord plugin (empty / change-me = automatic)."""
     return str(read_config().get("vencord_bridge_token") or "").strip()
+
+
+def bridge_token() -> str:
+    configured = configured_bridge_token()
+    if not is_weak_token(configured):
+        return configured
+    # Automatic: use the plugin's own token. Falling back to the configured value
+    # keeps older plugin builds (which still serve "change-me") working.
+    return plugin_token_from_vencord() or configured
 
 
 # Channels required before bridge actions that need snowflakes (leave tick,
