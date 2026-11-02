@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 
 import requests
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -24,6 +26,8 @@ from core.settings import read_config
 from gui.views.app_window import AppWindow
 
 logger = logging.getLogger(__name__)
+
+_SNOWFLAKE_RE = re.compile(r"^\d{17,20}$")
 
 
 class PermissionsWindow(AppWindow):
@@ -60,6 +64,16 @@ class PermissionsWindow(AppWindow):
         self.users_list = QListWidget()
         self.users_list.currentItemChanged.connect(self._on_user_selected)
         left.addWidget(self.users_list, stretch=1)
+
+        add_row = QHBoxLayout()
+        self.add_id_entry = QLineEdit()
+        self.add_id_entry.setPlaceholderText("Add by Discord user ID")
+        self.add_id_entry.returnPressed.connect(self._add_user_by_id)
+        add_row.addWidget(self.add_id_entry, stretch=1)
+        add_btn = QPushButton("Add")
+        add_btn.clicked.connect(self._add_user_by_id)
+        add_row.addWidget(add_btn)
+        left.addLayout(add_row)
         body.addLayout(left, stretch=2)
 
         right = QVBoxLayout()
@@ -169,8 +183,7 @@ class PermissionsWindow(AppWindow):
         select_row = 0
         for i, user in enumerate(self._users):
             userid = str(user.get("userid") or "")
-            username = str(user.get("username") or "") or "(no name)"
-            item = QListWidgetItem(f"{username}  ·  {userid}")
+            item = QListWidgetItem(f"{self._display_name(user)}  ·  {userid}")
             item.setData(Qt.ItemDataRole.UserRole, userid)
             self.users_list.addItem(item)
             if prev and userid == prev:
@@ -181,6 +194,39 @@ class PermissionsWindow(AppWindow):
         else:
             self._selected_userid = None
             self._render_selected_user()
+
+    @staticmethod
+    def _display_name(user: dict) -> str:
+        username = str(user.get("username") or "")
+        if username:
+            return username
+        if user.get("has_token") is False:
+            return "(hasn't signed in yet)"
+        return "(no name)"
+
+    def _add_user_by_id(self) -> None:
+        userid = self.add_id_entry.text().strip()
+        if not _SNOWFLAKE_RE.fullmatch(userid):
+            self._set_status(
+                "Enter a Discord user ID (17-20 digits).", error=True
+            )
+            return
+        if self._user_by_id(userid) is None:
+            # Local placeholder until a permission is granted; the server only
+            # lists ID-only users once they have at least one grant.
+            self._users.append(
+                {
+                    "userid": userid,
+                    "username": "",
+                    "has_token": False,
+                    "permissions": [],
+                    "locked_permissions": [],
+                }
+            )
+            self._set_status(f"Added {userid}. Tick permissions to grant them.")
+        self.add_id_entry.clear()
+        self._selected_userid = userid
+        self._rebuild_user_list()
 
     def _rebuild_checks(self) -> None:
         while self.checks_layout.count():
@@ -225,9 +271,8 @@ class PermissionsWindow(AppWindow):
                     check.setEnabled(False)
                 return
 
-            username = str(user.get("username") or "") or "(no name)"
             userid = str(user.get("userid") or "")
-            self.user_heading.setText(f"{username} ({userid})")
+            self.user_heading.setText(f"{self._display_name(user)} ({userid})")
             granted = set(user.get("permissions") or [])
             locked = set(user.get("locked_permissions") or [])
             for key, check in self._checks.items():
