@@ -18,6 +18,7 @@ from gui.views.command_executor_window import CommandExecutorWindow
 from gui.views.fill_new_fleet_window import FillNewFleetWindow
 from gui.views.gamertag_lookup_window import GamertagLookupWindow
 from gui.views.hammertime_window import HammertimeWindow
+from gui.views.interview_slots_window import InterviewSlotsWindow
 from gui.views.permissions_window import PermissionsWindow
 from gui.views.queue_window import QueueWindow
 from gui.views.rename_fleet_window import RenameFleetWindow
@@ -67,6 +68,7 @@ APP_REGISTRY = [
     AppEntry("Rename fleet", RenameFleetWindow, "rename_fleet"),
     AppEntry("Fill new fleet", FillNewFleetWindow, "fill_new_fleet"),
     AppEntry("Timestamp generator", HammertimeWindow, "hammertime"),
+    AppEntry("Interview times", InterviewSlotsWindow, "interview_slots"),
     AppEntry("Ship Holder", ShipHolderWindow, "ship_holder"),
     AppEntry("Stats", StatsWindow, "stats"),
     AppEntry("Permissions", PermissionsWindow, "administrator"),
