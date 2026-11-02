@@ -82,7 +82,7 @@ def vencord_install_path() -> str:
 
 
 def set_vencord_install_path(path: str) -> None:
-    set_custom_value("EXPERIMENTAL", "vencord_install_path", os.path.normpath(path))
+    set_custom_value("VENCORD", "vencord_install_path", os.path.normpath(path))
 
 
 def auto_update_check_enabled() -> bool:

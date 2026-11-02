@@ -26,7 +26,7 @@ class App:
             self.username or "none",
             self.permissions,
         )
-        # When Experimental Vencord bridge is on: pull channel/emoji ids from the
+        # When the Vencord plugin is on: pull channel/emoji ids from the
         # bot and start the localhost client.
         if is_enabled():
             sync_bridge_lifecycle()

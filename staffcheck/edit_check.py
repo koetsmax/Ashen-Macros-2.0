@@ -139,7 +139,7 @@ def post_or_edit_check_message(self, new_line: str, editable_info: dict | None =
             info.get("channel_id") or on_duty_channel_id() or ""
         ).strip()
 
-        # Bridge path when Experimental is enabled (no keyboard fallback).
+        # Bridge path when the Vencord plugin is enabled (no keyboard fallback).
         if use_bridge("edit the previous check"):
             if not mid or not channel_id:
                 raise DiscordBridgeError(

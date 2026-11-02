@@ -1,6 +1,6 @@
 """Localhost WebSocket client for the Vencord Discord bridge plugin.
 
-Opt-in via Settings → Experimental → Vencord Discord bridge. When enabled,
+Opt-in via Settings → Vencord plugin. When enabled,
 Discord actions require the plugin (no keyboard fallback on bridge errors).
 When off, callers use keyboard automation.
 
@@ -74,7 +74,7 @@ def active_guild_id() -> str:
 
 
 def is_enabled() -> bool:
-    """True when Experimental → Vencord Discord bridge is on."""
+    """True when the Vencord plugin is enabled in Settings."""
     return config_bool("vencord_bridge", "false")
 
 
@@ -178,7 +178,7 @@ def _leave_emoji_raw(key: str) -> dict[str, Any]:
 
 
 def leave_mark_emoji(kind: str) -> dict[str, str]:
-    """Tick/cross emoji for leave notices (honours animated experimental setting)."""
+    """Tick/cross emoji for leave notices (honours the animated emoji setting)."""
     use_animated = config_bool("leave_animated_emojis", "false")
     kind = str(kind or "").strip().lower()
     if kind not in ("tick", "cross"):
@@ -458,7 +458,7 @@ def bridge_plugin_version() -> str:
 
 
 def prefer_bridge() -> bool:
-    """True when Experimental is on, plugin is connected, and config is complete.
+    """True when the Vencord plugin is enabled, plugin is connected, and config is complete.
 
     Incomplete bot config (e.g. no leave-channel id) must not look "ready" —
     fall closed so callers do not start slash/leave actions that will fail mid-run.
@@ -542,7 +542,7 @@ def use_bridge(action: str = "") -> bool:
 
 
 def sync_bridge_lifecycle() -> None:
-    """Start or stop the background client to match the Experimental toggle."""
+    """Start or stop the background client to match the Vencord plugin toggle."""
     bridge = get_bridge()
     if is_enabled():
         # Called from the GUI thread (startup, Settings save); never block it.

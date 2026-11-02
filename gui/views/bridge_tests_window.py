@@ -66,7 +66,7 @@ class BridgeTestsWindow(AppWindow):
         body_layout.setSpacing(10)
 
         header = QLabel(
-            "Requires Settings → Experimental → Vencord plugin. "
+            "Requires Settings → Vencord plugin. "
             "Escape / Stop aborts in-flight plugin waits."
         )
         header.setWordWrap(True)
@@ -418,7 +418,7 @@ class BridgeTestsWindow(AppWindow):
     def _guard_enabled(self) -> bool:
         if not is_enabled():
             self._set_status(
-                "Enable Settings → Experimental → Vencord plugin first"
+                "Enable Settings → Vencord plugin first"
             )
             return False
         return True

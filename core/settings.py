@@ -136,12 +136,12 @@ def _set_default_values(config) -> bool:
             "queue_join_alert": "true",
             # Linux: run under XWayland so window positions restore (see core.platform).
             "native_wayland": "false",
+            "leave_animated_emojis": "false",
         },
-        "EXPERIMENTAL": {
+        "VENCORD": {
             "vencord_bridge": bridge_default(),
             "vencord_bridge_port": "47832",
             "vencord_bridge_token": "change-me",
-            "leave_animated_emojis": "false",
             "vencord_install_path": "",
             "vencord_auto_update_check": "true",
         },
@@ -156,6 +156,9 @@ def _set_default_values(config) -> bool:
         del config["STAFFCHECK"]["ban_request_message"]
         changed = True
 
+    if _migrate_legacy_vencord_section(config):
+        changed = True
+
     for section, options in default_config.items():
         if section not in config:
             config[section] = options
@@ -166,6 +169,25 @@ def _set_default_values(config) -> bool:
                     config[section][option] = value
                     changed = True
     return changed
+
+
+def _migrate_legacy_vencord_section(config) -> bool:
+    """Move keys from the old [EXPERIMENTAL] section into [VENCORD] / [UI].
+
+    read_config() flattens every section into one dict, so leaving both would
+    let the freshly defaulted [VENCORD] values shadow the user's saved ones.
+    """
+    legacy = "EXPERIMENTAL"
+    if legacy not in config:
+        return False
+    for option, value in config.items(legacy, raw=True):
+        target = "UI" if option == "leave_animated_emojis" else "VENCORD"
+        if target not in config:
+            config[target] = {}
+        if option not in config[target]:
+            config[target][option] = value
+    config.remove_section(legacy)
+    return True
 
 
 def _write_config_file(config):

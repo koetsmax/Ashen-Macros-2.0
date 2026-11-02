@@ -165,7 +165,7 @@ class StaffcheckHub(QMainWindow):
         self.bridge_status_label = QLabel("")
         self.bridge_status_label.setObjectName("hubBridgeOff")
         self.bridge_status_label.setToolTip(
-            "Vencord plugin status (Settings → Experimental)"
+            "Vencord plugin status (Settings → Vencord plugin)"
         )
         self.bridge_status_label.hide()
         bar_layout.addWidget(self.bridge_status_label)
@@ -641,7 +641,7 @@ class StaffcheckHub(QMainWindow):
                     else "Vencord plugin: Connected"
                 )
                 object_name = "statusConnected"
-                tip = "Vencord plugin ready (Settings -> Experimental)"
+                tip = "Vencord plugin ready (Settings -> Vencord plugin)"
             else:
                 gap = bridge_readiness_summary() or "incomplete config"
                 text = (
@@ -662,9 +662,9 @@ class StaffcheckHub(QMainWindow):
             if self._vencord_update_hint:
                 text = f"{text} | update available"
             object_name = "statusDisconnected"
-            tip = "Vencord plugin status (Settings -> Experimental)"
+            tip = "Vencord plugin status (Settings -> Vencord plugin)"
         if self._vencord_update_hint:
-            tip = f"{tip}\n{self._vencord_update_hint}\nOpen Settings -> Experimental to update."
+            tip = f"{tip}\n{self._vencord_update_hint}\nOpen Settings -> Vencord plugin to update."
         self.bridge_status_label.setToolTip(tip)
         self.bridge_status_label.setText(text)
         self.bridge_status_label.setObjectName(object_name)
@@ -706,7 +706,7 @@ class StaffcheckHub(QMainWindow):
             self._update_bridge_status()
             self.toast_stack.show_toast(
                 "vencord_update",
-                "Vencord bridge updates available - open Settings -> Experimental.",
+                "Vencord bridge updates available - open Settings -> Vencord plugin.",
                 dismiss_ms=10000 if not silent else 12000,
             )
         else:

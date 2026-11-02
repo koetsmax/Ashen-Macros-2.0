@@ -36,8 +36,8 @@ class AppEntry:
     permission: str
     # Extra keys that also unlock this app (e.g. staffcheck for lookup tools).
     alt_permissions: tuple[str, ...] = ()
-    # Hide unless Settings → Experimental → Vencord plugin is on.
-    requires_experimental: bool = False
+    # Hide unless Settings → Vencord plugin is on.
+    requires_vencord_plugin: bool = False
     # Types into a non-Discord app with keyboard automation (Windows only).
     requires_keyboard: bool = False
 
@@ -51,7 +51,7 @@ def app_allowed(entry: AppEntry, permissions: list[str] | None) -> bool:
 
         if not keyboard_automation_supported():
             return False
-    if entry.requires_experimental:
+    if entry.requires_vencord_plugin:
         from core.discord_bridge import is_enabled
 
         if not is_enabled():
@@ -76,7 +76,7 @@ APP_REGISTRY = [
         "Vencord plugin tests",
         BridgeTestsWindow,
         "administrator",
-        requires_experimental=True,
+        requires_vencord_plugin=True,
     ),
 ]
 

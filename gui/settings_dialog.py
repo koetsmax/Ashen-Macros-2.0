@@ -70,6 +70,18 @@ class SettingsDialog(QDialog):
         )
         general_layout.addWidget(self.edit_check_message_check)
 
+        self.leave_animated_emojis_check = QCheckBox(
+            "Use animated tick / cross emojis on leave messages"
+        )
+        self.leave_animated_emojis_check.setChecked(
+            config_bool("leave_animated_emojis", "false")
+        )
+        self.leave_animated_emojis_check.setToolTip(
+            "When enabled, Tick / Cross & Warn use the animated BetterTick / bettercross "
+            "emojis instead of the static ones. Requires the Vencord plugin."
+        )
+        general_layout.addWidget(self.leave_animated_emojis_check)
+
         nav_row = QHBoxLayout()
         nav_row.addWidget(QLabel("Test navigate messages up:"))
         self.edit_nav_offset_entry = QLineEdit(
@@ -181,14 +193,14 @@ class SettingsDialog(QDialog):
         notifications_layout.addWidget(queue_alert_box)
         notifications_layout.addStretch(1)
 
-        experimental_page = QWidget()
-        experimental_layout = QVBoxLayout(experimental_page)
+        vencord_page = QWidget()
+        vencord_layout = QVBoxLayout(vencord_page)
 
-        tabs.addTab(experimental_page, "Vencord plugin")
-        self._experimental_page = experimental_page
+        tabs.addTab(vencord_page, "Vencord plugin")
+        self._vencord_page = vencord_page
 
-        experimental = QGroupBox("Vencord plugin")
-        bridge_layout = QVBoxLayout(experimental)
+        vencord_box = QGroupBox("Vencord plugin")
+        bridge_layout = QVBoxLayout(vencord_box)
         self.vencord_bridge_check = QCheckBox("Enable Vencord plugin")
         self.vencord_bridge_check.setChecked(config_bool("vencord_bridge", bridge_default()))
         self.vencord_bridge_check.setToolTip(
@@ -313,23 +325,8 @@ class SettingsDialog(QDialog):
         bridge_layout.addWidget(self.vencord_status_label)
 
         self._on_vencord_bridge_toggled(self.vencord_bridge_check.isChecked())
-        experimental_layout.addWidget(experimental)
-
-        leave_box = QGroupBox("Leave message marks")
-        leave_layout = QVBoxLayout(leave_box)
-        self.leave_animated_emojis_check = QCheckBox(
-            "Use animated tick / cross emojis"
-        )
-        self.leave_animated_emojis_check.setChecked(
-            config_bool("leave_animated_emojis", "false")
-        )
-        self.leave_animated_emojis_check.setToolTip(
-            "When enabled, Tick / Cross & Warn use the animated BetterTick / bettercross "
-            "emojis instead of the static ones. Requires the Vencord plugin."
-        )
-        leave_layout.addWidget(self.leave_animated_emojis_check)
-        experimental_layout.addWidget(leave_box)
-        experimental_layout.addStretch(1)
+        vencord_layout.addWidget(vencord_box)
+        vencord_layout.addStretch(1)
 
         btn_row = QHBoxLayout()
         save = QPushButton("Save Changes")
@@ -684,6 +681,11 @@ class SettingsDialog(QDialog):
             "queue_join_alert",
             "true" if self.queue_join_alert_check.isChecked() else "false",
         )
+        set_custom_value(
+            "UI",
+            "leave_animated_emojis",
+            "true" if self.leave_animated_emojis_check.isChecked() else "false",
+        )
         if self.native_wayland_check is not None:
             set_custom_value(
                 "UI",
@@ -692,7 +694,7 @@ class SettingsDialog(QDialog):
             )
 
         set_custom_value(
-            "EXPERIMENTAL",
+            "VENCORD",
             "vencord_bridge",
             "true" if self.vencord_bridge_check.isChecked() else "false",
         )
@@ -703,21 +705,16 @@ class SettingsDialog(QDialog):
                 port = 47832
         except ValueError:
             port = 47832
-        set_custom_value("EXPERIMENTAL", "vencord_bridge_port", str(port))
+        set_custom_value("VENCORD", "vencord_bridge_port", str(port))
         set_custom_value(
-            "EXPERIMENTAL",
+            "VENCORD",
             "vencord_bridge_token",
             self.vencord_token_entry.text().strip(),
         )
-        set_custom_value(
-            "EXPERIMENTAL",
-            "leave_animated_emojis",
-            "true" if self.leave_animated_emojis_check.isChecked() else "false",
-        )
         path = self.vencord_path_entry.text().strip()
-        set_custom_value("EXPERIMENTAL", "vencord_install_path", path)
+        set_custom_value("VENCORD", "vencord_install_path", path)
         set_custom_value(
-            "EXPERIMENTAL",
+            "VENCORD",
             "vencord_auto_update_check",
             "true" if self.vencord_auto_check.isChecked() else "false",
         )
@@ -740,8 +737,8 @@ class SettingsDialog(QDialog):
 
     def _reset(self):
         tab = self._tabs.tabText(self._tabs.currentIndex())
-        if self._tabs.currentWidget() is self._experimental_page:
-            self._reset_experimental_tab()
+        if self._tabs.currentWidget() is self._vencord_page:
+            self._reset_vencord_tab()
         elif tab == "Notifications":
             self._reset_notifications_tab()
         else:
@@ -777,6 +774,8 @@ class SettingsDialog(QDialog):
             set_custom_value("UI", "native_wayland", "false")
         self.edit_check_message_check.setChecked(True)
         set_custom_value("STAFFCHECK", "edit_check_message", "true")
+        self.leave_animated_emojis_check.setChecked(False)
+        set_custom_value("UI", "leave_animated_emojis", "false")
         self.edit_nav_offset_entry.setText("4")
         set_custom_value("STAFFCHECK", "edit_check_nav_test_offset", "4")
         theme.set_flavor(theme.DEFAULT_FLAVOR)
@@ -788,22 +787,20 @@ class SettingsDialog(QDialog):
 
         theme.apply_theme(QApplication.instance())
 
-    def _reset_experimental_tab(self):
+    def _reset_vencord_tab(self):
         bridge_on = bridge_default() == "true"
         self.vencord_bridge_check.setChecked(bridge_on)
-        set_custom_value("EXPERIMENTAL", "vencord_bridge", bridge_default())
+        set_custom_value("VENCORD", "vencord_bridge", bridge_default())
         self.vencord_port_entry.setText("47832")
-        set_custom_value("EXPERIMENTAL", "vencord_bridge_port", "47832")
+        set_custom_value("VENCORD", "vencord_bridge_port", "47832")
         self.vencord_token_entry.setText("change-me")
-        set_custom_value("EXPERIMENTAL", "vencord_bridge_token", "change-me")
-        self.leave_animated_emojis_check.setChecked(False)
-        set_custom_value("EXPERIMENTAL", "leave_animated_emojis", "false")
+        set_custom_value("VENCORD", "vencord_bridge_token", "change-me")
         from core.vencord_setup import default_vencord_path
 
         self.vencord_path_entry.setText(default_vencord_path())
-        set_custom_value("EXPERIMENTAL", "vencord_install_path", "")
+        set_custom_value("VENCORD", "vencord_install_path", "")
         self.vencord_auto_check.setChecked(True)
-        set_custom_value("EXPERIMENTAL", "vencord_auto_update_check", "true")
+        set_custom_value("VENCORD", "vencord_auto_update_check", "true")
         self.vencord_status_label.setText("")
         self.vencord_status_label.setStyleSheet("")
         self._on_vencord_bridge_toggled(bridge_on)
