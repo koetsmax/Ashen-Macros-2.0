@@ -37,12 +37,19 @@ class AppEntry:
     alt_permissions: tuple[str, ...] = ()
     # Hide unless Settings → Experimental → Vencord plugin is on.
     requires_experimental: bool = False
+    # Types into a non-Discord app with keyboard automation (Windows only).
+    requires_keyboard: bool = False
 
 
 def app_allowed(entry: AppEntry, permissions: list[str] | None) -> bool:
     allowed = {entry.permission, *entry.alt_permissions}
     if not (allowed & set(permissions or [])):
         return False
+    if entry.requires_keyboard:
+        from core.platform import keyboard_automation_supported
+
+        if not keyboard_automation_supported():
+            return False
     if entry.requires_experimental:
         from core.discord_bridge import is_enabled
 
@@ -55,7 +62,7 @@ APP_REGISTRY = [
     AppEntry("Queue monitor", QueueWindow, "queue_monitor"),
     AppEntry("Gamertag / mutuals", GamertagLookupWindow, "staffcheck"),
     AppEntry("Command executor", CommandExecutorWindow, "command_executor"),
-    AppEntry("Add to ban list", BanListWindow, "ban_list"),
+    AppEntry("Add to ban list", BanListWindow, "ban_list", requires_keyboard=True),
     AppEntry("Add warning", WarningWindow, "warning"),
     AppEntry("Rename fleet", RenameFleetWindow, "rename_fleet"),
     AppEntry("Fill new fleet", FillNewFleetWindow, "fill_new_fleet"),

@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 from core.discord_bridge import (
     DiscordBridgeError,
     get_bridge,
-    is_enabled,
     pending_emoji,
-    prefer_bridge,
     queue_channel_id,
+    require_bridge,
 )
 
 if TYPE_CHECKING:
@@ -76,10 +75,7 @@ def react_pending_on_leave(
         return "already"
 
     # Bridge only — no keyboard Up navigation fallback.
-    if not is_enabled():
-        raise DiscordBridgeError("Vencord plugin required for pending leave react")
-    if not prefer_bridge():
-        raise DiscordBridgeError("Vencord plugin is not connected")
+    require_bridge("add the pending reaction")
     if not mid or not data.get("found"):
         return "failed"
     channel_id = str(

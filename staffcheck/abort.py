@@ -6,11 +6,11 @@ import time
 from contextlib import contextmanager
 from typing import Any, Callable, Iterator, Optional
 
-import keyboard
 import requests
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication
 
+from core.platform import hotkeys
 from core.settings import read_config
 
 logger = logging.getLogger(__name__)
@@ -199,7 +199,7 @@ def install_abort_hotkey(self) -> None:
     if not key:
         return
     try:
-        self._abort_hotkey = keyboard.add_hotkey(
+        self._abort_hotkey = hotkeys.add_hotkey(
             key,
             lambda: _on_abort_hotkey(self),
             suppress=False,
@@ -230,7 +230,7 @@ def remove_abort_hotkey(self) -> None:
     if hotkey is None:
         return
     try:
-        keyboard.remove_hotkey(hotkey)
+        hotkeys.remove_hotkey(hotkey)
     except (KeyError, ValueError):
         pass
     self._abort_hotkey = None

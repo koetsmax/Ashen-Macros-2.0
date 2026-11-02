@@ -13,6 +13,7 @@ from core.discord_bridge import (
     leave_mark_emoji,
     leave_warning_rule,
     prefer_bridge,
+    require_bridge,
     resolve_channel_id,
 )
 from core.keyboard import (
@@ -24,6 +25,7 @@ from core.keyboard import (
     react_to_channel_message,
     switch_channel,
 )
+from core.platform import keyboard_automation_supported
 from staffcheck.abort import AbortError, check_abort, interruptible_sleep
 
 if TYPE_CHECKING:
@@ -84,8 +86,13 @@ def react_leave_notice_mark(
     emoji = leave_mark_emoji(mark)
     emoji_name = str(emoji.get("name") or mark).strip() or mark
 
-    # Prefer bridge when available.
-    if is_enabled() and prefer_bridge():
+    # Prefer bridge when available. Without keyboard automation (Linux) the
+    # bridge is the only path, so require it (error dialog when off/not ready).
+    use_plugin = is_enabled() and prefer_bridge()
+    if not use_plugin and not keyboard_automation_supported():
+        require_bridge("react to the leave notice")
+        use_plugin = True
+    if use_plugin:
         channel_id = leave_channel_id() or resolve_channel_id("#leave-channel") or ""
         if not channel_id:
             from core.discord_bridge import fetch_bridge_meta, missing_bridge_config

@@ -1,11 +1,12 @@
-import keyboard
 import requests
 
+from core.discord_bridge import DiscordBridgeError, is_enabled
 from core.keyboard import clear_typing_bar, switch_channel
+from core.platform import keyboard_automation_supported
 from core.settings import read_config
 from staffcheck import abort, pipeline, result_panel
 from staffcheck.abort import check_abort, interruptible_sleep, keyboard_automation
-from staffcheck.qt_ui import btn_enable
+from staffcheck.qt_ui import btn_enable, on_main_thread, staffcheck_toast
 
 
 def sot_official(self):
@@ -17,6 +18,11 @@ def sot_official(self):
 
 
 def check_for_yourself(self):
+    if is_enabled() or not keyboard_automation_supported():
+        _check_for_yourself_via_bridge(self)
+        return
+    import keyboard
+
     try:
         switch_channel(self, "#official-swag")
         clear_typing_bar()
@@ -31,6 +37,35 @@ def check_for_yourself(self):
             keyboard.press_and_release("enter")
     except abort.AbortError:
         return
+    btn_enable(self.check_for_yourself_button, False)
+
+
+def _check_for_yourself_via_bridge(self):
+    """Open #official-swag via the plugin and put the search on the clipboard.
+
+    The plugin cannot drive Discord's search box, so the user pastes it.
+    """
+    query = f"from: {self.user_id.get()}"
+    try:
+        switch_channel(self, "#official-swag")
+    except abort.AbortError:
+        return
+    except DiscordBridgeError:
+        # switch_channel already showed / logged why the plugin is not usable.
+        return
+
+    def _copy() -> None:
+        from PySide6.QtGui import QGuiApplication
+
+        QGuiApplication.clipboard().setText(query)
+
+    on_main_thread(_copy)
+    staffcheck_toast(
+        self,
+        "sot_check_for_yourself",
+        f"Copied “{query}”. In Discord press Ctrl+F, paste and press Enter.",
+        dismiss_ms=12000,
+    )
     btn_enable(self.check_for_yourself_button, False)
 
 

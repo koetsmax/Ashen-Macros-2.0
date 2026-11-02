@@ -22,7 +22,7 @@ _NEXT_STEPS = (
     "Fully quit Discord (system tray too), then open it again.",
     "In Discord: Vencord settings → Plugins → enable AshenMacrosBridge.",
     "In that plugin, set the same Port and Auth token as Ashen Macros "
-    "(Settings → Experimental).",
+    "(Settings → Vencord plugin)."
 )
 
 

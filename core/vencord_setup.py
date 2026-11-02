@@ -28,17 +28,9 @@ PLUGIN_PACKAGE_URL = (
 )
 VENCORD_DOCS_URL = "https://docs.vencord.dev/installing/"
 DEFAULT_PORT = 47832
-# Permission key for Setup / Repair / Update (also unlocked by administrator).
-VENCORD_SETUP_PERMISSION = "vencord_setup"
 _CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 ProgressCallback = Callable[[dict], None]
-
-
-def can_manage_vencord_setup(permissions: list[str] | None) -> bool:
-    """True if the user may run Vencord install / update from macros."""
-    perms = set(permissions or [])
-    return VENCORD_SETUP_PERMISSION in perms or "administrator" in perms
 
 
 @dataclass
@@ -293,12 +285,18 @@ class UpdateCheckResult:
     vencord_behind: int | None = None
     vencord_path: str = ""
     installed: bool = False
+    # Linux: official / Flatpak Discord present but not patched (never, or update removed it).
+    discord_patch_missing: bool = False
     error: str | None = None
     message: str = ""
 
     @property
     def any_update(self) -> bool:
-        return self.plugin_update_available or self.vencord_update_available
+        return (
+            self.plugin_update_available
+            or self.vencord_update_available
+            or self.discord_patch_missing
+        )
 
 
 def check_updates(*, vencord_path: str | None = None) -> UpdateCheckResult:
@@ -343,7 +341,17 @@ def check_updates(*, vencord_path: str | None = None) -> UpdateCheckResult:
     if behind is not None and behind > 0:
         result.vencord_update_available = True
 
+    if sys.platform != "win32" and result.installed:
+        from core.vencord_setup_linux import discord_patch_missing
+
+        result.discord_patch_missing = discord_patch_missing()
+
     parts: list[str] = []
+    if result.discord_patch_missing:
+        parts.append(
+            "Vencord is not installed into Discord (never patched, or a Discord "
+            "update removed it) - run Setup / Repair"
+        )
     if not result.installed:
         parts.append("Vencord not installed at this path - use Setup / Repair.")
     else:
@@ -385,10 +393,11 @@ def run_action(
 ) -> RunResult:
     """Run the PowerShell installer. Streams JSON progress lines to on_event."""
     if sys.platform != "win32":
-        return RunResult(
-            ok=False,
-            returncode=1,
-            error="Vencord setup is only supported on Windows.",
+        return _run_action_linux(
+            action,
+            vencord_path=vencord_path,
+            skip_inject=skip_inject,
+            on_event=on_event,
         )
 
     try:
@@ -483,6 +492,44 @@ def run_action(
         returncode=code,
         events=events,
         error=None if ok else error_msg,
+        plugin_version=plugin_ver or read_local_plugin_version(path),
+    )
+
+
+def _run_action_linux(
+    action: str,
+    *,
+    vencord_path: str | None,
+    skip_inject: bool,
+    on_event: ProgressCallback | None,
+) -> RunResult:
+    """In-process Python port of the PowerShell installer (same event shape)."""
+    from core.vencord_setup_linux import SetupError, run
+
+    path = os.path.normpath(vencord_path or vencord_install_path())
+    events: list[dict] = []
+
+    def emit(stage: str, message: str, ok: bool = True, **extra) -> None:
+        event = {"stage": stage, "message": message, "ok": ok, **extra}
+        events.append(event)
+        if on_event is not None:
+            try:
+                on_event(event)
+            except Exception:
+                logger.debug("on_event callback failed", exc_info=True)
+
+    logger.info("Running Vencord setup (Linux): action=%s path=%s", action, path)
+    try:
+        plugin_ver = run(action, path, skip_inject=skip_inject, emit=emit)
+    except (SetupError, OSError, subprocess.SubprocessError) as exc:
+        message = str(exc) or exc.__class__.__name__
+        logger.warning("Vencord setup failed: %s", message)
+        emit("error", message, ok=False)
+        return RunResult(ok=False, returncode=1, events=events, error=message)
+    return RunResult(
+        ok=True,
+        returncode=0,
+        events=events,
         plugin_version=plugin_ver or read_local_plugin_version(path),
     )
 

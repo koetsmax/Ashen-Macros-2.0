@@ -1,4 +1,3 @@
-import keyboard
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
@@ -17,7 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.settings import config_bool, read_config, set_custom_value
+from core.platform import IS_WINDOWS, hotkeys, keyboard_automation_supported
+from core.settings import bridge_default, config_bool, read_config, set_custom_value
 from core.window_positions import reset_app_window_positions
 from gui import theme
 
@@ -88,12 +88,19 @@ class SettingsDialog(QDialog):
         nav_row.addWidget(self.edit_nav_test_btn)
         nav_row.addStretch(1)
         general_layout.addLayout(nav_row)
+        if not keyboard_automation_supported():
+            # Keyboard-only debug tool; Linux is bridge-only.
+            for i in range(nav_row.count()):
+                item = nav_row.itemAt(i)
+                if item is not None and item.widget() is not None:
+                    item.widget().hide()
 
         general_layout.addWidget(QLabel(
             "Delay Initial Command: wait after the slash command.\n"
             "Delay follow up: wait after each variable.\n"
-            "Abort key: stops an in-progress staffcheck.\n"
-            "API URL: leave default unless you know what you're doing.\n"
+            "Abort key: stops an in-progress staffcheck"
+            + (".\n" if IS_WINDOWS else " (while an Ashen Macros window has focus).\n")
+            + "API URL: leave default unless you know what you're doing.\n"
             "All delays are in seconds."
         ))
 
@@ -119,6 +126,19 @@ class SettingsDialog(QDialog):
                 self._key_test_label = QLabel("")
                 grid.addWidget(self._key_test_label, i, 3)
         general_layout.addLayout(grid)
+
+        self.native_wayland_check = None
+        if not IS_WINDOWS:
+            self.native_wayland_check = QCheckBox(
+                "Use native Wayland (window positions are not restored; needs restart)"
+            )
+            self.native_wayland_check.setChecked(config_bool("native_wayland", "false"))
+            self.native_wayland_check.setToolTip(
+                "Off (default): Ashen Macros runs under XWayland so KDE reopens windows "
+                "where you left them. On: native Wayland, which never lets apps place "
+                "their own windows."
+            )
+            general_layout.addWidget(self.native_wayland_check)
 
         reset_apps_btn = QPushButton("Reset app window positions to 0, 0")
         reset_apps_btn.setAutoDefault(False)
@@ -163,16 +183,21 @@ class SettingsDialog(QDialog):
 
         experimental_page = QWidget()
         experimental_layout = QVBoxLayout(experimental_page)
-        tabs.addTab(experimental_page, "Experimental")
+
+        tabs.addTab(experimental_page, "Vencord plugin")
+        self._experimental_page = experimental_page
 
         experimental = QGroupBox("Vencord plugin")
         bridge_layout = QVBoxLayout(experimental)
         self.vencord_bridge_check = QCheckBox("Enable Vencord plugin")
-        self.vencord_bridge_check.setChecked(config_bool("vencord_bridge", "false"))
+        self.vencord_bridge_check.setChecked(config_bool("vencord_bridge", bridge_default()))
         self.vencord_bridge_check.setToolTip(
             "When enabled, Discord actions go through the localhost Vencord plugin. "
             "There is no keyboard fallback — if the plugin errors, the action fails "
             "and the status line shows the error. Default off."
+            if keyboard_automation_supported()
+            else "Required on Linux: every Discord action goes through the localhost "
+            "Vencord plugin (there is no keyboard automation). Default on."
         )
         self.vencord_bridge_check.toggled.connect(self._on_vencord_bridge_toggled)
         bridge_layout.addWidget(self.vencord_bridge_check)
@@ -205,7 +230,9 @@ class SettingsDialog(QDialog):
 
             default_path = default_vencord_path()
         self.vencord_path_entry = QLineEdit(default_path)
-        self.vencord_path_entry.setPlaceholderText(r"%USERPROFILE%\Documents\Vencord")
+        self.vencord_path_entry.setPlaceholderText(
+            r"%USERPROFILE%\Documents\Vencord" if IS_WINDOWS else "~/Documents/Vencord"
+        )
         path_row.addWidget(self.vencord_path_entry, stretch=1)
         self.vencord_browse_btn = QPushButton("Browse…")
         self.vencord_browse_btn.setAutoDefault(False)
@@ -222,6 +249,11 @@ class SettingsDialog(QDialog):
             "Install git/Node/pnpm if needed (explains first), clone Vencord + AshenMacrosBridge, "
             "build, and open the Vencord Installer (pnpm inject). "
             "Requires GitHub access to koetsmax/ashen-macros-vencord."
+            if IS_WINDOWS
+            else "Clone Vencord + AshenMacrosBridge and build. Then patch official Discord "
+            "(pnpm inject in a terminal, asks for your password) and/or point Vesktop at "
+            "the build. Needs git, nodejs and pnpm, and GitHub access to "
+            "koetsmax/ashen-macros-vencord."
         )
         self.vencord_setup_btn.clicked.connect(lambda: self._run_vencord_action("install"))
         setup_row.addWidget(self.vencord_setup_btn)
@@ -245,6 +277,14 @@ class SettingsDialog(QDialog):
         setup_row.addWidget(self.vesktop_guide_btn)
         setup_row.addStretch(1)
         bridge_layout.addLayout(setup_row)
+        if not IS_WINDOWS:
+            from core.vencord_setup_linux import detected_clients
+
+            clients = detected_clients()
+            bridge_layout.addWidget(QLabel(
+                "Discord clients found: " + (", ".join(clients) if clients else "none")
+                + " (Setup patches Discord and points Vesktop at the build)"
+            ))
 
         self.vencord_auto_check = QCheckBox("Auto-check for Vencord / plugin updates")
         self.vencord_auto_check.setChecked(
@@ -273,7 +313,6 @@ class SettingsDialog(QDialog):
         bridge_layout.addWidget(self.vencord_status_label)
 
         self._on_vencord_bridge_toggled(self.vencord_bridge_check.isChecked())
-        self._apply_vencord_setup_permission()
         experimental_layout.addWidget(experimental)
 
         leave_box = QGroupBox("Leave message marks")
@@ -324,48 +363,7 @@ class SettingsDialog(QDialog):
         )
         self.vencord_token_entry.setEchoMode(mode)
 
-    def _parent_permissions(self) -> list[str]:
-        parent = self.parent()
-        if parent is None:
-            return []
-        return list(getattr(parent, "permissions", None) or [])
-
-    def _can_vencord_setup(self) -> bool:
-        from core.vencord_setup import can_manage_vencord_setup
-
-        return can_manage_vencord_setup(self._parent_permissions())
-
-    def _apply_vencord_setup_permission(self) -> None:
-        allowed = self._can_vencord_setup()
-        for widget in (
-            self.vencord_path_entry,
-            self.vencord_browse_btn,
-            self.vencord_setup_btn,
-            self.vencord_update_btn,
-        ):
-            widget.setEnabled(allowed)
-        tip = (
-            "Install git/Node/pnpm if needed (explains first), clone Vencord + AshenMacrosBridge, "
-            "build, and open the Vencord Installer (pnpm inject). "
-            "Requires GitHub access to koetsmax/ashen-macros-vencord."
-            if allowed
-            else "Requires the vencord_setup permission (ask Max to grant it)."
-        )
-        self.vencord_setup_btn.setToolTip(tip)
-        self.vencord_update_btn.setToolTip(
-            "Pull latest Vencord and AshenMacrosBridge, rebuild, and re-run inject when needed."
-            if allowed
-            else "Requires the vencord_setup permission (ask Max to grant it)."
-        )
-        if not allowed and not (self.vencord_status_label.text() or "").strip():
-            self.vencord_status_label.setText(
-                "Setup / Update locked - needs vencord_setup permission."
-            )
-            self.vencord_status_label.setStyleSheet(f"color: {theme.PEACH};")
-
     def _browse_vencord_path(self) -> None:
-        if not self._can_vencord_setup():
-            return
         start = self.vencord_path_entry.text().strip() or ""
         chosen = QFileDialog.getExistingDirectory(
             self,
@@ -395,11 +393,10 @@ class SettingsDialog(QDialog):
         return path
 
     def _set_vencord_busy(self, busy: bool) -> None:
-        allowed = self._can_vencord_setup()
-        self.vencord_setup_btn.setEnabled(not busy and allowed)
-        self.vencord_update_btn.setEnabled(not busy and allowed)
-        self.vencord_browse_btn.setEnabled(not busy and allowed)
-        self.vencord_path_entry.setEnabled(not busy and allowed)
+        self.vencord_setup_btn.setEnabled(not busy)
+        self.vencord_update_btn.setEnabled(not busy)
+        self.vencord_browse_btn.setEnabled(not busy)
+        self.vencord_path_entry.setEnabled(not busy)
         self.vencord_check_btn.setEnabled(not busy)
 
     def _run_vencord_action(self, action: str) -> None:
@@ -414,14 +411,17 @@ class SettingsDialog(QDialog):
         from shiboken6 import isValid
         from staffcheck.qt_ui import on_main_thread
 
-        if not self._can_vencord_setup():
-            self.vencord_status_label.setText(
-                "Requires the vencord_setup permission (ask Max to grant it)."
-            )
-            self.vencord_status_label.setStyleSheet(f"color: {theme.RED};")
-            return
-
         tools = probe_toolchain()
+        if tools.missing and not IS_WINDOWS:
+            QMessageBox.information(
+                self,
+                "Apps required for Vencord",
+                "Vencord setup needs Git, Node.js (18+) and pnpm.\n\n"
+                f"Missing now: {', '.join(tools.missing)}\n\n"
+                "Install them, then run Setup again:\n"
+                "  sudo pacman -S --needed git nodejs pnpm",
+            )
+            return
         if tools.missing:
             missing = ", ".join(tools.missing)
             detail = (
@@ -543,7 +543,7 @@ class SettingsDialog(QDialog):
     def _test_key(self):
         if self._key_test_hotkey:
             try:
-                keyboard.remove_hotkey(self._key_test_hotkey)
+                hotkeys.remove_hotkey(self._key_test_hotkey)
             except (KeyError, ValueError):
                 pass
         key = self.entries["abort_key"][0].text().strip()
@@ -552,7 +552,7 @@ class SettingsDialog(QDialog):
             self._key_test_label.setStyleSheet(f"color: {theme.RED};")
             return
         try:
-            self._key_test_hotkey = keyboard.add_hotkey(key, self._on_key_detected, suppress=True)
+            self._key_test_hotkey = hotkeys.add_hotkey(key, self._on_key_detected, suppress=True)
             self._key_test_label.setText("Press the key now...")
             self._key_test_label.setStyleSheet(f"color: {theme.PEACH};")
         except ValueError:
@@ -560,7 +560,7 @@ class SettingsDialog(QDialog):
             self._key_test_label.setStyleSheet(f"color: {theme.RED};")
 
     def _on_key_detected(self):
-        # keyboard.add_hotkey runs this on its hook thread — marshal UI to Qt.
+        # Windows: keyboard.add_hotkey runs this on its hook thread — marshal UI to Qt.
         from staffcheck.qt_ui import on_main_thread
 
         def _apply():
@@ -568,7 +568,7 @@ class SettingsDialog(QDialog):
             self._key_test_label.setStyleSheet(f"color: {theme.GREEN};")
             if self._key_test_hotkey:
                 try:
-                    keyboard.remove_hotkey(self._key_test_hotkey)
+                    hotkeys.remove_hotkey(self._key_test_hotkey)
                 except (KeyError, ValueError):
                     pass
                 self._key_test_hotkey = None
@@ -591,11 +591,11 @@ class SettingsDialog(QDialog):
         import sys
 
         from core.logging import log_file_path
-        from core.settings import DATA_DIR
+        from core.settings import LOG_DIR
 
-        os.makedirs(DATA_DIR, exist_ok=True)
+        os.makedirs(LOG_DIR, exist_ok=True)
         path = log_file_path()
-        folder = DATA_DIR
+        folder = LOG_DIR
         try:
             if sys.platform == "win32":
                 if os.path.isfile(path):
@@ -684,6 +684,12 @@ class SettingsDialog(QDialog):
             "queue_join_alert",
             "true" if self.queue_join_alert_check.isChecked() else "false",
         )
+        if self.native_wayland_check is not None:
+            set_custom_value(
+                "UI",
+                "native_wayland",
+                "true" if self.native_wayland_check.isChecked() else "false",
+            )
 
         set_custom_value(
             "EXPERIMENTAL",
@@ -734,7 +740,7 @@ class SettingsDialog(QDialog):
 
     def _reset(self):
         tab = self._tabs.tabText(self._tabs.currentIndex())
-        if tab == "Experimental":
+        if self._tabs.currentWidget() is self._experimental_page:
             self._reset_experimental_tab()
         elif tab == "Notifications":
             self._reset_notifications_tab()
@@ -766,6 +772,9 @@ class SettingsDialog(QDialog):
             set_custom_value(section, key, defaults[key])
         self.compact_panels_check.setChecked(True)
         set_custom_value("UI", "compact_panels", "true")
+        if self.native_wayland_check is not None:
+            self.native_wayland_check.setChecked(False)
+            set_custom_value("UI", "native_wayland", "false")
         self.edit_check_message_check.setChecked(True)
         set_custom_value("STAFFCHECK", "edit_check_message", "true")
         self.edit_nav_offset_entry.setText("4")
@@ -780,8 +789,9 @@ class SettingsDialog(QDialog):
         theme.apply_theme(QApplication.instance())
 
     def _reset_experimental_tab(self):
-        self.vencord_bridge_check.setChecked(False)
-        set_custom_value("EXPERIMENTAL", "vencord_bridge", "false")
+        bridge_on = bridge_default() == "true"
+        self.vencord_bridge_check.setChecked(bridge_on)
+        set_custom_value("EXPERIMENTAL", "vencord_bridge", bridge_default())
         self.vencord_port_entry.setText("47832")
         set_custom_value("EXPERIMENTAL", "vencord_bridge_port", "47832")
         self.vencord_token_entry.setText("change-me")
@@ -796,7 +806,7 @@ class SettingsDialog(QDialog):
         set_custom_value("EXPERIMENTAL", "vencord_auto_update_check", "true")
         self.vencord_status_label.setText("")
         self.vencord_status_label.setStyleSheet("")
-        self._on_vencord_bridge_toggled(False)
+        self._on_vencord_bridge_toggled(bridge_on)
         from core.discord_bridge import sync_bridge_lifecycle
 
         sync_bridge_lifecycle()
@@ -809,7 +819,7 @@ class SettingsDialog(QDialog):
     def closeEvent(self, event):
         if self._key_test_hotkey:
             try:
-                keyboard.remove_hotkey(self._key_test_hotkey)
+                hotkeys.remove_hotkey(self._key_test_hotkey)
             except (KeyError, ValueError):
                 pass
         super().closeEvent(event)

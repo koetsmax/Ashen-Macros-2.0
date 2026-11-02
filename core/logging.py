@@ -6,7 +6,7 @@ import sys
 import threading
 from logging.handlers import RotatingFileHandler
 
-from core.settings import DATA_DIR
+from core.settings import LOG_DIR, ensure_data_dirs
 
 LOG_FILE_NAME = "ashen-macros.log"
 FAULT_FILE_NAME = "ashen-macros.fault.log"
@@ -19,12 +19,12 @@ _FAULT_FILE = None
 
 def log_file_path() -> str:
     """Absolute path to the rotating macros log file."""
-    return os.path.join(DATA_DIR, LOG_FILE_NAME)
+    return os.path.join(LOG_DIR, LOG_FILE_NAME)
 
 
 def fault_log_path() -> str:
     """Absolute path to the native crash / faulthandler dump file."""
-    return os.path.join(DATA_DIR, FAULT_FILE_NAME)
+    return os.path.join(LOG_DIR, FAULT_FILE_NAME)
 
 
 def setup_logging(level: int = logging.INFO) -> None:
@@ -32,7 +32,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     if _CONFIGURED:
         return
 
-    os.makedirs(DATA_DIR, exist_ok=True)
+    ensure_data_dirs()
     log_path = log_file_path()
     fault_path = fault_log_path()
 

@@ -352,6 +352,24 @@ def refresh_bridge_meta_async(*, force: bool = False) -> None:
         _meta_fetch_thread.start()
 
 
+_last_meta_status: int | None = None
+
+
+def _log_meta_status(status: int) -> None:
+    """Log config-fetch failures once per status change (it retries every ~30s)."""
+    global _last_meta_status
+    if status == _last_meta_status:
+        return
+    _last_meta_status = status
+    if status == 401:
+        logger.info(
+            "discord_bridge_config HTTP 401: token not verified yet "
+            "(the bot sends channel config after Verify)"
+        )
+    elif status != 200:
+        logger.warning("discord_bridge_config HTTP %s", status)
+
+
 def _fetch_bridge_meta_once() -> bool:
     try:
         api_url = read_config().get("api_url") or ""
@@ -364,10 +382,9 @@ def _fetch_bridge_meta_once() -> bool:
             headers=auth_headers(),
         )
         if response.status_code != 200:
-            logger.warning(
-                "discord_bridge_config HTTP %s", response.status_code
-            )
+            _log_meta_status(response.status_code)
             return False
+        _log_meta_status(200)
         data = response.json()
         applied = apply_bridge_meta(data if isinstance(data, dict) else None)
         if applied and not bridge_config_ready():
@@ -460,6 +477,70 @@ def prefer_bridge() -> bool:
     return True
 
 
+BRIDGE_OFF_MESSAGE = "This needs the Vencord plugin. Turn it on in Settings."
+
+
+def bridge_not_ready_reason() -> str:
+    """Why :func:`prefer_bridge` is False right now (empty when ready)."""
+    if not is_enabled():
+        return BRIDGE_OFF_MESSAGE
+    bridge = get_bridge()
+    if not bridge.is_connected():
+        detail = bridge.last_error()
+        msg = (
+            "Vencord plugin is not connected (Discord must be running with "
+            "AshenMacrosBridge enabled; port and token must match Settings)."
+        )
+        return f"{msg} Last error: {detail}" if detail else msg
+    missing = missing_bridge_config()
+    if missing:
+        return (
+            "Vencord plugin is connected, but the bot has not sent the Discord "
+            f"channel config yet (missing: {', '.join(missing)})."
+        )
+    return ""
+
+
+def require_bridge(action: str = "") -> None:
+    """Raise :class:`BridgeRequiredError` unless the bridge can run *action* now.
+
+    Discord actions call this before using the plugin. Without keyboard
+    automation (Linux) it also shows an error dialog with a Settings button,
+    because there is no keyboard path to fall back to.
+    """
+    if prefer_bridge():
+        return
+    reason = bridge_not_ready_reason() or "The Vencord plugin is not ready."
+    label = str(action or "").strip()
+    logger.warning("Bridge required%s: %s", f" for {label}" if label else "", reason)
+
+    from core.platform import keyboard_automation_supported
+
+    if not keyboard_automation_supported():
+        try:
+            from staffcheck.qt_ui import warn_bridge_required
+
+            text = f"Can't {label}.\n\n{reason}" if label else reason
+            warn_bridge_required(text)
+        except Exception:
+            logger.exception("Could not show bridge-required dialog")
+    raise BridgeRequiredError(reason)
+
+
+def use_bridge(action: str = "") -> bool:
+    """True when *action* must go through the plugin; raises if it can't.
+
+    Bridge path when the toggle is on, or always when this OS has no keyboard
+    automation. False only on Windows with the bridge off (keyboard path).
+    """
+    from core.platform import keyboard_automation_supported
+
+    if is_enabled() or not keyboard_automation_supported():
+        require_bridge(action)
+        return True
+    return False
+
+
 def sync_bridge_lifecycle() -> None:
     """Start or stop the background client to match the Experimental toggle."""
     bridge = get_bridge()
@@ -473,6 +554,10 @@ def sync_bridge_lifecycle() -> None:
 
 class DiscordBridgeError(RuntimeError):
     """Bridge request failed or returned ok=false."""
+
+
+class BridgeRequiredError(DiscordBridgeError):
+    """Action needs the Vencord plugin, which is off or not ready."""
 
 
 class DiscordBridge:
@@ -521,22 +606,31 @@ class DiscordBridge:
         with self._start_lock:
             if self._thread and self._thread.is_alive():
                 return
-            self._stop.clear()
+            # Fresh event per run: a previous thread that has not exited yet
+            # keeps its own (already set) event and cannot be revived.
+            self._stop = threading.Event()
             self._thread = threading.Thread(
-                target=self._run, name="discord-bridge", daemon=True
+                target=self._run, args=(self._stop,), name="discord-bridge", daemon=True
             )
             self._thread.start()
 
     def stop(self) -> None:
+        # Runs on the GUI thread: don't wait for the plugin's close frame
+        # (ws.close() blocks up to 3s for it by default) or a slow thread exit.
         self._stop.set()
         ws = self._ws
         if ws is not None:
             try:
-                ws.close()
+                # Wake the reader blocked in select() first; closing the fd
+                # alone can leave it parked until its ping timeout.
+                sock = getattr(ws, "sock", None)
+                if sock is not None:
+                    sock.abort()
+                ws.close(timeout=0)
             except Exception:
                 pass
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=3)
+            self._thread.join(timeout=0.2)
         self._thread = None
         self._connected.clear()
         self._authed.clear()
@@ -608,6 +702,23 @@ class DiscordBridge:
             channelId=str(channel_id),
             content=content,
         )
+
+    def send_dm(
+        self,
+        content: str,
+        *,
+        user_id: str | None = None,
+        username: str | None = None,
+        abort_ctx: Any = None,
+        timeout: float = 20.0,
+    ) -> dict:
+        """Send a DM by recipient id or username (plugin opens the DM if needed)."""
+        payload: dict[str, Any] = {"content": content}
+        if user_id:
+            payload["userId"] = str(user_id)
+        if username:
+            payload["username"] = str(username)
+        return self.request("sendDm", abort_ctx=abort_ctx, timeout=timeout, **payload)
 
     def switch_channel(
         self,
@@ -878,7 +989,7 @@ class DiscordBridge:
                     }
                 entry["event"].set()
 
-    def _run(self) -> None:
+    def _run(self, stop: threading.Event) -> None:
         try:
             import websocket
         except ImportError:
@@ -886,7 +997,8 @@ class DiscordBridge:
             logger.error("websocket-client is required for the Vencord Discord bridge")
             return
 
-        while not self._stop.is_set():
+        ws = None
+        while not stop.is_set():
             if not is_enabled():
                 break
             port = bridge_port()
@@ -896,22 +1008,26 @@ class DiscordBridge:
             self._authed.clear()
             self._last_error = ""
             try:
-                self._ws = websocket.WebSocketApp(
+                ws = websocket.WebSocketApp(
                     url,
                     on_open=self._on_open,
                     on_message=self._on_message,
                     on_error=self._on_error,
                     on_close=self._on_close,
                 )
-                self._ws.run_forever(ping_interval=20, ping_timeout=10)
+                self._ws = ws
+                if stop.is_set():
+                    break
+                ws.run_forever(ping_interval=20, ping_timeout=10)
             except Exception as exc:
                 self._last_error = str(exc)
                 logger.debug("Discord bridge run error: %s", exc)
-            self._ws = None
+            if self._ws is ws:
+                self._ws = None
             self._connected.clear()
             self._authed.clear()
             self._fail_pending(self._last_error or "Vencord plugin disconnected")
-            if self._stop.wait(3):
+            if stop.wait(3):
                 break
 
     def _on_open(self, _ws) -> None:

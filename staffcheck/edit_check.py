@@ -9,9 +9,8 @@ import requests
 from core.discord_bridge import (
     DiscordBridgeError,
     get_bridge,
-    is_enabled,
     on_duty_channel_id,
-    prefer_bridge,
+    use_bridge,
 )
 from core.keyboard import edit_on_duty_message, extra_ups_for_date_dividers, type_text
 from core.settings import config_bool, read_config
@@ -141,9 +140,7 @@ def post_or_edit_check_message(self, new_line: str, editable_info: dict | None =
         ).strip()
 
         # Bridge path when Experimental is enabled (no keyboard fallback).
-        if is_enabled():
-            if not prefer_bridge():
-                raise DiscordBridgeError("Vencord plugin is not connected")
+        if use_bridge("edit the previous check"):
             if not mid or not channel_id:
                 raise DiscordBridgeError(
                     "Editable check missing message/channel id for bridge edit"

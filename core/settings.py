@@ -2,10 +2,39 @@ import configparser
 import os
 from filelock import FileLock
 
-DATA_DIR = os.path.expanduser("~/Documents/Ashen Macros")
+from core.platform import IS_WINDOWS, keyboard_automation_supported
+
+
+def _xdg_dir(env: str, fallback: str) -> str:
+    base = os.environ.get(env, "").strip()
+    if not base or not os.path.isabs(base):
+        base = os.path.expanduser(fallback)
+    return os.path.join(base, "ashen-macros")
+
+
+if IS_WINDOWS:
+    # settings.ini, logs and fault dumps all live together.
+    DATA_DIR = os.path.expanduser("~/Documents/Ashen Macros")
+    LOG_DIR = DATA_DIR
+else:
+    # XDG: settings in ~/.config/ashen-macros, logs in ~/.local/state/ashen-macros.
+    DATA_DIR = _xdg_dir("XDG_CONFIG_HOME", "~/.config")
+    LOG_DIR = _xdg_dir("XDG_STATE_HOME", "~/.local/state")
+
 CONFIG_FILE_PATH = os.path.join(DATA_DIR, "settings.ini")
 LOCK_FILE_PATH = CONFIG_FILE_PATH + ".lock"
 LOCK_TIMEOUT = 30
+
+
+def bridge_default() -> str:
+    """Default for the Vencord plugin toggle: on where keyboard automation is missing."""
+    return "false" if keyboard_automation_supported() else "true"
+
+
+def ensure_data_dirs() -> None:
+    """Create the settings / log folders (call before the first read_config)."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def read_config() -> dict:
@@ -105,9 +134,11 @@ def _set_default_values(config) -> bool:
             "queue_debug": "false",
             "queue_splitter_sizes": "",
             "queue_join_alert": "true",
+            # Linux: run under XWayland so window positions restore (see core.platform).
+            "native_wayland": "false",
         },
         "EXPERIMENTAL": {
-            "vencord_bridge": "false",
+            "vencord_bridge": bridge_default(),
             "vencord_bridge_port": "47832",
             "vencord_bridge_token": "change-me",
             "leave_animated_emojis": "false",

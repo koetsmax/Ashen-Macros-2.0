@@ -1,3 +1,4 @@
+import sys
 from types import SimpleNamespace
 
 from catppuccin import PALETTE
@@ -199,12 +200,20 @@ def _palette() -> QPalette:
     return p
 
 
+def _ui_font_family() -> str:
+    """Segoe UI on Windows; the desktop's own UI font elsewhere (e.g. Noto Sans on KDE)."""
+    if sys.platform == "win32":
+        return '"Segoe UI", sans-serif'
+    family = QGuiApplication.font().family() if QGuiApplication.instance() else ""
+    return f'"{family}", sans-serif' if family else "sans-serif"
+
+
 def _qss() -> str:
     return f"""
     QWidget {{
         background-color: {BASE};
         color: {TEXT};
-        font-family: "Segoe UI", sans-serif;
+        font-family: {_ui_font_family()};
         font-size: 9pt;
     }}
     QMainWindow, QDialog {{

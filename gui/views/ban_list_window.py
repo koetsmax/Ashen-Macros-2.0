@@ -2,11 +2,17 @@ import re
 import time
 import webbrowser
 
-import keyboard
 from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPushButton
 
 from core.settings import read_config
 from gui.views.app_window import AppWindow
+
+
+def _keyboard():
+    # Windows-only (the app is hidden elsewhere); keep module import-safe on Linux.
+    import keyboard
+
+    return keyboard
 
 
 class BanListWindow(AppWindow):
@@ -61,6 +67,7 @@ class BanListWindow(AppWindow):
         layout.addWidget(other_btn, row, 2)
 
     def _open_sheet(self):
+        keyboard = _keyboard()
         url = "https://docs.google.com/spreadsheets/d/1V5Z61CKmJoNZn7L3PWziJdbHRVzYuxaZU4qTOIRHfWg/edit#gid=125271616"
         webbrowser.open(url, new=2)
         time.sleep(self.delay)
@@ -68,6 +75,7 @@ class BanListWindow(AppWindow):
         time.sleep(2)
 
     def _add_other(self):
+        keyboard = _keyboard()
         self._open_sheet()
         fields = [
             self.entries["discord_name"],
@@ -106,6 +114,7 @@ class BanListWindow(AppWindow):
         self.reason_entry.clear()
 
     def _start_requiem(self, string: str):
+        keyboard = _keyboard()
         self._open_sheet()
         keyboard.press_and_release("down")
 

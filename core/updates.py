@@ -1,4 +1,9 @@
-"""Release checks and zip-based in-app updates."""
+"""Release checks and in-app updates.
+
+Windows: release zip + a detached cmd helper that copies files after exit.
+Linux: release tarball, swapped into place on exit (running files can be
+renamed on Linux, so no helper process or elevation), then ``os.execv``.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import uuid
 import zipfile
@@ -253,6 +259,30 @@ def zip_asset_name(online_version: str) -> str:
     return f"Ashen-Macros-{online_version}.zip"
 
 
+def linux_asset_name(online_version: str) -> str:
+    return f"Ashen-Macros-{online_version}-linux-x86_64.tar.gz"
+
+
+def update_asset_name(online_version: str) -> str:
+    """Release asset this platform updates from."""
+    if sys.platform == "win32":
+        return zip_asset_name(online_version)
+    return linux_asset_name(online_version)
+
+
+def self_update_supported() -> bool:
+    """False for source runs and package-manager installs (e.g. AUR in /opt).
+
+    Linux self-update renames the install folder, so its parent must be
+    user-writable (the default ~/.local/share/ashen-macros install is).
+    """
+    if not is_frozen():
+        return False
+    if sys.platform == "win32":
+        return True
+    return dir_is_writable(install_dir().parent)
+
+
 def _release_version_name(release: dict) -> str:
     name = str(release.get("name") or "").strip()
     if name:
@@ -343,7 +373,7 @@ def download_update(
         raise RuntimeError("Zip updates are only supported for packaged builds.")
 
     asset_ref = (tag_name or online_version or "").strip()
-    asset = zip_asset_name(online_version)
+    asset = update_asset_name(online_version)
     logger.info("Downloading update v%s (tag %s, asset %s)", online_version, asset_ref, asset)
     url = f"{GITHUB_DOWNLOAD_BASE}/{asset_ref}/{asset}"
 
@@ -369,8 +399,35 @@ def download_update(
     return str(path.resolve())
 
 
+def _extract_tarball(archive: Path, progress_callback=None) -> str:
+    """Extract the Linux tarball next to the install dir (same filesystem for rename)."""
+    staging = install_dir().parent / f".ashen-macros-update-{uuid.uuid4().hex}"
+    staging.mkdir(parents=True, exist_ok=True)
+    try:
+        with tarfile.open(archive, "r:gz") as tf:
+            members = tf.getmembers()
+            total = sum(m.size for m in members if m.isfile())
+            extracted = 0
+            for member in members:
+                # "data" filter blocks absolute paths, .. and special files.
+                tf.extract(member, staging, filter="data")
+                if member.isfile():
+                    extracted += member.size
+                    if progress_callback is not None:
+                        progress_callback(extracted, total)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    try:
+        archive.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("Could not delete update tarball after extract: %s", archive)
+    logger.info("Update extracted to %s", staging)
+    return str(staging.resolve())
+
+
 def extract_update(zip_path: str, progress_callback=None) -> str:
-    """Extract the release zip to a temp staging directory.
+    """Extract the release zip (or Linux tarball) to a staging directory.
 
     When ``progress_callback`` is provided it is called as
     ``progress_callback(extracted_bytes, total_uncompressed_bytes)``.
@@ -382,6 +439,8 @@ def extract_update(zip_path: str, progress_callback=None) -> str:
     zip_file = Path(zip_path).resolve()
     if not zip_file.is_file():
         raise FileNotFoundError(zip_file)
+    if zip_file.name.endswith(".tar.gz"):
+        return _extract_tarball(zip_file, progress_callback)
 
     staging = Path(tempfile.gettempdir()) / f"AshenMacrosUpdate_{uuid.uuid4().hex}"
     staging.mkdir(parents=True, exist_ok=True)
@@ -470,6 +529,9 @@ def launch_update_after_exit(staging_dir: str) -> None:
     staging = Path(staging_dir).resolve()
     if not staging.is_dir():
         raise FileNotFoundError(staging)
+    if sys.platform != "win32":
+        _swap_linux_install(staging)
+        return
 
     target = install_dir()
     exe = app_executable()
@@ -528,3 +590,104 @@ def launch_update_after_exit(staging_dir: str) -> None:
         helper_ref,
         log_path,
     )
+
+
+# --- Linux: swap on exit, relaunch, roll back -------------------------------
+
+# Set by launch_update_after_exit; gui.app execs it after the Qt loop ends.
+_pending_relaunch: Path | None = None
+
+
+def _old_install_dir(target: Path) -> Path:
+    return target.with_name(target.name + ".old")
+
+
+def _unwrap_payload(staging: Path, exe_name: str) -> Path:
+    """Tarballs hold one top folder (ashen-macros/); accept a flat layout too."""
+    if (staging / exe_name).is_file():
+        return staging
+    children = [p for p in staging.iterdir()]
+    if len(children) == 1 and children[0].is_dir() and children[0].name != "_internal":
+        return children[0]
+    return staging
+
+
+def _swap_linux_install(staging: Path) -> None:
+    """Move the new build into place now; relaunch happens after the Qt loop.
+
+    install → install.old, payload → install. Raises (after undoing) on failure.
+    """
+    global _pending_relaunch
+
+    target = install_dir()
+    exe_name = app_executable().name
+    payload = _unwrap_payload(staging, exe_name)
+    if not (payload / exe_name).is_file():
+        raise RuntimeError(f"Update payload is missing {exe_name}")
+    if not (payload / "_internal" / "version").is_file():
+        raise RuntimeError("Update payload is missing _internal/version")
+
+    old = _old_install_dir(target)
+    if old.exists():
+        shutil.rmtree(old, ignore_errors=True)
+    os.rename(target, old)
+    try:
+        os.rename(payload, target)
+    except OSError:
+        logger.exception("Moving update into %s failed; restoring previous install", target)
+        os.rename(old, target)
+        raise
+    finally:
+        if staging.exists() and staging != target:
+            shutil.rmtree(staging, ignore_errors=True)
+
+    new_exe = target / exe_name
+    new_exe.chmod(new_exe.stat().st_mode | 0o111)
+    _pending_relaunch = new_exe
+    logger.info("Update swapped in: %s (previous kept at %s)", target, old)
+
+
+def pending_relaunch() -> Path | None:
+    return _pending_relaunch
+
+
+def relaunch_after_update() -> None:
+    """exec the new build; on failure restore .old and exec the previous one."""
+    exe = _pending_relaunch
+    if exe is None:
+        return
+    target = install_dir()
+    argv = [str(exe), *sys.argv[1:]]
+    logger.info("Relaunching updated build: %s", exe)
+    for handler in logging.getLogger().handlers:
+        try:
+            handler.flush()
+        except Exception:
+            pass
+    try:
+        os.execv(str(exe), argv)
+    except OSError as exc:
+        # Only reached when exec failed: put the previous version back and start it.
+        logger.error("Relaunch of %s failed (%s); rolling back", exe, exc)
+    old = _old_install_dir(target)
+    broken = target.with_name(target.name + ".failed")
+    try:
+        if old.is_dir():
+            shutil.rmtree(broken, ignore_errors=True)
+            os.rename(target, broken)
+            os.rename(old, target)
+            shutil.rmtree(broken, ignore_errors=True)
+        previous = target / exe.name
+        os.execv(str(previous), [str(previous), *sys.argv[1:]])
+    except OSError:
+        logger.exception("Rollback relaunch failed")
+
+
+def cleanup_previous_install() -> None:
+    """Delete install.old after the updated build started successfully."""
+    if not is_frozen() or sys.platform == "win32":
+        return
+    old = _old_install_dir(install_dir())
+    if old.is_dir():
+        shutil.rmtree(old, ignore_errors=True)
+        logger.info("Removed previous install %s", old)

@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import logging
-import threading
-import time
+import re
 from contextlib import contextmanager
 from typing import Any, Iterator
 
-import keyboard
 import pyperclip
-import win32con
-import win32gui
 
+from core.platform import keyboard_automation_supported
 from core.settings import read_config
 from staffcheck.abort import (
     AbortError,
@@ -41,48 +38,15 @@ def extra_ups_for_date_dividers(created_at: str | None) -> int:
         return 0
 
 
-def _window_enumeration_handler(hwnd, top_windows):
-    if win32gui.IsWindowVisible(hwnd):
-        top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
+if keyboard_automation_supported():
+    import keyboard
 
+    from core.platform.windows import activate_window
+else:  # Linux: bridge-only; keyboard paths are guarded by use_bridge().
+    keyboard = None
 
-def _reset_window_state():
-    try:
-        win32gui.SendMessage(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 0)
-    except Exception:
-        pass
-
-
-def activate_window(window: str, timeout: float = 2.0):
-    top_windows = []
-    success = False
-
-    try:
-        start_time = time.time()
-        win32gui.EnumWindows(_window_enumeration_handler, top_windows)
-
-        for hwnd, title in top_windows:
-            if window.lower() not in title.lower():
-                continue
-            if not win32gui.IsWindow(hwnd) or not win32gui.IsWindowVisible(hwnd):
-                continue
-            if win32gui.GetWindowPlacement(hwnd)[1] == win32con.SW_SHOWMINIMIZED:
-                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                time.sleep(0.1)
-            if time.time() - start_time < timeout:
-                win32gui.SetForegroundWindow(hwnd)
-                success = True
-                break
-
-        if not success:
-            logger.warning("Could not activate window '%s' within %s seconds", window, timeout)
-            _reset_window_state()
-
-    except Exception as exc:
-        logger.warning("Window activation failed: %s", exc)
-        _reset_window_state()
-
-    threading.Timer(0.5, _reset_window_state).start()
+    def activate_window(window: str, timeout: float = 2.0):
+        raise RuntimeError("Window activation is not supported on this platform")
 
 
 def clear_typing_bar(*, in_on_duty_chat: bool = False):
@@ -93,10 +57,13 @@ def clear_typing_bar(*, in_on_duty_chat: bool = False):
 
     No-op when the Vencord bridge experiment is enabled (plugin does not need it).
     """
-    from core.discord_bridge import is_enabled
+    from core.discord_bridge import is_enabled, require_bridge
     from staffcheck.abort import suppress_abort_hotkey
 
     if is_enabled():
+        return
+    if not keyboard_automation_supported():
+        require_bridge("use Discord")
         return
 
     with keyboard_automation(), suppress_abort_hotkey():
@@ -121,6 +88,18 @@ _ON_DUTY_FIRST_UP = 0.3
 _ON_DUTY_FOCUS_STEP = 0.2
 
 
+def _require_keyboard(action: str) -> None:
+    """Guard for keyboard-only helpers: raise on platforms without automation."""
+    if keyboard_automation_supported():
+        return
+    from core.discord_bridge import DiscordBridgeError, require_bridge
+
+    require_bridge(action)
+    raise DiscordBridgeError(
+        f"Can't {action}: this step needs keyboard automation, which is Windows-only"
+    )
+
+
 @contextmanager
 def _clipboard_scope(text: str) -> Iterator[None]:
     try:
@@ -143,21 +122,18 @@ def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
     from core.discord_bridge import (
         DiscordBridgeError,
         get_bridge,
-        is_enabled,
         note_active_channel,
-        prefer_bridge,
         queue_guild_id,
         resolve_channel_id,
+        use_bridge,
     )
 
-    channel_id = resolve_channel_id(channel)
-    if is_enabled():
+    if use_bridge(f"switch to {channel}"):
+        channel_id = resolve_channel_id(channel)
         if not channel_id:
             raise DiscordBridgeError(
                 f"Cannot resolve channel id for {channel!r} (bridge enabled)"
             )
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
         check_abort(self)
         gid = queue_guild_id() or None
         get_bridge().switch_channel(
@@ -168,6 +144,7 @@ def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
         note_active_channel(channel_id, gid)
         return
 
+    channel_id = resolve_channel_id(channel)
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         if not args:
@@ -194,12 +171,34 @@ def switch_channel(self, channel: str, *args, paste: bool = False, **kwargs):
 
 def execute_command(self, command: str):
     """Paste a free-form Discord command via the keyboard (no bridge parsing)."""
-    from core.discord_bridge import DiscordBridgeError, is_enabled
+    from core.discord_bridge import (
+        DiscordBridgeError,
+        active_channel_id,
+        active_guild_id,
+        get_bridge,
+        use_bridge,
+    )
 
-    if is_enabled():
-        raise DiscordBridgeError(
-            "Free-form keyboard paste is disabled while the Vencord plugin is enabled"
+    if use_bridge("run a command"):
+        # Plugin path: parse "/name [sub] opt:value ..." into a structured slash
+        # command in the channel the last switch_channel moved to.
+        name, options = parse_slash_text(command)
+        if not name:
+            raise DiscordBridgeError(
+                "Only slash commands (/name opt:value) can run through the Vencord plugin"
+            )
+        ch = active_channel_id()
+        if not ch:
+            raise DiscordBridgeError(f"No active channel for /{name} (switch channel first)")
+        check_abort(self)
+        get_bridge().slash_command(
+            name,
+            ch,
+            options,
+            guild_id=active_guild_id() or None,
+            abort_ctx=self,
         )
+        return
 
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
@@ -237,8 +236,7 @@ def execute_slash_command(
         DiscordBridgeError,
         active_guild_id,
         get_bridge,
-        is_enabled,
-        prefer_bridge,
+        use_bridge,
     )
 
     opts = list(options or [])
@@ -246,9 +244,7 @@ def execute_slash_command(
     if not cmd:
         return None
 
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
+    if use_bridge(f"run /{cmd}"):
         ch = str(channel_id or "").strip()
         if not ch:
             raise DiscordBridgeError(
@@ -298,8 +294,57 @@ def _format_slash_paste(name: str, options: list[dict[str, Any]] | None) -> str:
     return " ".join(p for p in parts if p)
 
 
+_SLASH_OPTION_RE = re.compile(r"(?:^|\s)([\w-]+):")
+
+
+def _slash_option_value(raw: str) -> Any:
+    text = raw.strip()
+    low = text.lower()
+    if low in ("true", "false"):
+        return low == "true"
+    # Small integers only: snowflakes stay strings (JS numbers lose precision).
+    if re.fullmatch(r"-?\d{1,15}", text):
+        return int(text)
+    return text
+
+
+def parse_slash_text(text: str) -> tuple[str, list[dict[str, Any]]]:
+    """Parse "/name [group] [sub] opt:value opt2:value with spaces" for the bridge.
+
+    Inverse of :func:`_format_slash_paste`. Words before the first ``opt:`` are
+    the command name and any subcommand path. Returns ("", []) for non-slash text.
+    Option types are left to the plugin, which takes them from Discord's schema.
+    """
+    body = str(text or "").strip()
+    if not body.startswith("/"):
+        return "", []
+    body = body[1:]
+    first = _SLASH_OPTION_RE.search(body)
+    head = body[: first.start()] if first else body
+    path = head.split()
+    if not path:
+        return "", []
+
+    leaf: list[dict[str, Any]] = []
+    if first:
+        matches = list(_SLASH_OPTION_RE.finditer(body))
+        for i, match in enumerate(matches):
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+            value = body[match.end() : end]
+            leaf.append({"name": match.group(1), "value": _slash_option_value(value)})
+
+    name, subs = path[0], path[1:]
+    options = leaf
+    # Wrap innermost first: [group, sub] → group(type 2) { sub(type 1) { leaf } }.
+    for depth, sub in enumerate(reversed(subs)):
+        kind = 1 if depth == 0 else 2
+        options = [{"name": sub, "type": kind, "options": options}]
+    return name, options
+
+
 def _slash_via_keyboard_tabs(self, name: str, values: list[str]) -> None:
     """Keyboard Tab path used by /prep and /process before the bridge existed."""
+    _require_keyboard(f"run /{name.lstrip('/')}")
     with keyboard_automation(), self.keyboard_lock:
         check_abort(self)
         config = read_config()
@@ -379,15 +424,12 @@ def confirm_shipswap_after_process(
     from core.discord_bridge import (
         DiscordBridgeError,
         get_bridge,
-        is_enabled,
-        prefer_bridge,
         queue_channel_id,
         queue_guild_id,
+        use_bridge,
     )
 
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
+    if use_bridge("confirm the shipswap"):
         mid = str(message_id or "").strip()
         if not mid:
             raise DiscordBridgeError(
@@ -439,15 +481,12 @@ def confirm_staffcheck_after_process(
     from core.discord_bridge import (
         DiscordBridgeError,
         get_bridge,
-        is_enabled,
-        prefer_bridge,
         queue_channel_id,
         queue_guild_id,
+        use_bridge,
     )
 
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
+    if use_bridge("confirm the StaffCheck"):
         mid = str(message_id or "").strip()
         if not mid:
             raise DiscordBridgeError(
@@ -501,16 +540,13 @@ def apply_update_bonus_on_queue_message(
     from core.discord_bridge import (
         DiscordBridgeError,
         get_bridge,
-        is_enabled,
-        prefer_bridge,
         queue_channel_id,
         queue_guild_id,
+        use_bridge,
     )
 
     mid = str(message_id or "").strip()
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
+    if use_bridge("run Update Bonus"):
         if not mid:
             raise DiscordBridgeError("No banner message_id for Update Bonus")
         ch = str(channel_id or queue_channel_id()).strip()
@@ -593,13 +629,10 @@ def type_text(
     from core.discord_bridge import (
         DiscordBridgeError,
         get_bridge,
-        is_enabled,
-        prefer_bridge,
+        use_bridge,
     )
 
-    if is_enabled():
-        if not prefer_bridge():
-            raise DiscordBridgeError("Vencord plugin is not connected")
+    if use_bridge("send a message"):
         if not press_enter:
             raise DiscordBridgeError(
                 "Vencord plugin cannot type without sending (press_enter=False)"
@@ -643,6 +676,7 @@ def navigate_to_channel_message(
     n is 1-based (1 = latest message). Does not open edit or react.
     Sequence: clear → Shift+Tab → Up (first message) → Up × (n-1 + extra_ups)
     """
+    _require_keyboard("move to a Discord message")
     n = max(1, int(n))
     extra = max(0, int(extra_ups))
     after_clear = _ON_DUTY_AFTER_CLEAR
@@ -671,6 +705,7 @@ def react_to_channel_message(
     extra_ups: int = 0,
 ) -> None:
     """Navigate to the Nth message, press +, paste emoji name, Enter."""
+    _require_keyboard("react to a Discord message")
     step = _ON_DUTY_FOCUS_STEP
     config = read_config()
     follow_up = float(config.get("follow_up") or 0.4)
@@ -692,6 +727,7 @@ def react_to_channel_message(
 
 def edit_on_duty_message(self, n: int, new_content: str, *, extra_ups: int = 0) -> None:
     """Navigate to the Nth message, press E to edit, replace content, save."""
+    _require_keyboard("edit a Discord message")
     step = _ON_DUTY_FOCUS_STEP
     navigate_to_on_duty_message(self, n, extra_ups=extra_ups)
     with keyboard_automation(), self.keyboard_lock:

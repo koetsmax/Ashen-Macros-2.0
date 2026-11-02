@@ -116,6 +116,51 @@ def warn_command_index_miss(exc: BaseException | str | None = None) -> None:
     on_main_thread(_show)
 
 
+_last_bridge_required_warn_at = 0.0
+
+
+def warn_bridge_required(reason: str, title: str = "Vencord plugin required") -> None:
+    """Error dialog when an action needs the Vencord plugin and it is off / not ready.
+
+    Offers a button that opens Settings on the hub. Debounced so a macro that
+    trips the guard several times shows one dialog.
+    """
+    import time
+
+    from PySide6.QtWidgets import QMessageBox, QWidget
+
+    global _last_bridge_required_warn_at
+    now = time.monotonic()
+    if now - _last_bridge_required_warn_at < 8.0:
+        return
+    _last_bridge_required_warn_at = now
+
+    def _show() -> None:
+        app = QApplication.instance()
+        if app is None:
+            return
+        hub = None
+        parent: QWidget | None = None
+        for widget in app.topLevelWidgets():
+            if hub is None and hasattr(widget, "_open_settings"):
+                hub = widget
+            if parent is None and isinstance(widget, QWidget) and widget.isVisible():
+                parent = widget
+        box = QMessageBox(hub if hub is not None and hub.isVisible() else parent)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(title)
+        box.setText(reason)
+        settings_btn = None
+        if hub is not None:
+            settings_btn = box.addButton("Open Settings", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(QMessageBox.StandardButton.Close)
+        box.exec()
+        if settings_btn is not None and box.clickedButton() is settings_btn:
+            hub._open_settings()
+
+    on_main_thread(_show)
+
+
 def _issue_hub(ctx):
     hub = getattr(ctx, "hub", None)
     return hub if hub is not None and hasattr(hub, "set_status_issue") else None

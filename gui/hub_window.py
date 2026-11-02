@@ -312,6 +312,7 @@ class StaffcheckHub(QMainWindow):
         else:
             self.not_verified_label.setVisible(False)
         self.verify_button.setVisible(show_verify)
+        self._update_verify_gating()
         # Only useful while waiting for Max to grant the first permission(s).
         self.recheck_permissions_button.setVisible(
             self.connected and self.verified and not self.permissions
@@ -347,8 +348,18 @@ class StaffcheckHub(QMainWindow):
         elif not self.verified:
             if self._verify_action is None:
                 self._verify_action = self.menuBar().addAction("Verify account", self._run_verify)
-            self._verify_action.setEnabled(self.connected)
             self._verify_action.setVisible(self.connected)
+            self._update_verify_gating()
+
+    def _update_verify_gating(self) -> None:
+        """Verify needs the Vencord plugin connected when it goes through the bridge."""
+        ready, reason = verification.verification_ready()
+        enabled = self.connected and ready and not self._verification_in_progress
+        self.verify_button.setEnabled(enabled)
+        self.verify_button.setToolTip("" if ready else reason)
+        if self._verify_action is not None:
+            self._verify_action.setEnabled(enabled)
+            self._verify_action.setToolTip("" if ready else reason)
 
     def _open_settings(self):
         if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
@@ -359,7 +370,13 @@ class StaffcheckHub(QMainWindow):
     def _run_verify(self):
         if not self.connected:
             return
+        ready, reason = verification.verification_ready()
+        if not ready:
+            self.toast_stack.show_toast("verify", reason, dismiss_ms=8000)
+            self._update_verify_gating()
+            return
         self._verification_in_progress = True
+        self._update_verify_gating()
         self.toast_stack.show_toast(
             "verify",
             "Verification in progress. Do not touch your PC until it completes.",
@@ -578,6 +595,8 @@ class StaffcheckHub(QMainWindow):
         self.status_label.style().polish(self.status_label)
 
     def _update_bridge_status(self) -> None:
+        if not self.verified:
+            self._update_verify_gating()
         from core.discord_bridge import (
             bridge_config_ready,
             bridge_plugin_version,
@@ -589,9 +608,23 @@ class StaffcheckHub(QMainWindow):
         )
 
         if not is_enabled():
-            # Only show connected/disconnected when the experiment is on.
-            self.bridge_status_label.hide()
-            self.bridge_status_label.clear()
+            from core.platform import keyboard_automation_supported
+
+            if keyboard_automation_supported():
+                # Only show connected/disconnected when the experiment is on.
+                self.bridge_status_label.hide()
+                self.bridge_status_label.clear()
+                return
+            # Linux is bridge-only: an off plugin means Discord actions can't run.
+            self.bridge_status_label.show()
+            self.bridge_status_label.setText("Vencord plugin: off (required)")
+            self.bridge_status_label.setToolTip(
+                "Every Discord action on Linux goes through the Vencord plugin.\n"
+                "Turn it on in Settings -> Vencord plugin."
+            )
+            self.bridge_status_label.setObjectName("statusDisconnected")
+            self.bridge_status_label.style().unpolish(self.bridge_status_label)
+            self.bridge_status_label.style().polish(self.bridge_status_label)
             return
 
         self.bridge_status_label.show()
@@ -835,6 +868,14 @@ class StaffcheckHub(QMainWindow):
                 "update",
                 "Zip updates are only available in packaged builds. "
                 "You are running from source (dev).",
+                dismiss_ms=8000,
+            )
+            return
+        if not updates.self_update_supported():
+            self.toast_stack.show_toast(
+                "update",
+                "This install is managed by your package manager. "
+                "Update Ashen Macros through it.",
                 dismiss_ms=8000,
             )
             return
