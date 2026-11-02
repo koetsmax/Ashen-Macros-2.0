@@ -170,7 +170,14 @@ class QueueWindow(AppWindow):
         # Elided: a long status (plugin errors) must not widen the window.
         self.status_label = ElidedLabel("Starting...")
         self.status_label.setObjectName("hubApiStatus")
-        status_row.addWidget(self.status_label, stretch=1)
+        # Sized to its text (capped at 480px by ElidedLabel, still shrinks
+        # with an ellipsis) and no stretch, so the status items follow right
+        # after it. With stretch=1 it split the free width with the stretch
+        # below and left a wide empty gap between the status and the items.
+        self.status_label.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
+        status_row.addWidget(self.status_label)
 
         self.queue_state_label = QLabel("")
         self.queue_state_label.setObjectName("hubNotVerified")
