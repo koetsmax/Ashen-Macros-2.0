@@ -55,6 +55,7 @@ from core.keyboard import (
 )
 from core.leave_notice_actions import cross_and_warn_leave_notice, tick_leave_notice
 from core.leave_pending import fetch_leave_message, react_pending_on_leave
+from core.queue_member_pick import QueueMemberPickError
 from core.queue_status_banner import (
     BANNER_BUTTON_LABELS,
     BANNER_RECALL_NAMES,
@@ -65,6 +66,7 @@ from core.queue_ws import QueueWsClient
 from core.settings import config_bool, read_config, set_custom_value
 from gui import theme
 from gui.components.desktop_alert import show_desktop_alert
+from gui.components.elided_label import ElidedLabel
 from gui.views.app_window import AppWindow
 from staffcheck.abort import (
     AbortError,
@@ -165,9 +167,10 @@ class QueueWindow(AppWindow):
     def _build_ui(self) -> None:
         status_row = QHBoxLayout()
         status_row.setSpacing(12)
-        self.status_label = QLabel("Starting...")
+        # Elided: a long status (plugin errors) must not widen the window.
+        self.status_label = ElidedLabel("Starting...")
         self.status_label.setObjectName("hubApiStatus")
-        status_row.addWidget(self.status_label)
+        status_row.addWidget(self.status_label, stretch=1)
 
         self.queue_state_label = QLabel("")
         self.queue_state_label.setObjectName("hubNotVerified")
@@ -579,12 +582,14 @@ class QueueWindow(AppWindow):
         self._pending_report = True
         self._set_status("Sending state report…")
         from core.discord_bridge import bridge_plugin_version, is_enabled
+        from core.platform import platform_description
         from core.updates import display_version
 
         payload: dict = {
             "type": "submit_state_report",
             "feedback": text,
             "macro_version": display_version(),
+            "platform": platform_description(),
         }
         if is_enabled():
             bridge_ver = bridge_plugin_version()
@@ -608,6 +613,8 @@ class QueueWindow(AppWindow):
             self._set_status(f"State report failed: {err}")
 
     def _set_status(self, text: str) -> None:
+        if text.startswith(("Vencord plugin error", "Failed:", "Server:")):
+            logger.warning("Queue Monitor status: %s", text)
         self.status_label.setText(text)
 
     def _on_message(self, data: dict) -> None:
@@ -3314,6 +3321,42 @@ class QueueWindow(AppWindow):
                 continue
             logger.warning("Failed to react :pending: on leave message %s", mid)
 
+    def _queue_member_option(
+        self,
+        command: str,
+        option_name: str,
+        user_id: str,
+        display_name: str,
+        channel_id: str | None,
+    ) -> dict:
+        """Member/target option for /prep and /process.
+
+        Bridge path: fetch the autocomplete lines and pick the one *owned* by
+        ``user_id`` here (mutual "with" pairs list both people for either id),
+        then submit that exact value so the plugin does no guessing. Raises
+        instead of falling back, so a wrong person is never prepped/processed.
+        """
+        from core.discord_bridge import active_guild_id, get_bridge, use_bridge
+        from core.queue_member_pick import resolve_queue_member_value
+
+        if not channel_id or not use_bridge(f"run /{command}"):
+            return opt_str(
+                option_name, user_id, autocomplete=True, match_hint=display_name
+            )
+        value = resolve_queue_member_value(
+            get_bridge(),
+            command,
+            option_name,
+            user_id,
+            channel_id=str(channel_id),
+            display_name=display_name,
+            queue=list(self._last_snapshot.get("queue") or []),
+            guild_id=active_guild_id() or None,
+            abort_ctx=self,
+        )
+        check_abort(self)
+        return opt_str(option_name, value, autocomplete=False)
+
     def _queue_command_worker(
         self,
         action: str,
@@ -3384,11 +3427,8 @@ class QueueWindow(AppWindow):
                     self,
                     "process",
                     [
-                        opt_str(
-                            "member",
-                            user_id,
-                            autocomplete=True,
-                            match_hint=display_name,
+                        self._queue_member_option(
+                            "process", "member", user_id, display_name, queue_ch
                         ),
                         opt_str("ship", ship_option, autocomplete=True),
                     ],
@@ -3425,11 +3465,8 @@ class QueueWindow(AppWindow):
                     self,
                     "prep",
                     [
-                        opt_str(
-                            "target",
-                            user_id,
-                            autocomplete=True,
-                            match_hint=display_name,
+                        self._queue_member_option(
+                            "prep", "target", user_id, display_name, queue_ch
                         )
                     ],
                     channel_id=queue_ch,
@@ -3441,11 +3478,8 @@ class QueueWindow(AppWindow):
                     self,
                     "prep",
                     [
-                        opt_str(
-                            "target",
-                            user_id,
-                            autocomplete=True,
-                            match_hint=display_name,
+                        self._queue_member_option(
+                            "prep", "target", user_id, display_name, queue_ch
                         ),
                         opt_bool("unprep", True),
                     ],
@@ -3460,6 +3494,12 @@ class QueueWindow(AppWindow):
                 self._recently_prepped_user_ids.discard(user_id)
             self._command_status.emit("Queue command aborted")
             error_code = "aborted"
+        except QueueMemberPickError as exc:
+            if action == "prep" and user_id:
+                self._recently_prepped_user_ids.discard(user_id)
+            logger.warning("Queue member pick failed (%s %s): %s", action, user_id, exc)
+            self._command_status.emit(f"Stopped /{action} for {display_name}: {exc}")
+            error_code = "member_pick_failed"
         except DiscordBridgeError as exc:
             if action == "prep" and user_id:
                 self._recently_prepped_user_ids.discard(user_id)
