@@ -865,7 +865,7 @@ class QueueWindow(AppWindow):
         together_menu = menu.addMenu("Process together")
         current = entry.get("process_together")
         for label, value in (
-            ("Unset", None),
+            ("Default (together)", None),
             ("Together", "together"),
             ("Separately", "separate"),
         ):
