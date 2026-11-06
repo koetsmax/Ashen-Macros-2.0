@@ -42,6 +42,49 @@ def _apply_check_buttons(self, *, editable: bool) -> None:
     btn_set_primary(self.function_button, False)
     btn_enable(self.start_button, True)
     btn_enable(self.kill_button, True)
+    pipeline.verdict_stage(self, "decide", editable=editable)
+
+
+def run_verdict_plan(self) -> bool:
+    """Compact Verdict card: finish a reason picked before this step (no-Xbox path).
+
+    The pre-command (/verify) already ran; now post Not good or just finish.
+    Returns True when the plan handled this step.
+    """
+    plan = getattr(self, "_verdict_plan", None)
+    if not plan or not plan.get("after_pre_command"):
+        return False
+    plan["after_pre_command"] = False
+    self.currentstate = "Done"
+    if plan.get("post"):
+        not_good_to_check(self)
+        return True
+    try:
+        from staffcheck import analytics as sc_analytics
+
+        sc_analytics.report_outcome(self, outcome="not_good", reason=self.reason.get())
+    except Exception:
+        pass
+    run_verdict_followup(self)
+    return True
+
+
+def run_verdict_followup(self) -> None:
+    """Compact Verdict card: run the follow-up picked with the reason, then finish."""
+    from staffcheck import after_check_message as after
+    from staffcheck.verdict_followups import FOLLOWUP_JOIN_AWR, FOLLOWUP_UNPRIVATE, FOLLOWUP_VERIFY
+
+    plan = getattr(self, "_verdict_plan", None) or {}
+    followup = plan.get("followup") or ""
+    self.currentstate = "Done"
+    if followup == FOLLOWUP_VERIFY:
+        after.verify_account(self)
+    elif followup == FOLLOWUP_UNPRIVATE:
+        after.unprivate_xbox(self)
+    elif followup == FOLLOWUP_JOIN_AWR:
+        after.join_awr(self)
+    else:
+        pipeline.continue_to_next(self)
 
 
 def offer_post_check_confirm(self, *, not_good: bool = True) -> None:
@@ -106,6 +149,8 @@ def check_message(self):
             return
 
     abort.clear_continue_infer_label(self)
+    if run_verdict_plan(self):
+        return
     _apply_check_buttons(self, editable=editable)
 
 
@@ -196,6 +241,10 @@ def _show_after_check_actions(self) -> None:
     When the not-good reason already names a follow-up, run it immediately
     after the explicit Post not good click (unprivate / verify slash).
     """
+    if getattr(self, "_verdict_plan", None):
+        # Compact Verdict card: the follow-up was picked together with the reason.
+        run_verdict_followup(self)
+        return
     after_check_message(self)
     reason = (self.reason.get() or "").lower()
     if "unprivate" in reason:

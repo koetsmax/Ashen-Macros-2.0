@@ -69,6 +69,7 @@ def elemental_commands(self, *args):
     self.kill_button.setVisible(True)
     btn_enable(self.kill_button, True)
     _idle_start_button(self)
+    pipeline.verdict_stage(self, "no_xbox")
 
 
 def add_note(self):

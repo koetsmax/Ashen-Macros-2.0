@@ -56,6 +56,7 @@ def ashen_commands(self):
     btn_config(self.kill_button, "Needs to unprivate Xbox", lambda: needs_to_unprivate_xbox(self))
     btn_enable(self.kill_button, True)
     self.kill_button.setVisible(True)
+    pipeline.verdict_stage(self, "decide")
 
 
 def redo_search(self):

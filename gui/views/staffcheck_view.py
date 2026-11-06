@@ -4,6 +4,8 @@ from gui.components.mutual_servers_section import MutualServersLine, RankedMutua
 from gui.components.classic_result_section import ClassicResultSection
 from gui.components.pending_checks_panel import PendingChecksPanel
 from gui.components.result_section import ResultSection
+from gui.components.verdict_card import VerdictCard
+from staffcheck import verdict_followups as verdict
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QPainter, QPalette
 from PySide6.QtWidgets import (
@@ -340,8 +342,7 @@ class StaffcheckView(QWidget):
         old = self._content_scroll.takeWidget()
         self._responsive = None
         self._slot_stack = None
-        self._bar_grid = None
-        self._bar_spans = None
+        self.verdict_card = None
         self._action_btn_grid = None
         self.person_name_label = None
         self.result_sections = {}
@@ -371,43 +372,13 @@ class StaffcheckView(QWidget):
         return self.rerun_button if self._compact_active else self.function_button_2
 
     def _update_compact_slots(self) -> None:
-        """Compact: Re-run ↔ Stop share a slot; the multi-use button only shows when used."""
+        """Compact: Re-run and Stop share one slot under the inputs."""
         if not self._compact_active:
             return
         running = self.stop_button.isEnabled()
         stack = getattr(self, "_slot_stack", None)
         if stack is not None:
             stack.setCurrentWidget(self.stop_button if running else self.rerun_button)
-        fb2 = self.function_button_2
-        fb2.setVisible(fb2.isEnabled() and not fb2.text().startswith("Re-run"))
-        self._spread_action_bar()
-
-    # Compact grid rows: 0 inputs/person, 1 cards, 2 flagged, 3 divider, 4 bar.
-    _BAR_ROW = 4
-
-    def _spread_action_bar(self) -> None:
-        """Visible bar buttons share the 4 card columns so the bar is always full width."""
-        grid = getattr(self, "_bar_grid", None)
-        if grid is None:
-            return
-        buttons = (self.start_button, self.function_button, self.kill_button, self.function_button_2)
-        visible = [btn for btn in buttons if not btn.isHidden()]
-        # 1 → 4 cols, 2 → 2 each, 3 → 1/1/2, 4 → 1 each; edges always match the cards.
-        spans = {1: [4], 2: [2, 2], 3: [1, 1, 2], 4: [1, 1, 1, 1]}.get(len(visible), [])
-        layout = tuple((btn, span) for btn, span in zip(visible, spans))
-        if layout == getattr(self, "_bar_spans", None):
-            return
-        self._bar_spans = layout
-        for btn in buttons:
-            grid.removeWidget(btn)
-        col = 0
-        for btn, span in layout:
-            grid.addWidget(btn, self._BAR_ROW, col, 1, span)
-            col += span
-        # Hidden buttons still need a cell so they stay parented to the grid host.
-        for btn in buttons:
-            if btn.isHidden():
-                grid.addWidget(btn, self._BAR_ROW, 0)
 
     def _relayout_responsive(self) -> None:
         """Place the result cards: compact = one row of 4, classic = 2×2."""
@@ -491,7 +462,9 @@ class StaffcheckView(QWidget):
         self.stop_button.setMinimumHeight(0)
         self.stop_button.setMaximumHeight(16777215)
         self.stop_button.setVisible(True)
+        self.function_button.setVisible(True)
         self.function_button_2.setVisible(True)
+        self.start_button.setVisible(True)
         grid.addWidget(self.reason_entry, row + 2, 0, 1, 2)
         self._action_btn_grid = btn_grid
         self._sync_action_button_columns()
@@ -577,14 +550,13 @@ class StaffcheckView(QWidget):
         outer.addStretch(1)
 
     def _build_compact_layout(self, content: QWidget) -> None:
-        """Concept C: inputs + person card, four equal result cards, action bar."""
+        """Inputs + person card (with mutual servers), four result cards, Verdict card."""
         outer = QVBoxLayout(content)
         outer.setContentsMargins(0, 0, 4, 0)
         outer.setSpacing(8)
 
-        # One grid for the whole view: the inputs/person-card split, the four
-        # cards and the action bar all share the same 4 columns and 8px gaps,
-        # so every vertical gap and corner lines up down the window.
+        # One grid for the view: the inputs/person split and the four cards share
+        # the same 4 columns and 8px gaps, so every edge lines up down the window.
         cards = QGridLayout()
         cards.setSpacing(8)
         outer.addLayout(cards)
@@ -598,7 +570,7 @@ class StaffcheckView(QWidget):
         ])
         # One slot: Re-run when idle, Stop check! while a check runs (_update_compact_slots).
         # A stacked slot gives both buttons the exact same geometry, so swapping
-        # Re-run ↔ Stop never moves or resizes the row.
+        # Re-run <-> Stop never moves or resizes the row.
         slot_row = grid.rowCount()
         self._slot_stack = QStackedWidget()
         self._slot_stack.addWidget(self.rerun_button)
@@ -617,54 +589,45 @@ class StaffcheckView(QWidget):
         self._slot_stack.setFixedHeight(slot_height)
         self.rerun_button.set_single_line(True)
         self.function_button_2.set_single_line(True)
+        left_col.addStretch(1)
         cards.addLayout(left_col, 0, 0, 1, 2)
 
+        # Person card: name, one line of GT + last check, then the mutual servers.
+        # Half the window wide, so server names stay on one line at normal widths.
         person = QWidget()
         person.setObjectName("personCard")
         person.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         person_layout = QVBoxLayout(person)
         person_layout.setContentsMargins(12, 10, 12, 10)
-        person_layout.setSpacing(0)
+        person_layout.setSpacing(4)
         self.person_name_label = QLabel()
         self.person_name_label.setObjectName("personName")
         self.show_person(self.user_name)
+        person_layout.addWidget(self.person_name_label)
 
-        # Name, GamerTag, Last check and the reason box spread with equal gaps as
-        # the card stretches: content on even grid rows, equal-stretch spacers between.
-        info = QGridLayout()
-        info.setContentsMargins(0, 0, 0, 0)
-        info.setHorizontalSpacing(8)
-        info.setVerticalSpacing(0)
-        info.setColumnStretch(1, 1)
-        info.addWidget(self.person_name_label, 0, 0, 1, 2)
-        for row, (label, widget) in (
-            (2, ("GamerTag:", self.gamertag_label)),
-            (4, ("Last check:", self.last_check_label)),
-        ):
-            # Plain text rows in the card; the classic layout restores FIELD_HEIGHT.
+        facts = QHBoxLayout()
+        facts.setContentsMargins(0, 0, 0, 0)
+        facts.setSpacing(6)
+        for label, widget in (("GT", self.gamertag_label), ("Last check", self.last_check_label)):
+            # Plain text in the card; the classic layout restores FIELD_HEIGHT.
             widget.setMinimumHeight(0)
             name = QLabel(label)
             name.setObjectName("resultLabel")
-            info.addWidget(name, row, 0)
-            info.addWidget(widget, row, 1)
-        info.addWidget(self.reason_entry, 6, 0, 1, 2)
-        for spacer_row in (1, 3, 5):
-            info.setRowStretch(spacer_row, 1)
-            info.setRowMinimumHeight(spacer_row, 4)
-        person_layout.addLayout(info)
+            facts.addWidget(name)
+            facts.addWidget(widget)
+            if label == "GT":
+                dot = QLabel("·")
+                dot.setObjectName("resultLabel")
+                facts.addWidget(dot)
+        facts.addStretch(1)
+        person_layout.addLayout(facts)
+        person_layout.addSpacing(2)
+
+        self.result_sections["mutual_servers"] = RankedMutualsList()
+        person_layout.addWidget(self.result_sections["mutual_servers"], 1)
         person.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         cards.addWidget(person, 0, 2, 1, 2)
 
-        self.result_sections["mutual_servers"] = RankedMutualsList()
-        # SOT Official sits inside the Mutual Servers card, under the server list.
-        self.result_sections["sot_official"] = ResultSection(
-            "SOT Official",
-            [self.check_for_yourself_button],
-            idle_tooltip=SECTION_IDLE_TOOLTIPS["sot_official"],
-            always_show_keys=frozenset({"total_messages"}),
-            lead_widget=self.result_sections["mutual_servers"],
-            card=True,
-        )
         self.result_sections["user_report"] = ResultSection(
             "User Report",
             [self.loghistory_fix_issues_button],
@@ -684,6 +647,14 @@ class StaffcheckView(QWidget):
             show_all_results=True,
             card=True,
         )
+        self.result_sections["sot_official"] = ResultSection(
+            "SOT Official",
+            [self.check_for_yourself_button],
+            idle_tooltip=SECTION_IDLE_TOOLTIPS["sot_official"],
+            always_show_keys=frozenset({"total_messages"}),
+            absent_note="Not in the Sea of Thieves server",
+            card=True,
+        )
         self.result_sections["flagged_messages"] = ResultSection("Flagged Messages", [], card=True)
         self.result_sections["flagged_messages"]._button_row.setVisible(False)
         self.result_sections["flagged_messages"].setVisible(False)
@@ -693,7 +664,7 @@ class StaffcheckView(QWidget):
             "grid": cards,
             "cards": [
                 self.result_sections[key]
-                for key in ("sot_official", "user_report", "search", "invite_tracker")
+                for key in ("user_report", "search", "invite_tracker", "sot_official")
             ],
             "flagged": self.result_sections["flagged_messages"],
             # Row 0 holds the inputs / person card.
@@ -701,25 +672,134 @@ class StaffcheckView(QWidget):
             "cols": None,
         }
 
-        # Action bar: Start, Continue, Not good, then the multi-use button
-        # (Verify account, Needs to verify…) where Stop used to be. It lives in
-        # the cards grid so each button is exactly as wide as the card above it.
-        bar_divider = QFrame()
-        bar_divider.setObjectName("sectionDivider")
-        bar_divider.setFixedHeight(1)
-        cards.addWidget(bar_divider, self._BAR_ROW - 1, 0, 1, 4)
-        for col, btn in enumerate(
-            (self.start_button, self.function_button, self.kill_button, self.function_button_2)
-        ):
-            # Width comes from the column, not the label (see QPushButton[actionBar]).
-            btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-            btn.setProperty("actionBar", True)
+        # The multi-use buttons the pipeline still drives (Continue, Needs to …,
+        # Join AWR …) are replaced by the Verdict card here; park them hidden.
+        holder = QWidget(content)
+        holder.hide()
+        for btn in (self.function_button, self.kill_button, self.function_button_2):
+            btn.setParent(holder)
+
+        for btn in (self.start_button, self.function_button, self.kill_button, self.function_button_2):
+            # Undo any classic sizing on these shared buttons.
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setProperty("actionBar", False)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
-            cards.addWidget(btn, 3, col)
-        # _update_compact_slots re-spreads the visible bar buttons across the 4 columns.
-        self._bar_grid = cards
+        self.start_button.setVisible(True)
+
+        self.verdict_card = VerdictCard(self.start_button, self.reason_entry)
+        self.verdict_card.good_clicked.connect(self._verdict_good)
+        self.verdict_card.not_good_clicked.connect(self._verdict_not_good)
+        self.verdict_card.back_clicked.connect(self._verdict_back)
+        self.verdict_card.post_good_clicked.connect(self._verdict_post_good)
+        self.verdict_card.dont_post_clicked.connect(self._verdict_dont_post)
+        self.verdict_card.reason_chosen.connect(self._verdict_reason)
+        outer.addWidget(self.verdict_card)
+        self.set_verdict_stage(getattr(self, "_verdict_stage", "idle"))
         outer.addStretch(1)
+
+    # ------------------------------------------------------------ verdict card
+    # The pipeline reports where the check is (set_verdict_stage); the compact
+    # Verdict card turns clicks into the same pipeline calls the old buttons made.
+    _VERDICT_PAGES = {
+        "idle": "idle",
+        "running": "running",
+        "decide": "decide",
+        "no_xbox": "no_xbox",
+        "busy": "busy",
+    }
+
+    def set_verdict_stage(self, stage: str, **info) -> None:
+        """Pipeline hook: idle / running / decide / no_xbox / busy."""
+        self._verdict_stage = stage
+        if stage in ("idle", "running"):
+            self._verdict_plan = None
+        card = getattr(self, "verdict_card", None)
+        if card is None or not self._compact_active:
+            return
+        card.set_stage(self._VERDICT_PAGES.get(stage, stage), **info)
+
+    def _verdict_editable(self) -> bool:
+        from staffcheck.check_message import _edit_state
+
+        try:
+            return _edit_state(self)
+        except Exception:
+            return False
+
+    def _verdict_good(self) -> None:
+        self.verdict_card.set_stage("good", editable=self._verdict_editable())
+
+    def _verdict_not_good(self) -> None:
+        self.verdict_card.set_stage("not_good")
+
+    def _verdict_back(self) -> None:
+        self.verdict_card.set_stage("decide")
+
+    def _verdict_post_good(self) -> None:
+        from staffcheck import abort, check_message
+
+        self.clear_reason()
+        self.verdict_card.set_stage("busy", busy_text="Posting good to check…")
+        if getattr(self, "currentstate", None) == "Done":
+            # Already at the check-message step: post right away.
+            check_message.good_to_check(self)
+            return
+        # Earlier in All Commands: run the remaining steps, then post good on arrival
+        # (the same path as the old "Post good to check" advance button).
+        abort.clear_continue_infer_label(self)
+        self._infer_check_on_arrive = True
+        pipeline.continue_to_next(self)
+
+    def _verdict_dont_post(self) -> None:
+        # No outcome is reported: nothing was posted, so the stats shouldn't
+        # count this as a good check (same as ending a check before posting).
+        self.currentstate = "Done"
+        pipeline.reset_ui(self)
+
+    def _verdict_reason(self, reason: str, followup: str, post: bool, run: bool) -> None:
+        """One click: post Not good with this reason and/or run its follow-up."""
+        from staffcheck import abort, check_message, elemental_commands
+        from staffcheck import analytics as sc_analytics
+
+        if not run:
+            followup = verdict.FOLLOWUP_NONE
+        if not post and not followup:
+            # Nothing to type: record the verdict and finish.
+            try:
+                sc_analytics.report_outcome(self, outcome="not_good", reason=reason)
+            except Exception:
+                logger.exception("Failed to report not good staffcheck")
+            self.currentstate = "Done"
+            pipeline.reset_ui(self)
+            return
+
+        self.reason.set(reason)
+        self._verdict_plan = {"post": post, "followup": followup}
+        self.verdict_card.set_stage("busy", busy_text="Posting not good to check…" if post else "Running…")
+
+        if followup in (verdict.FOLLOWUP_LINK_XBOX, verdict.FOLLOWUP_TELL_VERIFY) and self._verdict_stage == "no_xbox":
+            # No-Xbox path: /verify in the check channel first; it then advances to
+            # the check-message step, where check_message.run_verdict_plan posts.
+            self._verdict_plan["followup"] = verdict.FOLLOWUP_NONE
+            self._verdict_plan["after_pre_command"] = True
+            if followup == verdict.FOLLOWUP_LINK_XBOX:
+                elemental_commands.tell_to_link_xbox(self)
+            else:
+                elemental_commands.tell_to_verify(self)
+            return
+
+        abort.clear_continue_infer_label(self)
+        self._infer_check_on_arrive = False
+        self.currentstate = "Done"
+        if post:
+            check_message.not_good_to_check(self)
+            return
+        try:
+            sc_analytics.report_outcome(self, outcome="not_good", reason=reason)
+        except Exception:
+            logger.exception("Failed to report not good staffcheck")
+        check_message.run_verdict_followup(self)
 
     def show_person(self, name: str | None) -> None:
         """Compact person card title: who is being checked."""

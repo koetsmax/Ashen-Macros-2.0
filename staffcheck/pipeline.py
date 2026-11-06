@@ -25,6 +25,13 @@ def _button_noop():
     pass
 
 
+def verdict_stage(view, stage: str, **info) -> None:
+    """Tell the compact Verdict card where the check is (no-op for other views)."""
+    hook = getattr(view, "set_verdict_stage", None)
+    if callable(hook):
+        on_main_thread(lambda: hook(stage, **info))
+
+
 def disable_function_button(self):
     btn_config(self.function_button, "Cool Button", _button_noop)
     btn_set_primary(self.function_button, False)
@@ -178,6 +185,7 @@ def start_check(self):
     clear_status_issue(self, "check")
     clear_status_issue(self, "bridge")
     abort.start_check_session(self)
+    verdict_stage(self, "running")
     btn_enable(self.stop_button, True)
     btn_enable(self.start_button, False)
     self._set_customize_enabled(False)
@@ -288,6 +296,7 @@ def _handle_essential_data(self, request_error: bool):
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
     abort.end_check_session(self)
+    verdict_stage(self, "idle")
     refresh_start_button(self)
 
 
@@ -357,6 +366,7 @@ def finish_single_method(self):
     disable_function_button(self)
     configure_rerun_button(self, lambda: self.user_id.set(previous_user_id))
     clear_status_issue(self, "bridge")
+    verdict_stage(self, "idle")
     refresh_start_button(self)
 
 
@@ -412,6 +422,7 @@ def reset_ui(self, preserve_abort: bool = False):
     self.user_id_entry.setEnabled(True)
     self.channel_combo_box.setEnabled(True)
     self.method_combo_box.setEnabled(True)
+    verdict_stage(self, "idle")
     refresh_start_button(self)
 
 

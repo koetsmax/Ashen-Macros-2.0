@@ -27,6 +27,7 @@ class ResultSection(QWidget):
         always_show_keys: frozenset[str] | None = None,
         lead_widget: QWidget | None = None,
         card: bool = False,
+        absent_note: str = "",
     ):
         super().__init__()
         self._card = card
@@ -40,6 +41,9 @@ class ResultSection(QWidget):
         self._field_order: list[str] = []
         self._buttons = buttons or []
         self._lead_mode = lead_widget is not None
+        # Standalone cards: shown instead of results when the user isn't in that server.
+        self._absent_note = absent_note
+        self._membership = "unknown"
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -123,7 +127,15 @@ class ResultSection(QWidget):
 
     def set_membership(self, state: str) -> None:
         """SOT results only show once mutuals confirm membership ('member')."""
-        self.set_body_visible(state == "member")
+        if self._lead_mode:
+            self.set_body_visible(state == "member")
+            return
+        # Own card: keep the card, but say why there are no results.
+        self._membership = state
+        self._refresh()
+        if state == "not_member":
+            for btn in self._buttons:
+                btn.setEnabled(False)
 
     def set_loading(self) -> None:
         self._state = "loading"
@@ -212,6 +224,8 @@ class ResultSection(QWidget):
         self._apply_tooltip(self._build_tooltip())
 
     def _build_summary(self) -> str:
+        if self._membership == "not_member" and self._absent_note and not self._fields:
+            return self._absent_note
         if self._state == "failed":
             return self._error_message or "Failed"
 

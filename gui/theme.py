@@ -416,6 +416,84 @@ def _qss() -> str:
         color: {_mix(RED, OVERLAY0, 0.35)};
         font-weight: 400;
     }}
+    /* Compact staffcheck Verdict card (gui/components/verdict_card.py). */
+    QPushButton#verdictGood {{
+        background-color: {_mix(GREEN, BASE, 0.22)};
+        border: 1px solid {_mix(GREEN, SURFACE0, 0.5)};
+        color: {GREEN};
+        font-weight: 600;
+    }}
+    QPushButton#verdictGood:hover {{
+        background-color: {_mix(GREEN, BASE, 0.32)};
+        border-color: {GREEN};
+    }}
+    QPushButton#verdictBad {{
+        background-color: {_mix(RED, BASE, 0.22)};
+        border: 1px solid {_mix(RED, SURFACE0, 0.5)};
+        color: {RED};
+        font-weight: 600;
+    }}
+    QPushButton#verdictBad:hover {{
+        background-color: {_mix(RED, BASE, 0.32)};
+        border-color: {RED};
+    }}
+    QPushButton#verdictGood:disabled, QPushButton#verdictBad:disabled {{
+        background-color: {MANTLE};
+        border-color: {SURFACE0};
+        color: {OVERLAY0};
+        font-weight: 400;
+    }}
+    QPushButton#verdictReason {{
+        padding: 4px 6px;
+        min-height: 22px;
+    }}
+    QPushButton#verdictReason:hover {{
+        border-color: {_mix(RED, SURFACE2, 0.5)};
+    }}
+    QPushButton#verdictReason[chosen="true"] {{
+        background-color: {_mix(RED, BASE, 0.15)};
+        border-color: {RED};
+        color: {RED};
+    }}
+    QPushButton#verdictBack {{
+        background: transparent;
+        border: none;
+        color: {SUBTEXT0};
+        padding: 0 4px;
+        min-height: 0;
+    }}
+    QPushButton#verdictBack:hover {{
+        color: {TEXT};
+    }}
+    QLabel#verdictCrumb {{
+        color: {SUBTEXT0};
+        background: transparent;
+    }}
+    QLabel#verdictCrumb[tone="good"] {{
+        color: {GREEN};
+        font-weight: 600;
+    }}
+    QLabel#verdictCrumb[tone="bad"] {{
+        color: {RED};
+        font-weight: 600;
+    }}
+    QWidget#verdictPane, QWidget#verdictOtherRow,
+    QWidget#verdictPane QCheckBox, QWidget#verdictOtherRow QLabel {{
+        background: transparent;
+    }}
+    QWidget#verdictOtherRow QLineEdit, QWidget#verdictOtherRow QComboBox {{
+        padding: 3px 10px;
+        min-height: 22px;
+    }}
+    QWidget#verdictOtherRow QPushButton {{
+        padding: 4px 10px;
+        min-height: 22px;
+    }}
+    QLabel#verdictHint {{
+        color: {OVERLAY0};
+        font-size: 8.5pt;
+        background: transparent;
+    }}
     QPushButton#classicPanelButton {{
         padding: 4px 8px;
         min-height: 22px;
